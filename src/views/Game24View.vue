@@ -967,6 +967,7 @@ newGame()
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    justify-content: center;
   }
 
   .expression-display::-webkit-scrollbar {
@@ -1052,6 +1053,18 @@ newGame()
   .solution-content {
     padding: 12px;
     gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .solution-content::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .solution-content::-webkit-scrollbar-thumb {
+    background: #dcdfe6;
+    border-radius: 2px;
   }
 
   .solution-card {
@@ -1152,7 +1165,7 @@ newGame()
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    justify-content: flex-start;
+    justify-content: center;
     padding-bottom: 3px;
   }
 
@@ -1180,6 +1193,14 @@ newGame()
   .solution-content {
     padding: 10px;
     gap: 5px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    justify-content: center;
+  }
+
+  .solution-content::-webkit-scrollbar {
+    height: 3px;
   }
 
   .solution-card {
