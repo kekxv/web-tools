@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 import MainLayout from '../components/Layout/MainLayout.vue'
 import Home from '../views/Home.vue'
 import DiffView from '../views/DiffView.vue'
@@ -16,51 +16,27 @@ const routes = [
         name: 'Home',
         component: Home,
         meta: { title: '首页' }
-      }
-    ]
-  },
-  {
-    path: '/diff',
-    component: MainLayout,
-    children: [
+      },
       {
-        path: '',
+        path: 'diff',
         name: 'Diff',
         component: DiffView,
         meta: { title: 'Diff 工具' }
-      }
-    ]
-  },
-  {
-    path: '/formatter',
-    component: MainLayout,
-    children: [
+      },
       {
-        path: '',
+        path: 'formatter',
         name: 'Formatter',
         component: FormatterView,
         meta: { title: '代码格式化' }
-      }
-    ]
-  },
-  {
-    path: '/hash',
-    component: MainLayout,
-    children: [
+      },
       {
-        path: '',
+        path: 'hash',
         name: 'Hash',
         component: HashView,
         meta: { title: 'Hash 计算' }
-      }
-    ]
-  },
-  {
-    path: '/gobang',
-    component: MainLayout,
-    children: [
+      },
       {
-        path: '',
+        path: 'gobang',
         name: 'Gobang',
         component: GobangView,
         meta: { title: '五子棋' }
@@ -70,7 +46,7 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(import.meta.env.BASE_URL),
   routes
 })
 
