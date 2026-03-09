@@ -34,6 +34,10 @@
             <el-icon><Grid /></el-icon>
             <template #title>五子棋</template>
           </el-menu-item>
+          <el-menu-item index="/game24">
+            <el-icon><Odometer /></el-icon>
+            <template #title>24 点</template>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       <!-- 遮罩层 -->
@@ -76,6 +80,10 @@
           <el-menu-item index="/gobang">
             <el-icon><Grid /></el-icon>
             <template #title>五子棋</template>
+          </el-menu-item>
+          <el-menu-item index="/game24">
+            <el-icon><Odometer /></el-icon>
+            <template #title>24 点</template>
           </el-menu-item>
         </el-menu>
       </el-aside>
@@ -144,7 +152,8 @@ const currentTitle = computed(() => {
     '/diff': 'Diff 工具',
     '/formatter': '代码格式化',
     '/hash': 'Hash 计算',
-    '/gobang': '五子棋'
+    '/gobang': '五子棋',
+    '/game24': '24 点'
   }
   return routeMap[route.path] || 'Web Tools'
 })

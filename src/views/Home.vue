@@ -46,6 +46,12 @@ const tools = [
     title: '五子棋',
     description: '简单有趣的五子棋小游戏',
     icon: 'Grid'
+  },
+  {
+    path: '/game24',
+    title: '24 点',
+    description: '经典扑克牌数学益智游戏',
+    icon: 'Odometer'
   }
 ]
 </script>

@@ -5,6 +5,7 @@ import DiffView from '../views/DiffView.vue'
 import FormatterView from '../views/FormatterView.vue'
 import HashView from '../views/HashView.vue'
 import GobangView from '../views/GobangView.vue'
+import Game24View from '../views/Game24View.vue'
 
 const routes = [
   {
@@ -40,6 +41,12 @@ const routes = [
         name: 'Gobang',
         component: GobangView,
         meta: { title: '五子棋' }
+      },
+      {
+        path: 'game24',
+        name: 'Game24',
+        component: Game24View,
+        meta: { title: '24 点' }
       }
     ]
   }
