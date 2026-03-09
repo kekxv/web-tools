@@ -691,10 +691,26 @@ newGame()
   min-height: 80px;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   gap: 8px;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+  justify-content: center;
+}
+
+.expression-display::-webkit-scrollbar {
+  height: 6px;
+}
+
+.expression-display::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 3px;
+}
+
+.expression-display::-webkit-scrollbar-track {
+  background: #f5f7fa;
+  border-radius: 3px;
 }
 
 .placeholder {
@@ -753,45 +769,59 @@ newGame()
 
 /* 运算符样式 */
 .expression-operator {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--text-primary);
-  padding: 5px 10px;
-  background: #ecf5ff;
-  border-radius: 6px;
+  padding: 0 6px;
+  min-width: 24px;
+  text-align: center;
   cursor: pointer;
   transition: all 0.2s;
   border: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .expression-operator:hover {
-  background: #f56c6c;
-  color: #fff;
-  transform: scale(1.05);
+  color: #f56c6c;
 }
 
 .expression-operator:active {
-  transform: scale(0.95);
+  transform: scale(0.9);
 }
 
 /* 运算符选择区 */
 .operator-section {
-  margin: 25px 0;
+  margin: 20px 0;
 }
 
 .operator-buttons {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   justify-content: center;
+  padding-bottom: 5px;
+}
+
+.operator-buttons::-webkit-scrollbar {
+  height: 6px;
+}
+
+.operator-buttons::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 3px;
 }
 
 .op-btn {
-  width: 55px;
-  height: 55px;
-  font-size: 20px;
+  flex-shrink: 0;
+  width: 50px;
+  height: 50px;
+  font-size: 18px;
   font-weight: 600;
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 /* 答案区域 */
@@ -831,13 +861,24 @@ newGame()
 .solution-content {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   justify-content: center;
   gap: 8px;
   padding: 15px;
   background: #fff;
   border-radius: 8px;
   margin-bottom: 15px;
+}
+
+.solution-content::-webkit-scrollbar {
+  height: 6px;
+}
+
+.solution-content::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 3px;
 }
 
 .solution-card {
@@ -891,12 +932,14 @@ newGame()
   }
 
   .cards-display {
-    gap: 10px;
+    gap: 12px;
+    margin-bottom: 20px;
   }
 
   .card {
-    width: 60px;
-    height: 85px;
+    width: 65px;
+    height: 90px;
+    border-radius: 10px;
   }
 
   .card-value {
@@ -905,38 +948,139 @@ newGame()
 
   .card-suit {
     font-size: 16px;
+    margin-top: 4px;
+  }
+
+  .expression-area {
+    margin-bottom: 20px;
+  }
+
+  .expression-label {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .expression-display {
+    padding: 12px;
+    min-height: 70px;
+    gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .expression-display::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .expression-display::-webkit-scrollbar-thumb {
+    background: #dcdfe6;
+    border-radius: 2px;
   }
 
   .expression-card {
-    width: 40px;
-    height: 55px;
+    width: 42px;
+    height: 58px;
+    border-radius: 7px;
+  }
+
+  .expr-card-value {
     font-size: 16px;
+  }
+
+  .expr-card-suit {
+    font-size: 11px;
+    margin-top: 2px;
   }
 
   .expression-operator {
     font-size: 18px;
-    padding: 4px 8px;
+    padding: 0 4px;
+    min-width: 20px;
+  }
+
+  .placeholder {
+    font-size: 13px;
+  }
+
+  /* 运算符按钮 */
+  .operator-section {
+    margin: 20px 0;
+  }
+
+  .operator-buttons {
+    gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    justify-content: flex-start;
+    padding-bottom: 4px;
+  }
+
+  .operator-buttons::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .operator-buttons::-webkit-scrollbar-thumb {
+    background: #dcdfe6;
+    border-radius: 2px;
   }
 
   .op-btn {
-    width: 48px;
-    height: 48px;
-    font-size: 18px;
+    flex-shrink: 0;
+    width: 45px;
+    height: 45px;
+    font-size: 16px;
+    border-radius: 8px;
+  }
+
+  /* 答案区域 */
+  .solution-area {
+    padding: 15px;
+  }
+
+  .solution-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .solution-label {
+    font-size: 13px;
+  }
+
+  .solution-content {
+    padding: 12px;
+    gap: 6px;
   }
 
   .solution-card {
-    width: 35px;
-    height: 50px;
+    width: 38px;
+    height: 52px;
+    border-radius: 7px;
+  }
+
+  .sol-card-value {
     font-size: 16px;
   }
 
   .solution-operator {
     font-size: 18px;
+    padding: 4px 7px;
   }
 
+  .solution-actions {
+    margin-top: 10px;
+  }
+
+  .solution-actions .el-button {
+    width: 100%;
+  }
+
+  /* 按钮组 */
   .btn-group {
     width: 100%;
-    justify-content: stretch;
+    gap: 8px;
   }
 
   .btn-group .el-button {
@@ -949,9 +1093,19 @@ newGame()
 
 /* 超小屏幕适配 */
 @media screen and (max-width: 375px) {
+  .game-container {
+    padding: 0 5px;
+  }
+
+  .cards-display {
+    gap: 8px;
+    margin-bottom: 15px;
+  }
+
   .card {
-    width: 50px;
-    height: 75px;
+    width: 55px;
+    height: 78px;
+    border-radius: 8px;
   }
 
   .card-value {
@@ -960,24 +1114,93 @@ newGame()
 
   .card-suit {
     font-size: 14px;
+    margin-top: 3px;
+  }
+
+  .expression-display {
+    padding: 10px;
+    gap: 5px;
   }
 
   .expression-card {
-    width: 35px;
-    height: 48px;
+    width: 38px;
+    height: 52px;
+    border-radius: 6px;
+  }
+
+  .expr-card-value {
     font-size: 14px;
+  }
+
+  .expr-card-suit {
+    font-size: 10px;
+  }
+
+  .expression-operator {
+    font-size: 16px;
+    padding: 0 3px;
+    min-width: 18px;
+  }
+
+  .placeholder {
+    font-size: 12px;
+  }
+
+  /* 运算符按钮 */
+  .operator-buttons {
+    gap: 5px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    justify-content: flex-start;
+    padding-bottom: 3px;
+  }
+
+  .operator-buttons::-webkit-scrollbar {
+    height: 3px;
   }
 
   .op-btn {
-    width: 42px;
-    height: 42px;
-    font-size: 16px;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
+    border-radius: 7px;
+  }
+
+  /* 答案区域 */
+  .solution-area {
+    padding: 12px;
+  }
+
+  .solution-label {
+    font-size: 12px;
+  }
+
+  .solution-content {
+    padding: 10px;
+    gap: 5px;
   }
 
   .solution-card {
-    width: 32px;
-    height: 45px;
+    width: 34px;
+    height: 46px;
+    border-radius: 6px;
+  }
+
+  .sol-card-value {
     font-size: 14px;
+  }
+
+  .solution-operator {
+    font-size: 16px;
+    padding: 3px 6px;
+  }
+
+  /* 按钮组 */
+  .btn-group .el-button {
+    padding: 9px 6px;
+    font-size: 12px;
   }
 }
 </style>
