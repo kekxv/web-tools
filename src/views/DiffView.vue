@@ -332,14 +332,76 @@ const clearAll = () => {
   font-style: italic;
 }
 
+/* 移动端适配 */
 @media screen and (max-width: 768px) {
-  .editor-container {
-    grid-template-columns: 1fr;
+  .page-container {
+    padding: 10px;
+  }
+
+  .page-title {
+    font-size: 20px;
+  }
+
+  .page-description {
+    font-size: 13px;
+    margin-bottom: 15px;
+  }
+
+  .toolbar {
+    padding: 12px;
+    margin-bottom: 15px;
   }
 
   .options-row {
-    flex-direction: column;
-    align-items: flex-start;
+    width: 100%;
+    gap: 10px;
+  }
+
+  .input-group {
+    width: 100%;
+  }
+
+  .input-group label {
+    font-size: 13px;
+  }
+
+  .btn-group {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .btn-group .el-button {
+    flex: 1;
+    min-width: 80px;
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  .editor-container {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .code-editor {
+    height: 200px;
+    font-size: 13px;
+  }
+
+  .editor-label {
+    font-size: 13px;
+  }
+
+  .result-header {
+    padding: 10px 12px;
+  }
+
+  .result-label {
+    font-size: 13px;
+  }
+
+  .patch-output {
+    padding: 12px;
+    font-size: 12px;
   }
 }
 </style>

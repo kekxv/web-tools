@@ -46,28 +46,31 @@
         <!-- 棋盘 -->
         <div class="board-wrapper">
           <div class="board" ref="boardRef">
-            <!-- 横线 -->
-            <div class="lines-horizontal">
-              <div
-                v-for="i in BOARD_SIZE"
-                :key="'h' + i"
-                class="line"
-              ></div>
-            </div>
-            <!-- 竖线 -->
-            <div class="lines-vertical">
-              <div
-                v-for="i in BOARD_SIZE"
-                :key="'v' + i"
-                class="line"
-              ></div>
+            <!-- 线条容器 -->
+            <div class="lines-container">
+              <!-- 横线 -->
+              <div class="lines-horizontal">
+                <div
+                  v-for="i in BOARD_SIZE"
+                  :key="'h' + i"
+                  class="line"
+                ></div>
+              </div>
+              <!-- 竖线 -->
+              <div class="lines-vertical">
+                <div
+                  v-for="i in BOARD_SIZE"
+                  :key="'v' + i"
+                  class="line"
+                ></div>
+              </div>
             </div>
             <!-- 棋子 -->
             <div
               v-for="(row, rowIndex) in board"
               :key="rowIndex"
               class="row"
-              :style="{ top: rowIndex * 30 + 'px' }"
+              :style="rowStyle(rowIndex)"
             >
               <div
                 v-for="(cell, colIndex) in row"
@@ -119,6 +122,8 @@ import {
 } from '../utils/gobang'
 import { VideoPlay, RefreshLeft, Delete } from '@element-plus/icons-vue'
 
+const CELL_SIZE = 30 // 棋盘格子大小
+
 const gameMode = ref('pve') // 'pve' 或 'pvp'
 const firstPlayer = ref(BLACK)
 const board = ref(createBoard())
@@ -130,6 +135,12 @@ const moveHistory = ref([])
 const boardRef = ref(null)
 
 const canUndo = computed(() => moveHistory.value.length > 0 && !winner.value)
+
+const rowStyle = (rowIndex) => {
+  return {
+    top: `calc(${rowIndex} * var(--cell-size, 30px))`
+  }
+}
 
 const startGame = () => {
   board.value = createBoard()
@@ -307,22 +318,33 @@ const undoMove = () => {
   background: #f8d588;
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  overflow: visible;
 }
 
 .board {
   position: relative;
-  width: 450px;
-  height: 450px;
+  /* 15 条线，14 个间隔，加上边距容纳棋子 */
+  width: calc(14 * var(--cell-size, 30px));
+  height: calc(14 * var(--cell-size, 30px));
   background: #f8d588;
+}
+
+.lines-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .lines-horizontal,
 .lines-vertical {
   position: absolute;
-  top: 15px;
-  left: 15px;
-  width: 420px;
-  height: 420px;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .lines-horizontal .line,
@@ -332,66 +354,81 @@ const undoMove = () => {
 }
 
 .lines-horizontal .line {
-  width: 420px;
+  width: 100%;
   height: 1px;
 }
 
 .lines-vertical .line {
   width: 1px;
-  height: 420px;
+  height: 100%;
 }
 
-/* 生成横线位置 */
+/* 生成横线位置 - 15 条线，每条线间距为 cell-size */
 .lines-horizontal .line:nth-child(1) { top: 0; }
-.lines-horizontal .line:nth-child(2) { top: 30px; }
-.lines-horizontal .line:nth-child(3) { top: 60px; }
-.lines-horizontal .line:nth-child(4) { top: 90px; }
-.lines-horizontal .line:nth-child(5) { top: 120px; }
-.lines-horizontal .line:nth-child(6) { top: 150px; }
-.lines-horizontal .line:nth-child(7) { top: 180px; }
-.lines-horizontal .line:nth-child(8) { top: 210px; }
-.lines-horizontal .line:nth-child(9) { top: 240px; }
-.lines-horizontal .line:nth-child(10) { top: 270px; }
-.lines-horizontal .line:nth-child(11) { top: 300px; }
-.lines-horizontal .line:nth-child(12) { top: 330px; }
-.lines-horizontal .line:nth-child(13) { top: 360px; }
-.lines-horizontal .line:nth-child(14) { top: 390px; }
-.lines-horizontal .line:nth-child(15) { top: 420px; }
+.lines-horizontal .line:nth-child(2) { top: calc(1 * var(--cell-size, 30px)); }
+.lines-horizontal .line:nth-child(3) { top: calc(2 * var(--cell-size, 30px)); }
+.lines-horizontal .line:nth-child(4) { top: calc(3 * var(--cell-size, 30px)); }
+.lines-horizontal .line:nth-child(5) { top: calc(4 * var(--cell-size, 30px)); }
+.lines-horizontal .line:nth-child(6) { top: calc(5 * var(--cell-size, 30px)); }
+.lines-horizontal .line:nth-child(7) { top: calc(6 * var(--cell-size, 30px)); }
+.lines-horizontal .line:nth-child(8) { top: calc(7 * var(--cell-size, 30px)); }
+.lines-horizontal .line:nth-child(9) { top: calc(8 * var(--cell-size, 30px)); }
+.lines-horizontal .line:nth-child(10) { top: calc(9 * var(--cell-size, 30px)); }
+.lines-horizontal .line:nth-child(11) { top: calc(10 * var(--cell-size, 30px)); }
+.lines-horizontal .line:nth-child(12) { top: calc(11 * var(--cell-size, 30px)); }
+.lines-horizontal .line:nth-child(13) { top: calc(12 * var(--cell-size, 30px)); }
+.lines-horizontal .line:nth-child(14) { top: calc(13 * var(--cell-size, 30px)); }
+.lines-horizontal .line:nth-child(15) { top: calc(14 * var(--cell-size, 30px)); }
 
-/* 生成竖线位置 */
+/* 生成竖线位置 - 15 条线，每条线间距为 cell-size */
 .lines-vertical .line:nth-child(1) { left: 0; }
-.lines-vertical .line:nth-child(2) { left: 30px; }
-.lines-vertical .line:nth-child(3) { left: 60px; }
-.lines-vertical .line:nth-child(4) { left: 90px; }
-.lines-vertical .line:nth-child(5) { left: 120px; }
-.lines-vertical .line:nth-child(6) { left: 150px; }
-.lines-vertical .line:nth-child(7) { left: 180px; }
-.lines-vertical .line:nth-child(8) { left: 210px; }
-.lines-vertical .line:nth-child(9) { left: 240px; }
-.lines-vertical .line:nth-child(10) { left: 270px; }
-.lines-vertical .line:nth-child(11) { left: 300px; }
-.lines-vertical .line:nth-child(12) { left: 330px; }
-.lines-vertical .line:nth-child(13) { left: 360px; }
-.lines-vertical .line:nth-child(14) { left: 390px; }
-.lines-vertical .line:nth-child(15) { left: 420px; }
+.lines-vertical .line:nth-child(2) { left: calc(1 * var(--cell-size, 30px)); }
+.lines-vertical .line:nth-child(3) { left: calc(2 * var(--cell-size, 30px)); }
+.lines-vertical .line:nth-child(4) { left: calc(3 * var(--cell-size, 30px)); }
+.lines-vertical .line:nth-child(5) { left: calc(4 * var(--cell-size, 30px)); }
+.lines-vertical .line:nth-child(6) { left: calc(5 * var(--cell-size, 30px)); }
+.lines-vertical .line:nth-child(7) { left: calc(6 * var(--cell-size, 30px)); }
+.lines-vertical .line:nth-child(8) { left: calc(7 * var(--cell-size, 30px)); }
+.lines-vertical .line:nth-child(9) { left: calc(8 * var(--cell-size, 30px)); }
+.lines-vertical .line:nth-child(10) { left: calc(9 * var(--cell-size, 30px)); }
+.lines-vertical .line:nth-child(11) { left: calc(10 * var(--cell-size, 30px)); }
+.lines-vertical .line:nth-child(12) { left: calc(11 * var(--cell-size, 30px)); }
+.lines-vertical .line:nth-child(13) { left: calc(12 * var(--cell-size, 30px)); }
+.lines-vertical .line:nth-child(14) { left: calc(13 * var(--cell-size, 30px)); }
+.lines-vertical .line:nth-child(15) { left: calc(14 * var(--cell-size, 30px)); }
 
+/* 行和棋子 - 棋子中心对准交叉点 */
 .row {
   position: absolute;
   display: flex;
   left: 0;
   top: 0;
-  width: 450px;
-  height: 30px;
+  /* 行高为 0，让棋子中心精确对准交叉点 */
+  height: 0;
+  width: 100%;
 }
 
 .cell {
-  width: 30px;
-  height: 30px;
+  width: calc(var(--cell-size, 30px));
+  height: calc(var(--cell-size, 30px));
   position: relative;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  /* 向左上偏移 50%，让棋子中心（而非单元格）对准交叉点 */
+  transform: translate(-50%, -50%);
+}
+
+.cell::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(var(--cell-size, 30px));
+  height: calc(var(--cell-size, 30px));
 }
 
 .cell:hover::before {
@@ -401,8 +438,8 @@ const undoMove = () => {
 .cell::before {
   content: '';
   position: absolute;
-  width: 8px;
-  height: 8px;
+  width: calc(var(--cell-size, 30px) * 0.27);
+  height: calc(var(--cell-size, 30px) * 0.27);
   background: rgba(0, 0, 0, 0.3);
   border-radius: 50%;
   opacity: 0;
@@ -410,8 +447,8 @@ const undoMove = () => {
 }
 
 .stone {
-  width: 24px;
-  height: 24px;
+  width: calc(var(--cell-size, 30px) * 0.8);
+  height: calc(var(--cell-size, 30px) * 0.8);
   border-radius: 50%;
   z-index: 2;
   pointer-events: none;
@@ -430,8 +467,8 @@ const undoMove = () => {
 
 .last-move-marker {
   position: absolute;
-  width: 6px;
-  height: 6px;
+  width: calc(var(--cell-size, 30px) * 0.2);
+  height: calc(var(--cell-size, 30px) * 0.2);
   background: #f56c6c;
   border-radius: 50%;
   z-index: 3;
@@ -446,51 +483,102 @@ const undoMove = () => {
   justify-content: center;
 }
 
-/* 响应式 */
+/* 移动端适配 */
 @media screen and (max-width: 500px) {
   .gobang-view {
-    padding: 15px;
+    padding: 10px;
   }
 
-  .board {
-    width: 300px;
-    height: 300px;
+  .page-title {
+    font-size: 20px;
+  }
+
+  .page-description {
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
+  .game-container {
+    max-width: 100%;
+  }
+
+  .game-settings {
+    gap: 12px;
+    width: 100%;
+  }
+
+  .setting-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .setting-item label {
+    font-size: 13px;
+  }
+
+  .game-status {
+    width: 100%;
+    margin-bottom: 15px;
+    padding: 8px 15px;
+  }
+
+  .status-info {
+    font-size: 14px;
+  }
+
+  /* 使用 CSS 变量调整棋盘大小 */
+  .board-wrapper {
+    --cell-size: min(20px, (100vw - 40px) / 16);
+    padding: 10px;
+  }
+
+  .btn-group {
+    width: 100%;
+    justify-content: stretch;
+    gap: 10px;
+  }
+
+  .btn-group .el-button {
+    flex: 1;
+    min-width: 70px;
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+}
+
+/* iPhone SE 等超小屏幕适配 */
+@media screen and (max-width: 375px) {
+  .gobang-view {
+    padding: 8px;
   }
 
   .board-wrapper {
-    padding: 12px;
+    --cell-size: min(18px, (100vw - 32px) / 16);
+    padding: 8px;
   }
 
-  .lines-horizontal,
-  .lines-vertical {
-    width: 270px;
-    height: 270px;
+  .page-title {
+    font-size: 18px;
   }
 
-  .lines-horizontal .line,
-  .lines-vertical .line {
-    width: 270px;
-    height: 1px;
+  .page-description {
+    font-size: 12px;
+    margin-bottom: 15px;
   }
 
-  .lines-vertical .line {
-    width: 1px;
-    height: 270px;
+  .game-status {
+    padding: 6px 12px;
+    margin-bottom: 12px;
   }
 
-  .row {
-    width: 300px;
-    height: 20px;
+  .status-info {
+    font-size: 13px;
   }
 
-  .cell {
-    width: 20px;
-    height: 20px;
-  }
-
-  .stone {
-    width: 16px;
-    height: 16px;
+  .btn-group .el-button {
+    padding: 8px 6px;
+    font-size: 12px;
   }
 }
 </style>

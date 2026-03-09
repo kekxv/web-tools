@@ -213,3 +213,163 @@ label {
     padding: 20px 15px;
   }
 }
+
+/* 移动端适配 - 通用样式 */
+@media screen and (max-width: 768px) {
+  /* 调整容器内边距 */
+  .page-container {
+    padding: 10px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 调整标题字体 */
+  .page-title {
+    font-size: 20px !important;
+  }
+
+  /* 调整描述字体 */
+  .page-description {
+    font-size: 13px;
+    margin-bottom: 15px;
+  }
+
+  /* 卡片容器适配 */
+  .card-container {
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+
+  /* 代码编辑器适配 */
+  .code-editor {
+    font-size: 13px;
+    padding: 10px;
+    min-height: 200px;
+  }
+
+  /* 按钮组适配 */
+  .btn-group {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .btn-group .el-button {
+    flex: 1;
+    min-width: 70px;
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  /* 工具卡片适配 */
+  .tool-card {
+    padding: 20px 15px;
+  }
+
+  .tool-card .icon {
+    font-size: 40px;
+  }
+
+  .tool-card .name {
+    font-size: 15px;
+  }
+
+  /* 输入框组适配 */
+  .input-group {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .input-group label {
+    font-size: 13px;
+  }
+
+  /* 结果区域适配 */
+  .result-area {
+    padding: 12px;
+  }
+
+  .result-label {
+    font-size: 13px;
+  }
+
+  /* 文件上传区域适配 */
+  .upload-area {
+    padding: 30px 15px;
+  }
+
+  .upload-area p {
+    font-size: 14px;
+  }
+
+  .upload-area .hint {
+    font-size: 12px;
+  }
+
+  /* Element Plus 组件适配 */
+  .el-select {
+    width: 100%;
+  }
+
+  .el-radio-group {
+    flex-wrap: wrap;
+  }
+
+  /* 触摸友好的按钮 */
+  .el-button {
+    min-height: 40px;
+  }
+
+  /* 菜单项触摸优化 */
+  .el-menu-item {
+    min-height: 50px;
+  }
+
+  /* 标签页适配 */
+  .el-tabs__item {
+    padding: 0 15px;
+    font-size: 13px;
+  }
+
+  /* 警告框适配 */
+  .el-alert {
+    padding: 10px 12px;
+  }
+
+  .el-alert__title {
+    font-size: 13px;
+  }
+}
+
+/* 小屏幕手机适配 - max-width: 480px */
+@media screen and (max-width: 480px) {
+  .page-container {
+    padding: 8px;
+  }
+
+  .card-container {
+    padding: 12px;
+  }
+
+  .page-title {
+    font-size: 18px !important;
+  }
+
+  .page-description {
+    font-size: 12px;
+  }
+
+  .code-editor {
+    font-size: 12px;
+    padding: 8px;
+  }
+
+  .tool-card {
+    padding: 15px 10px;
+  }
+
+  .tool-card .icon {
+    font-size: 36px;
+  }
+}

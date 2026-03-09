@@ -313,8 +313,30 @@ const clearResults = () => {
   gap: 10px;
 }
 
-.hash-result {
+.btn-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.result-area {
   background: #f5f7fa;
+  border-radius: 4px;
+  padding: 15px;
+  margin-top: 15px;
+  border: 1px solid #e4e7ed;
+}
+
+.result-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #606266;
+  margin-bottom: 10px;
+}
+
+.hash-result {
+  background: #fff;
   border: 1px solid #e4e7ed;
   border-radius: 4px;
   padding: 15px;
@@ -325,5 +347,82 @@ const clearResults = () => {
   font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
   font-size: 14px;
   color: #303133;
+}
+
+/* 移动端适配 */
+@media screen and (max-width: 768px) {
+  .page-container {
+    padding: 10px;
+  }
+
+  .page-title {
+    font-size: 20px;
+  }
+
+  .page-description {
+    font-size: 13px;
+    margin-bottom: 15px;
+  }
+
+  .hash-container {
+    max-width: 100%;
+  }
+
+  .input-tabs {
+    --el-font-size-base: 13px;
+  }
+
+  .input-label {
+    font-size: 13px;
+  }
+
+  .upload-area {
+    padding: 30px 15px;
+  }
+
+  .upload-area p {
+    font-size: 14px;
+  }
+
+  .algorithm-buttons {
+    gap: 8px;
+  }
+
+  .algorithm-buttons .el-button {
+    flex: 1;
+    min-width: calc(50% - 4px);
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .btn-group {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .btn-group .el-button {
+    flex: 1;
+    min-width: 70px;
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  .result-label {
+    font-size: 13px;
+  }
+
+  .hash-result code {
+    font-size: 12px;
+  }
+
+  .file-info {
+    flex-wrap: wrap;
+    font-size: 13px;
+  }
+
+  .file-size {
+    font-size: 12px;
+    width: 100%;
+  }
 }
 </style>

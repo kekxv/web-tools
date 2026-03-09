@@ -493,24 +493,98 @@ const clearAll = () => {
   border-radius: 8px;
 }
 
+/* 移动端适配 */
 @media screen and (max-width: 768px) {
+  .page-container {
+    padding: 10px;
+  }
+
+  .page-title {
+    font-size: 20px;
+  }
+
+  .page-description {
+    font-size: 13px;
+    margin-bottom: 15px;
+  }
+
   .toolbar {
-    flex-direction: column;
-    align-items: flex-start;
+    padding: 12px;
+    margin-bottom: 15px;
+  }
+
+  .tool-group {
+    width: 100%;
+    justify-content: stretch;
   }
 
   .format-selector,
   .output-format {
     flex-direction: column;
     align-items: flex-start;
+    width: 100%;
+  }
+
+  .format-selector label,
+  .format-label {
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+
+  .format-selector .el-select {
+    width: 100% !important;
+  }
+
+  .format-selector .el-button,
+  .output-format .el-radio-group {
+    width: 100%;
   }
 
   .editor-section {
     grid-template-columns: 1fr;
+    gap: 15px;
   }
 
-  .btn-group-center {
-    flex-wrap: wrap;
+  .code-editor {
+    height: 250px;
+    font-size: 13px;
+    padding: 12px;
+  }
+
+  .code-highlight {
+    height: 300px;
+    padding: 12px;
+  }
+
+  .code-highlight code {
+    font-size: 12px;
+  }
+
+  .panel-header {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .panel-header .el-button {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .error-alert {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .btn-group {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .btn-group .el-button {
+    flex: 1;
+    min-width: 80px;
+    padding: 10px 8px;
+    font-size: 13px;
   }
 }
 </style>

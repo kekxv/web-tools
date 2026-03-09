@@ -55,6 +55,7 @@ const tools = [
   padding: 30px;
   max-width: 1200px;
   margin: 0 auto;
+  overflow-y: auto;
 }
 
 .welcome {
@@ -106,5 +107,40 @@ const tools = [
   font-size: 14px;
   color: #909399;
   line-height: 1.6;
+}
+
+/* 移动端适配 */
+@media screen and (max-width: 768px) {
+  .home-container {
+    padding: 15px;
+  }
+
+  .welcome {
+    margin-bottom: 25px;
+  }
+
+  .welcome h1 {
+    font-size: 24px;
+  }
+
+  .welcome p {
+    font-size: 14px;
+  }
+
+  .tool-card {
+    padding: 20px 15px;
+  }
+
+  .tool-icon {
+    --el-icon-size: 40px;
+  }
+
+  .tool-card h3 {
+    font-size: 16px;
+  }
+
+  .tool-card p {
+    font-size: 13px;
+  }
 }
 </style>
