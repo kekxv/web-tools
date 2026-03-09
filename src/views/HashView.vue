@@ -60,21 +60,12 @@
               v-for="(config, key) in algorithms"
               :key="key"
               :type="selectedAlgorithm === key ? 'primary' : ''"
-              @click="selectedAlgorithm = key"
+              @click="selectedAlgorithm = key; clearResults()"
               size="default"
             >
               {{ config.name }}
             </el-button>
           </div>
-        </div>
-
-        <!-- 输出格式 -->
-        <div class="output-section">
-          <label class="section-label">输出格式:</label>
-          <el-radio-group v-model="outputAsHex">
-            <el-radio :value="true">Hex (十六进制)</el-radio>
-            <el-radio :value="false">Base64</el-radio>
-          </el-radio-group>
         </div>
 
         <!-- 计算按钮 -->
@@ -88,9 +79,13 @@
             <el-icon><Operation /></el-icon>
             计算哈希
           </el-button>
-          <el-button @click="copyResult" :disabled="!hashResult">
+          <el-button @click="copyHexResult" :disabled="!hashResultHex">
             <el-icon><DocumentCopy /></el-icon>
-            复制结果
+            复制 Hex
+          </el-button>
+          <el-button @click="copyBase64Result" :disabled="!hashResultBase64">
+            <el-icon><DocumentCopy /></el-icon>
+            复制 Base64
           </el-button>
           <el-button @click="clearAll">
             <el-icon><Delete /></el-icon>
@@ -99,12 +94,21 @@
         </div>
 
         <!-- 结果显示 -->
-        <div v-if="hashResult" class="result-area">
+        <div v-if="hashResultHex" class="result-area">
           <div class="result-label">
-            {{ algorithms[selectedAlgorithm].name }} ({{ outputAsHex ? 'Hex' : 'Base64' }}):
+            {{ algorithms[selectedAlgorithm].name }} - Hex:
           </div>
           <div class="hash-result">
-            <code>{{ hashResult }}</code>
+            <code>{{ hashResultHex }}</code>
+          </div>
+        </div>
+
+        <div v-if="hashResultBase64" class="result-area">
+          <div class="result-label">
+            {{ algorithms[selectedAlgorithm].name }} - Base64:
+          </div>
+          <div class="hash-result">
+            <code>{{ hashResultBase64 }}</code>
           </div>
         </div>
       </div>
@@ -120,8 +124,8 @@ const inputMode = ref('text')
 const textInput = ref('')
 const selectedFile = ref(null)
 const selectedAlgorithm = ref('SHA256')
-const outputAsHex = ref(true)
-const hashResult = ref('')
+const hashResultHex = ref('')
+const hashResultBase64 = ref('')
 const dragover = ref(false)
 const fileInput = ref(null)
 
@@ -162,32 +166,38 @@ const formatFileSize = (bytes) => {
 }
 
 const calculateHash = async () => {
-  hashResult.value = ''
+  hashResultHex.value = ''
+  hashResultBase64.value = ''
 
   try {
     if (inputMode.value === 'text') {
-      hashResult.value = hashString(
-        textInput.value,
-        selectedAlgorithm.value,
-        !outputAsHex.value
-      )
+      hashResultHex.value = hashString(textInput.value, selectedAlgorithm.value, false)
+      hashResultBase64.value = hashString(textInput.value, selectedAlgorithm.value, true)
     } else if (selectedFile.value) {
-      hashResult.value = await hashFile(
-        selectedFile.value,
-        selectedAlgorithm.value,
-        !outputAsHex.value
-      )
+      hashResultHex.value = await hashFile(selectedFile.value, selectedAlgorithm.value, false)
+      hashResultBase64.value = await hashFile(selectedFile.value, selectedAlgorithm.value, true)
     }
   } catch (error) {
     ElMessage.error(`计算失败：${error.message}`)
   }
 }
 
-const copyResult = async () => {
-  if (hashResult.value) {
+const copyHexResult = async () => {
+  if (hashResultHex.value) {
     try {
-      await navigator.clipboard.writeText(hashResult.value)
-      ElMessage.success('已复制到剪贴板')
+      await navigator.clipboard.writeText(hashResultHex.value)
+      ElMessage.success('Hex 已复制到剪贴板')
+    } catch {
+      ElMessage.error('复制失败')
+    }
+  }
+}
+
+const copyBase64Result = async () => {
+  if (hashResultBase64.value) {
+    try {
+      await navigator.clipboard.writeText(hashResultBase64.value)
+      ElMessage.success('Base64 已复制到剪贴板')
     } catch {
       ElMessage.error('复制失败')
     }
@@ -197,10 +207,16 @@ const copyResult = async () => {
 const clearAll = () => {
   textInput.value = ''
   selectedFile.value = null
-  hashResult.value = ''
+  hashResultHex.value = ''
+  hashResultBase64.value = ''
   if (fileInput.value) {
     fileInput.value.value = ''
   }
+}
+
+const clearResults = () => {
+  hashResultHex.value = ''
+  hashResultBase64.value = ''
 }
 </script>
 
@@ -279,8 +295,7 @@ const clearAll = () => {
   font-size: 12px;
 }
 
-.algorithm-section,
-.output-section {
+.algorithm-section {
   margin-bottom: 20px;
 }
 
