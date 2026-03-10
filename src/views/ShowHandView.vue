@@ -233,6 +233,7 @@ interface AIPlayer {
   id: number; name: string; chips: number;
   hiddenCard: Card | null; visibleCards: Card[];
   currentBet: number; isFolded: boolean; message: string; hasActed: boolean;
+  personality: 'aggressive' | 'tight' | 'balanced';
 }
 const opponents = ref<AIPlayer[]>([])
 const playerChips = ref(1000)
@@ -272,9 +273,11 @@ const goHome = () => router.push('/')
 const getCardClass = (c: Card | null) => (!c ? '' : (c.suit === '♥' || c.suit === '♦' ? 'card-red' : 'card-black'))
 
 const startGame = () => {
+  const personalities: ('aggressive' | 'tight' | 'balanced')[] = ['aggressive', 'tight', 'balanced'];
   opponents.value = Array.from({ length: aiCount.value }, (_, i) => ({
     id: i, name: `AI 对手 ${i + 1}`, chips: initialChips.value,
-    hiddenCard: null, visibleCards: [], currentBet: 0, isFolded: false, message: '', hasActed: false
+    hiddenCard: null, visibleCards: [], currentBet: 0, isFolded: false, message: '', hasActed: false,
+    personality: personalities[i % 3]
   }))
   playerChips.value = initialChips.value
   roundCount.value = 0; playerWins.value = 0; aiWins.value = 0; newRound()
@@ -301,7 +304,6 @@ const placeBet = (idx: number, amt: number) => {
   const totalBet = idx === -1 ? currentBet.value : opponents.value[idx].currentBet
   if (totalBet > highestBet.value) {
     highestBet.value = totalBet
-    // If someone raises, everyone else needs to act again
     playerHasActed.value = (idx === -1)
     opponents.value.forEach((ai, i) => { if (i !== idx) ai.hasActed = false })
   }
@@ -348,19 +350,25 @@ const setAiMessage = (ai: any, msg: string) => {
 
 const aiDecision = () => {
   const ai = opponents.value[activePlayerIndex.value]
-  const evalPot = evaluateHandPotential([ai.hiddenCard!, ...ai.visibleCards])
+  const { score, handType } = evaluateHandPotential([ai.hiddenCard!, ...ai.visibleCards])
   const toCall = highestBet.value - ai.currentBet
+  
   let action: 'fold' | 'call' | 'raise' | 'check' = toCall > 0 ? 'call' : 'check'
+  const aggroFactor = ai.personality === 'aggressive' ? 1.3 : (ai.personality === 'tight' ? 0.7 : 1.0)
+  const bluffChance = ai.personality === 'aggressive' ? 0.15 : 0.05
   
-  // AI strategy: Aggressive with variety
-  if (evalPot.potential > 0.6 && Math.random() > 0.5) action = 'raise'
-  else if (evalPot.potential < 0.3 && toCall > ai.chips * 0.3) action = 'fold'
-  else if (toCall === 0 && Math.random() > 0.8) action = 'raise' // Occasional bluff/aggressive bet
+  const raiseThreshold = 0.4 / aggroFactor
+  if (score > raiseThreshold || Math.random() < bluffChance) action = 'raise'
   
+  const foldThreshold = 0.15 * aggroFactor
+  if (toCall > ai.chips * 0.4 && score < foldThreshold) action = 'fold'
+  if (toCall === 0 && action === 'check' && Math.random() < (0.4 * aggroFactor)) action = 'raise'
+
   if (action === 'fold') { ai.isFolded = true; setAiMessage(ai, '弃牌') }
   else if (action === 'raise') { 
-    const raiseAmt = Math.min(ai.chips, toCall + 50)
-    placeBet(activePlayerIndex.value, raiseAmt); setAiMessage(ai, '加注') 
+    const raiseAmt = Math.max(50, highestBet.value)
+    const actualAdd = Math.min(ai.chips, toCall + raiseAmt)
+    placeBet(activePlayerIndex.value, actualAdd); setAiMessage(ai, '加注') 
   }
   else if (toCall > 0) { placeBet(activePlayerIndex.value, toCall); setAiMessage(ai, '跟注') }
   else { setAiMessage(ai, '过牌') }
