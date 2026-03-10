@@ -1,35 +1,40 @@
 <template>
   <div class="showhand-view" ref="gameContainer">
     <div class="game-wrapper">
-      <!-- Header -->
+      <!-- Optimized Header -->
       <header class="app-header">
         <div class="header-content">
           <div class="header-left">
-            <button @click="showMenu = true" class="icon-action-btn"><el-icon><Menu /></el-icon></button>
-            <div class="brand">
-              <h2 class="title">梭哈对决</h2>
-              <span class="subtitle">PRO EDITION</span>
+            <button @click="showMenu = true" class="menu-trigger-btn">
+              <el-icon><Grid /></el-icon>
+            </button>
+            <div class="brand-box">
+              <h1 class="brand-title">梭哈对决</h1>
+              <span class="brand-sub">PRO EDITION</span>
             </div>
           </div>
-          <div class="header-center mobile-hide">
-            <div class="scoreboard">
-              <div class="score-item win"><span class="dot"></span><span class="val">{{ playerWins }}</span></div>
-              <div class="score-divider"></div>
-              <div class="score-item loss"><span class="dot"></span><span class="val">{{ aiWins }}</span></div>
-            </div>
-          </div>
+          
+          <div class="header-center mobile-hide"></div>
+
           <div class="header-right">
-            <div class="round-counter"><span class="label">局</span><span class="count">{{ roundCount + 1 }}</span></div>
-            <button @click="resetGame" class="icon-action-btn danger"><el-icon><RefreshRight /></el-icon></button>
+            <div class="round-indicator-modern">
+              <span class="l">局</span>
+              <span class="v">{{ roundCount + 1 }}</span>
+            </div>
+            <button @click="resetGame" class="header-reset-btn" title="重开本局">
+              <el-icon><RefreshRight /></el-icon>
+            </button>
           </div>
         </div>
       </header>
 
-      <!-- Drawer -->
-      <el-drawer v-model="showMenu" title="游戏菜单" direction="ltr" size="260px">
-        <div class="menu-list">
-          <div class="menu-item" @click="goHome"><el-icon><HomeFilled /></el-icon><span>返回首页</span></div>
-          <div class="menu-item" @click="resetGame(); showMenu = false"><el-icon><Refresh /></el-icon><span>重新开始</span></div>
+      <!-- Drawer Menu -->
+      <el-drawer v-model="showMenu" title="游戏设置" direction="ltr" size="280px" class="poker-drawer">
+        <div class="drawer-content">
+          <div class="menu-group">
+            <div class="menu-item" @click="goHome"><el-icon><HomeFilled /></el-icon><span>返回首页</span></div>
+            <div class="menu-item" @click="resetGame(); showMenu = false"><el-icon><Refresh /></el-icon><span>重新开始本局</span></div>
+          </div>
         </div>
       </el-drawer>
 
@@ -70,14 +75,17 @@
                 <div class="ai-profile-box">
                   <div class="avatar-box ai">
                     <el-icon><Monitor /></el-icon>
-                    <Transition name="fade"><div v-if="ai.message" class="bubble ai">{{ ai.message }}</div></Transition>
+                    <!-- Bubble now has a transition for the delayed hide -->
+                    <Transition name="bubble-fade">
+                      <div v-if="ai.message" class="bubble ai">{{ ai.message }}</div>
+                    </Transition>
                   </div>
                   <div class="ai-info-pill">
                     <span class="name">{{ ai.name }}</span>
                     <span class="chips">{{ ai.chips }}</span>
                   </div>
                 </div>
-                <!-- AI Hand Display with Vertical Suit -->
+                <!-- AI Hands -->
                 <div class="cards-area stacked mini ai-hand-row">
                   <TransitionGroup name="deal">
                     <div v-if="ai.hiddenCard" key="h" class="card-slot mini">
@@ -157,7 +165,7 @@
         </div>
         <div v-if="gameState === 'round_over'" class="end-actions">
           <el-button type="primary" @click="newRound" size="large" round>下一局</el-button>
-          <el-button @click="resetGame" size="large" round plain>重新设置</el-button>
+          <el-button @click="resetGame" size="large" round plain>重设</el-button>
         </div>
       </div>
     </div>
@@ -172,7 +180,7 @@
         <el-slider v-model="raiseAmount" :min="minRaise" :max="maxRaise" :step="10" />
         <div class="quick-bet-grid">
           <button @click="raiseAmount = Math.min(maxRaise, 100)">+100</button>
-          <button @click="raiseAmount = Math.min(maxRaise, Math.floor(pot/2))">1/2 底池</button>
+          <button @click="raiseAmount = Math.min(maxRaise, Math.floor(pot/2))">1/2 池</button>
           <button @click="raiseAmount = maxRaise">全押</button>
         </div>
       </div>
@@ -204,7 +212,7 @@
         </div>
       </div>
       <template #footer>
-        <el-button type="primary" @click="closeResultDialog" round size="large" class="dialog-action-btn">继续下一局</el-button>
+        <el-button type="primary" @click="closeResultDialog" round size="large" class="dialog-action-btn">继续</el-button>
       </template>
     </el-dialog>
   </div>
@@ -214,7 +222,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
-  Menu, HomeFilled, Refresh, RefreshRight, Coin, Monitor, Money, User, Trophy, CircleClose
+  Grid, Menu, HomeFilled, Refresh, RefreshRight, Coin, Monitor, Money, User, Trophy, CircleClose
 } from '@element-plus/icons-vue'
 import { Deck, Card, HandType, evaluateHand, compareHands, evaluateHandPotential } from '../utils/poker'
 
@@ -270,7 +278,7 @@ const getCardClass = (c: Card | null) => (!c ? '' : (c.suit === '♥' || c.suit 
 
 const startGame = () => {
   opponents.value = Array.from({ length: aiCount.value }, (_, i) => ({
-    id: i, name: `AI ${i + 1}`, chips: initialChips.value,
+    id: i, name: `AI 对手 ${i + 1}`, chips: initialChips.value,
     hiddenCard: null, visibleCards: [], currentBet: 0, isFolded: false, message: '', hasActed: false
   }))
   playerChips.value = initialChips.value
@@ -321,6 +329,14 @@ const startPlayerTurn = () => {
   minRaise.value = callAmount.value + 10; maxRaise.value = playerChips.value; raiseAmount.value = minRaise.value
 }
 
+// Helper to clear AI message after delay
+const setAiMessage = (ai: any, msg: string) => {
+  ai.message = msg
+  setTimeout(() => {
+    if (ai.message === msg) ai.message = ''
+  }, 2500)
+}
+
 const aiDecision = () => {
   const ai = opponents.value[activePlayerIndex.value]
   const evalPot = evaluateHandPotential([ai.hiddenCard!, ...ai.visibleCards])
@@ -328,10 +344,12 @@ const aiDecision = () => {
   let action: 'fold' | 'call' | 'raise' | 'check' = toCall > 0 ? 'call' : 'check'
   if (evalPot.handType >= HandType.TWO_PAIR && Math.random() > 0.7) action = 'raise'
   if (toCall > ai.chips * 0.6 && evalPot.handType < HandType.ONE_PAIR) action = 'fold'
-  if (action === 'fold') { ai.isFolded = true; ai.message = '弃牌' }
-  else if (action === 'raise') { placeBet(activePlayerIndex.value, toCall + 50); ai.message = '加注' }
-  else if (toCall > 0) { placeBet(activePlayerIndex.value, toCall); ai.message = '跟注' }
-  else ai.message = '过牌'
+  
+  if (action === 'fold') { ai.isFolded = true; setAiMessage(ai, '弃牌') }
+  else if (action === 'raise') { placeBet(activePlayerIndex.value, toCall + 50); setAiMessage(ai, '加注') }
+  else if (toCall > 0) { placeBet(activePlayerIndex.value, toCall); setAiMessage(ai, '跟注') }
+  else setAiMessage(ai, '过牌')
+  
   ai.hasActed = true; activePlayerIndex.value = (activePlayerIndex.value + 1) % (opponents.value.length + 1); nextTurn()
 }
 
@@ -373,39 +391,52 @@ const resetGame = () => { gameState.value = 'not_started'; showResult.value = fa
 .showhand-view { background: #f1f5f9; height: 100vh; width: 100vw; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; overflow: hidden; }
 .game-wrapper { flex: 1; display: flex; flex-direction: column; height: 100%; }
 
-/* Header */
-.app-header { background: #fff; padding: 8px 16px; border-bottom: 1px solid #e2e8f0; height: 56px; display: flex; align-items: center; z-index: 100; flex-shrink: 0; }
+/* Optimized Header Style */
+.app-header { background: #fff; padding: 0 20px; height: 64px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.02); flex-shrink: 0; }
 .header-content { width: 100%; max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
-.brand .title { font-size: 0.9rem; font-weight: 900; color: #1e293b; margin: 0; }
-.brand .subtitle { font-size: 0.5rem; color: #94a3b8; font-weight: 800; letter-spacing: 1px; }
-.scoreboard { display: flex; background: #f8fafc; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 2px 12px; }
-.score-item { display: flex; align-items: center; gap: 5px; font-weight: 900; font-size: 0.85rem; }
-.win .dot { width: 6px; height: 6px; background: #22c55e; border-radius: 50%; }
-.loss .dot { width: 6px; height: 6px; background: #ef4444; border-radius: 50%; }
-.score-divider { width: 1.5px; height: 12px; background: #e2e8f0; margin: 0 10px; }
-.round-counter .count { color: #0ea5e9; font-weight: 900; font-size: 1rem; margin-left: 2px; }
-.icon-action-btn { background: #fff; border: 1.5px solid #e2e8f0; width: 34px; height: 34px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+.header-left { display: flex; align-items: center; gap: 15px; }
+.menu-trigger-btn { background: #f8fafc; border: 1.5px solid #e2e8f0; width: 40px; height: 40px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #1e293b; transition: all 0.2s; }
+.menu-trigger-btn:hover { background: #fff; border-color: #3b82f6; color: #3b82f6; }
+
+.brand-box { display: flex; flex-direction: column; line-height: 1.1; }
+.brand-title { font-size: 1.1rem; font-weight: 900; color: #0f172a; margin: 0; letter-spacing: -0.5px; }
+.brand-sub { font-size: 0.55rem; color: #94a3b8; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+
+.header-center { flex: 1; display: flex; justify-content: center; }
+.win-loss-pills { display: flex; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 20px; padding: 4px 16px; gap: 12px; align-items: center; }
+.pill { font-size: 0.8rem; font-weight: 800; }
+.pill.win { color: #22c55e; }
+.pill.loss { color: #ef4444; }
+.pill-divider { width: 1px; height: 12px; background: #e2e8f0; }
+
+.header-right { display: flex; align-items: center; gap: 15px; }
+.round-indicator-modern { font-size: 0.85rem; font-weight: 900; color: #64748b; }
+.round-indicator-modern .v { color: #3b82f6; font-size: 1.2rem; margin-left: 2px; }
+.header-reset-btn { background: #fff; border: 1.5px solid #e2e8f0; width: 38px; height: 38px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: #64748b; transition: all 0.2s; }
+.header-reset-btn:hover { border-color: #ef4444; color: #ef4444; background: #fef2f2; }
 
 /* Table Felt */
 .poker-table-container { flex: 1; padding: 12px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .poker-table { width: 100%; max-width: 880px; height: 100%; max-height: 72vh; background: #15803d; border: 10px solid #475569; border-radius: 48px; position: relative; box-shadow: inset 0 0 100px rgba(0,0,0,0.5); }
 .table-felt { height: 100%; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
 
-/* AI Hands */
-.opponents-zone { position: relative; flex: 0 0 120px; width: 100%; }
-.ai-node { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: all 0.4s; }
+/* AI Seating - Widely distributed to prevent overlap */
+.opponents-zone { position: relative; flex: 0 0 160px; width: 100%; }
+.ai-node { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: all 0.4s; width: 140px; } 
 .pos-1-0 { top: 0; left: 50%; transform: translateX(-50%); }
-.pos-2-0 { top: 5%; left: 22%; transform: translateX(-50%); }
-.pos-2-1 { top: 5%; left: 78%; transform: translateX(-50%); }
-.pos-3-0 { top: 8%; left: 16%; transform: translateX(-50%); }
+.pos-2-0 { top: 10%; left: 20%; transform: translateX(-50%); }
+.pos-2-1 { top: 10%; left: 80%; transform: translateX(-50%); }
+.pos-3-0 { top: 15%; left: 15%; transform: translateX(-50%); }
 .pos-3-1 { top: 0; left: 50%; transform: translateX(-50%); }
-.pos-3-2 { top: 8%; left: 84%; transform: translateX(-50%); }
+.pos-3-2 { top: 15%; left: 85%; transform: translateX(-50%); }
 
-.avatar-box { width: 40px; height: 40px; border-radius: 12px; background: #1e293b; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; box-shadow: 0 4px 10px rgba(0,0,0,0.4); position: relative; }
-.active .avatar-box { outline: 3.5px solid #facc15; box-shadow: 0 0 20px #facc15; }
+.ai-profile-box { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
+.avatar-box { width: 44px; height: 44px; border-radius: 12px; background: #1e293b; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.4); position: relative; }
+.active .avatar-box { outline: 4px solid #facc15; box-shadow: 0 0 25px #facc15; z-index: 2; }
 .folded { opacity: 0.4; filter: grayscale(1); }
 
-.ai-info-pill { background: rgba(255,255,255,0.95); padding: 2px 10px; border-radius: 20px; display: flex; gap: 8px; font-size: 0.65rem; font-weight: 800; box-shadow: 0 2px 5px rgba(0,0,0,0.1); white-space: nowrap; }
+.ai-info-pill { background: rgba(255,255,255,0.98); padding: 3px 10px; border-radius: 20px; display: flex; gap: 6px; font-size: 0.65rem; font-weight: 800; box-shadow: 0 2px 8px rgba(0,0,0,0.15); white-space: nowrap; max-width: 130px; justify-content: center; border: 1px solid #e2e8f0; }
 .ai-info-pill .chips { color: #f59e0b; }
 
 .cards-area { display: flex; justify-content: center; position: relative; }
@@ -463,6 +494,10 @@ const resetGame = () => { gameState.value = 'not_started'; showResult.value = fa
 .bubble.ai { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); background: #fff; padding: 4px 14px; border-radius: 14px; font-size: 0.75rem; font-weight: 900; color: #1e293b; box-shadow: 0 5px 15px rgba(0,0,0,0.2); white-space: nowrap; z-index: 100; }
 .bubble.ai::after { content: ''; position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 8px solid #fff; }
 
+/* Transitions for AI Messages */
+.bubble-fade-enter-active, .bubble-fade-leave-active { transition: all 0.3s ease; }
+.bubble-fade-enter-from, .bubble-fade-leave-to { opacity: 0; transform: translate(-50%, 10px); }
+
 /* Setup Dialog Polish */
 .setup-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.95); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 12px; border-radius: 38px; }
 .setup-card { background: #fff; padding: 30px; border-radius: 32px; box-shadow: 0 25px 50px rgba(0,0,0,0.12); text-align: center; width: 100%; max-width: 320px; }
@@ -506,6 +541,9 @@ const resetGame = () => { gameState.value = 'not_started'; showResult.value = fa
 .res-footer strong { color: #f59e0b; font-size: 1.5rem; }
 
 @media (max-width: 480px) {
+  .app-header { padding: 0 12px; height: 56px; }
+  .brand-title { font-size: 1rem; }
+  .round-indicator-modern .v { font-size: 1.1rem; }
   .poker-table { border-radius: 50px; }
   .ai-hand-row { gap: 0 !important; }
   .card { width: 44px; height: 62px; }
