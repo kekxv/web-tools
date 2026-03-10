@@ -524,11 +524,11 @@ onUnmounted(() => stopSelectionCountdown())
 /* AI Seating - Adjusted height to provide natural spacing */
 .opponents-zone { position: relative; flex: 0 0 140px; width: 100%; }
 .ai-node { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: all 0.4s; width: 140px; } 
-.pos-1-0 { top: 0; left: 50%; transform: translateX(-50%); }
+.pos-1-0 { top: 15px; left: 50%; transform: translateX(-50%); }
 .pos-2-0 { top: 5%; left: 20%; transform: translateX(-50%); }
 .pos-2-1 { top: 5%; left: 80%; transform: translateX(-50%); }
 .pos-3-0 { top: 5%; left: 15%; transform: translateX(-50%); }
-.pos-3-1 { top: 0; left: 50%; transform: translateX(-50%); }
+.pos-3-1 { top: 15px; left: 50%; transform: translateX(-50%); }
 .pos-3-2 { top: 5%; left: 85%; transform: translateX(-50%); }
 
 .ai-profile-box { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
@@ -606,7 +606,7 @@ onUnmounted(() => stopSelectionCountdown())
 @media (max-width: 600px) {
   .poker-table { border-radius: 40px; }
   .opponents-zone { flex: 0 0 110px; }
-  .center-zone { margin-top: 100px; } /* Set to 100px to avoid overlapping top AI */
+  .center-zone { margin-top: 125px; } /* Increased to 125px to avoid overlapping top AI */
   .pot-display-modern { padding: 4px 20px; }
   .pot-display-modern .val { font-size: 1.4rem; }
   .ai-node { width: 120px; }
