@@ -38,6 +38,10 @@
             <el-icon><Odometer /></el-icon>
             <template #title>24 点</template>
           </el-menu-item>
+          <el-menu-item index="/showhand">
+            <el-icon><Van /></el-icon>
+            <template #title>梭哈</template>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       <!-- 遮罩层 -->
@@ -84,6 +88,10 @@
           <el-menu-item index="/game24">
             <el-icon><Odometer /></el-icon>
             <template #title>24 点</template>
+          </el-menu-item>
+          <el-menu-item index="/showhand">
+            <el-icon><Van /></el-icon>
+            <template #title>梭哈</template>
           </el-menu-item>
         </el-menu>
       </el-aside>
@@ -153,7 +161,8 @@ const currentTitle = computed(() => {
     '/formatter': '代码格式化',
     '/hash': 'Hash 计算',
     '/gobang': '五子棋',
-    '/game24': '24 点'
+    '/game24': '24 点',
+    '/showhand': '梭哈'
   }
   return routeMap[route.path] || 'Web Tools'
 })

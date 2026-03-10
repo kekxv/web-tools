@@ -6,6 +6,7 @@ import FormatterView from '../views/FormatterView.vue'
 import HashView from '../views/HashView.vue'
 import GobangView from '../views/GobangView.vue'
 import Game24View from '../views/Game24View.vue'
+import ShowHandView from '../views/ShowHandView.vue'
 
 const routes = [
   {
@@ -47,6 +48,12 @@ const routes = [
         name: 'Game24',
         component: Game24View,
         meta: { title: '24 点' }
+      },
+      {
+        path: 'showhand',
+        name: 'ShowHand',
+        component: ShowHandView,
+        meta: { title: '梭哈' }
       }
     ]
   }

@@ -52,6 +52,12 @@ const tools = [
     title: '24 点',
     description: '经典扑克牌数学益智游戏',
     icon: 'Odometer'
+  },
+  {
+    path: '/showhand',
+    title: '梭哈',
+    description: '经典扑克游戏，与 AI 对战比拼牌力',
+    icon: 'Van'
   }
 ]
 </script>
