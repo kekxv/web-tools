@@ -136,6 +136,10 @@ const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
 }
 
+const handleToggleSidebar = () => {
+  toggleCollapse()
+}
+
 // 移动端点击菜单项后自动收起
 const handleMenuSelect = () => {
   if (isMobile.value) {
@@ -146,10 +150,13 @@ const handleMenuSelect = () => {
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
+  // 监听子组件的菜单切换事件
+  window.addEventListener('toggle-sidebar', handleToggleSidebar)
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkMobile)
+  window.removeEventListener('toggle-sidebar', handleToggleSidebar)
 })
 
 const activeMenu = computed(() => route.path)

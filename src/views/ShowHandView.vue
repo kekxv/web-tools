@@ -5,8 +5,8 @@
       <header class="app-header">
         <div class="header-content">
           <div class="header-left">
-            <button @click="showMenu = true" class="menu-trigger-btn">
-              <el-icon><Grid /></el-icon>
+            <button @click="toggleMenu" class="menu-trigger-btn">
+              <el-icon><Menu /></el-icon>
             </button>
             <div class="brand-box">
               <h1 class="brand-title">梭哈对决</h1>
@@ -25,16 +25,6 @@
           </div>
         </div>
       </header>
-
-      <!-- Drawer Menu -->
-      <el-drawer v-model="showMenu" title="游戏设置" direction="ltr" size="280px" class="poker-drawer">
-        <div class="drawer-content">
-          <div class="menu-group">
-            <div class="menu-item" @click="goHome"><el-icon><HomeFilled /></el-icon><span>返回首页</span></div>
-            <div class="menu-item" @click="resetGame(); showMenu = false"><el-icon><Refresh /></el-icon><span>重新开始本局</span></div>
-          </div>
-        </div>
-      </el-drawer>
 
       <!-- Poker Table Container -->
       <div class="poker-table-container">
@@ -246,13 +236,12 @@
 <script setup lang="ts">
 import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { 
-  Grid, HomeFilled, Refresh, RefreshRight, Coin, Monitor, Money, User, Trophy, CircleClose, WarningFilled
+import {
+  Menu, RefreshRight, Coin, Monitor, Money, User, Trophy, CircleClose, WarningFilled
 } from '@element-plus/icons-vue'
 import { Deck, Card, HandType, evaluateHand, compareHands, evaluateHandPotential } from '../utils/poker'
 
 const router = useRouter()
-const showMenu = ref(false)
 
 type GameState = 'not_started' | 'choosing_hole_card' | 'player_turn' | 'ai_turn' | 'round_over'
 const gameState = ref<GameState>('not_started')
@@ -302,8 +291,12 @@ const callAmount = ref(0)
 const selectionCountdown = ref(5)
 let countdownInterval: any = null
 
-const goHome = () => router.push('/')
 const getCardClass = (c: Card | null) => (!c ? '' : (c.suit === '♥' || c.suit === '♦' ? 'card-red' : 'card-black'))
+
+const toggleMenu = () => {
+  // 触发自定义事件，通知父组件切换菜单
+  window.dispatchEvent(new CustomEvent('toggle-sidebar'))
+}
 
 const startGame = () => {
   const personalities: ('aggressive' | 'tight' | 'balanced')[] = ['aggressive', 'tight', 'balanced'];
