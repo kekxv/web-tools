@@ -55,8 +55,7 @@
           <!-- Table Felt -->
           <div class="table-felt">
             <!-- Opponents Zone -->
-            <div class="opponents-zone">
-              <div v-for="(ai, index) in opponents" :key="ai.id" 
+            <div v-for="(ai, index) in opponents" :key="ai.id" 
                 class="ai-node" 
                 :class="[`pos-${aiCount}-${index}`, { 'active': activePlayerIndex === index && (gameState === 'ai_turn' || gameState === 'choosing_hole_card'), 'folded': ai.isFolded }]"
               >
@@ -89,7 +88,6 @@
                   </TransitionGroup>
                 </div>
                 <div v-if="ai.currentBet > 0" class="bet-chip-pill">投: {{ ai.currentBet }}</div>
-              </div>
             </div>
 
             <!-- Center Zone -->
@@ -100,14 +98,6 @@
               </div>
               <div class="round-tag">ROUND {{ currentRound }}</div>
               <div class="status-hint" :class="messageType">{{ message }}</div>
-              
-              <!-- Selection Phase Indicator with Countdown -->
-              <div v-if="gameState === 'choosing_hole_card'" class="selection-box">
-                <div class="selection-tip">点击牌切换底牌</div>
-                <button @click="confirmHoleCard" class="confirm-select-btn">
-                  确定底牌 ({{ selectionCountdown }}s)
-                </button>
-              </div>
             </div>
 
             <!-- Player Zone -->
@@ -153,9 +143,15 @@
 
       <!-- Action Controls -->
       <div v-if="gameState !== 'not_started'" class="bottom-controls">
-        <!-- Selection Phase Hint -->
-        <div v-if="gameState === 'choosing_hole_card'" class="selection-phase-ui">
-          <span class="hint-text">发牌中：您可以将最新的明牌设为底牌</span>
+        <!-- Selection Phase UI (Integrated into bottom bar) -->
+        <div v-if="gameState === 'choosing_hole_card'" class="selection-phase-ui-v2">
+          <div class="hint-stack">
+            <span class="l1">发牌中...</span>
+            <span class="l2">点击牌面切换底牌</span>
+          </div>
+          <button @click="confirmHoleCard" class="confirm-selection-btn">
+            确定底牌 <span class="v2-timer">({{ selectionCountdown }}s)</span>
+          </button>
         </div>
 
         <!-- Normal Betting Controls -->
@@ -523,17 +519,17 @@ onUnmounted(() => stopSelectionCountdown())
 /* Table Felt */
 .poker-table-container { flex: 1; padding: 12px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .poker-table { width: 100%; max-width: 880px; height: 100%; max-height: 72vh; background: #15803d; border: 10px solid #475569; border-radius: 48px; position: relative; box-shadow: inset 0 0 100px rgba(0,0,0,0.5); }
-.table-felt { height: 100%; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+.table-felt { height: 100%; padding: 15px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
 
-/* AI Seating - Widely distributed to prevent overlap */
-.opponents-zone { position: relative; flex: 0 0 160px; width: 100%; }
+/* AI Seating - Adjusted height to provide natural spacing */
+.opponents-zone { position: relative; flex: 0 0 140px; width: 100%; }
 .ai-node { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: all 0.4s; width: 140px; } 
 .pos-1-0 { top: 0; left: 50%; transform: translateX(-50%); }
-.pos-2-0 { top: 10%; left: 20%; transform: translateX(-50%); }
-.pos-2-1 { top: 10%; left: 80%; transform: translateX(-50%); }
-.pos-3-0 { top: 12%; left: 15%; transform: translateX(-50%); }
+.pos-2-0 { top: 5%; left: 20%; transform: translateX(-50%); }
+.pos-2-1 { top: 5%; left: 80%; transform: translateX(-50%); }
+.pos-3-0 { top: 5%; left: 15%; transform: translateX(-50%); }
 .pos-3-1 { top: 0; left: 50%; transform: translateX(-50%); }
-.pos-3-2 { top: 12%; left: 85%; transform: translateX(-50%); }
+.pos-3-2 { top: 5%; left: 85%; transform: translateX(-50%); }
 
 .ai-profile-box { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
 .avatar-box { width: 44px; height: 44px; border-radius: 12px; background: #1e293b; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.4); position: relative; }
@@ -579,29 +575,44 @@ onUnmounted(() => stopSelectionCountdown())
 
 .bet-chip-pill { background: #fff; color: #ef4444; padding: 1px 8px; border-radius: 20px; font-size: 0.6rem; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.2); margin-top: -2px; }
 
-/* Center Zone */
-.center-zone { display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 60; }
-.pot-display-modern { background: rgba(0,0,0,0.8); padding: 8px 30px; border-radius: 40px; border: 3px solid #facc15; color: #facc15; text-align: center; }
+/* Center Zone - Fills middle space and centers content vertically */
+.center-zone { 
+  flex: 1; display: flex; flex-direction: column; align-items: center; 
+  justify-content: center; gap: 8px; z-index: 60; 
+}
+.pot-display-modern { background: rgba(0,0,0,0.85); padding: 8px 35px; border-radius: 40px; border: 3px solid #facc15; color: #facc15; text-align: center; box-shadow: 0 8px 25px rgba(0,0,0,0.4); }
 .pot-display-modern .label { font-size: 0.55rem; font-weight: 900; letter-spacing: 2px; }
 .pot-display-modern .val { font-size: 1.8rem; font-weight: 900; display: flex; align-items: center; gap: 8px; }
 .round-tag { font-size: 0.7rem; color: #fff; font-weight: 900; background: rgba(255,255,255,0.15); padding: 3px 14px; border-radius: 12px; }
-.status-hint { font-size: 0.85rem; font-weight: 800; color: #fff; height: 20px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+.status-hint { font-size: 0.85rem; font-weight: 800; color: #fff; height: 24px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
 
-/* Hole Card Selection UI - Moved Higher */
-.selection-box { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: -45px; z-index: 100; position: relative; }
-.selection-tip { background: #facc15; color: #000; padding: 4px 15px; border-radius: 20px; font-weight: 900; font-size: 0.75rem; animation: bounce 1s infinite; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-.confirm-select-btn { background: #22c55e; color: #fff; border: none; padding: 12px 35px; border-radius: 16px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 0 rgba(21,128,61,1); font-size: 1.05rem; transition: all 0.2s; }
-.confirm-select-btn:active { transform: translateY(2px); box-shadow: none; }
+/* Selection UI (Integrated into bottom bar) */
+.selection-phase-ui-v2 { 
+  display: flex; align-items: center; justify-content: space-between; 
+  width: 100%; max-width: 500px; background: #f0f9ff; 
+  padding: 8px 15px; border-radius: 16px; border: 2px solid #3b82f6; 
+}
+.hint-stack { display: flex; flex-direction: column; text-align: left; line-height: 1.2; }
+.hint-stack .l1 { color: #3b82f6; font-size: 0.75rem; font-weight: 900; }
+.hint-stack .l2 { color: #1e40af; font-size: 0.9rem; font-weight: 800; }
+.confirm-selection-btn { 
+  background: #22c55e; color: #fff; border: none; padding: 10px 24px; 
+  border-radius: 12px; font-weight: 900; font-size: 1rem; cursor: pointer; 
+  box-shadow: 0 4px 0 #16a34a; transition: all 0.1s; 
+}
+.confirm-selection-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #16a34a; }
+.v2-timer { font-size: 0.85rem; opacity: 0.9; margin-left: 4px; }
 
 @media (max-width: 600px) {
   .poker-table { border-radius: 40px; }
   .opponents-zone { flex: 0 0 110px; }
-  .selection-box { margin-top: -65px; scale: 0.9; }
-  .confirm-select-btn { padding: 10px 25px; }
+  .center-zone { margin-top: 100px; } /* Set to 100px to avoid overlapping top AI */
   .pot-display-modern { padding: 4px 20px; }
   .pot-display-modern .val { font-size: 1.4rem; }
   .ai-node { width: 120px; }
   .pos-3-0 { top: 10%; } .pos-3-2 { top: 10%; }
+  .selection-phase-ui-v2 { scale: 0.9; padding: 6px 10px; }
+  .confirm-selection-btn { padding: 8px 15px; font-size: 0.9rem; }
 }
 @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 
@@ -611,7 +622,7 @@ onUnmounted(() => stopSelectionCountdown())
 .card-slot.selectable { cursor: pointer; transition: transform 0.3s ease; }
 .selection-glow { 
   box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4), 0 0 10px rgba(59, 130, 246, 0.2);
-  transform: translateY(-10px) scale(1.05);
+  transform: translateY(25px) scale(1.05);
   z-index: 50;
   border: 2px solid #3b82f6 !important;
 }
@@ -625,8 +636,6 @@ onUnmounted(() => stopSelectionCountdown())
 
 /* Control Bar */
 .bottom-controls { background: #fff; padding: 12px; border-top: 1px solid #e2e8f0; display: flex; justify-content: center; min-height: 90px; flex-shrink: 0; }
-.selection-phase-ui { display: flex; align-items: center; justify-content: center; background: #eff6ff; padding: 8px 20px; border-radius: 12px; border: 1px dashed #3b82f6; }
-.selection-phase-ui .hint-text { color: #1d4ed8; font-weight: 900; font-size: 0.85rem; }
 
 .btn-group { display: flex; gap: 10px; width: 100%; max-width: 540px; }
 .game-btn { flex: 1; border: none; border-radius: 12px; padding: 12px 0; font-weight: 900; font-size: 0.85rem; color: #fff; cursor: pointer; box-shadow: 0 4.5px 0 rgba(0,0,0,0.1); transition: all 0.2s; }
