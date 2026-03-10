@@ -76,6 +76,7 @@ export class Deck {
   }
 
   deal(): Card {
+    if (this.cards.length === 0) this.reset()
     return this.cards.pop()!
   }
 
@@ -100,36 +101,18 @@ export function getHandTypeName(type: HandType): string {
   return names[type]
 }
 
-// 评估牌型（梭哈：5 张牌）
+// 评估牌型（梭哈：支持 1-5 张牌评估）
 export function evaluateHand(cards: Card[]): HandResult {
-  if (cards.length !== 5) {
-    return { type: HandType.HIGH_CARD, name: '高牌', tiebreakers: [] }
+  // 排除暗牌，只评估当前可见牌或结算时的全牌
+  const activeCards = cards.filter(c => !c.isHidden)
+  if (activeCards.length === 0) {
+    return { type: HandType.HIGH_CARD, name: '高牌', tiebreakers: [0] }
   }
-
-  // 排除暗牌，只评估明牌
-  const visibleCards = cards.filter(c => !c.isHidden)
 
   // 按牌值排序（降序）
-  const sorted = [...visibleCards].sort((a, b) => b.value - a.value)
+  const sorted = [...activeCards].sort((a, b) => b.value - a.value)
   const values = sorted.map(c => c.value)
   const suits = sorted.map(c => c.suit)
-
-  // 检查是否同花
-  const isFlush = suits.every(s => s === suits[0])
-
-  // 检查是否顺子
-  let isStraight = true
-  for (let i = 0; i < values.length - 1; i++) {
-    if (values[i] - values[i + 1] !== 1) {
-      isStraight = false
-      break
-    }
-  }
-
-  // 特殊顺子：A-2-3-4-5
-  if (!isStraight && values[0] === 14 && values[1] === 5 && values[2] === 4 && values[3] === 3 && values[4] === 2) {
-    isStraight = true
-  }
 
   // 统计牌值出现次数
   const valueCount: Record<number, number> = {}
@@ -137,107 +120,86 @@ export function evaluateHand(cards: Card[]): HandResult {
     valueCount[v] = (valueCount[v] || 0) + 1
   }
 
-  const counts = Object.values(valueCount)
-  const countValues = Object.entries(valueCount).map(([v, c]) => ({ value: parseInt(v), count: c }))
+  const countEntries = Object.entries(valueCount).map(([v, c]) => ({ 
+    value: parseInt(v), 
+    count: c 
+  }))
 
   // 按出现次数降序，再按牌值降序
-  countValues.sort((a, b) => {
+  countEntries.sort((a, b) => {
     if (b.count !== a.count) return b.count - a.count
     return b.value - a.value
   })
 
-  // 判断牌型
+  // 辅助判断
+  const isFlush = activeCards.length === 5 && suits.every(s => s === suits[0])
+  let isStraight = false
+  if (activeCards.length === 5) {
+    const uniqueValues = [...new Set(values)]
+    if (uniqueValues.length === 5) {
+      if (values[0] - values[4] === 4) {
+        isStraight = true
+      } else if (values[0] === 14 && values[1] === 5 && values[2] === 4 && values[3] === 3 && values[4] === 2) {
+        // 特殊顺子：A-2-3-4-5
+        isStraight = true
+      }
+    }
+  }
+
+  // 判断牌型 - 严格按照 countEntries 顺序
+  const topCount = countEntries[0].count
+  const secondCount = countEntries[1]?.count || 0
+
   if (isFlush && isStraight) {
-    return {
-      type: HandType.STRAIGHT_FLUSH,
-      name: '同花顺',
-      tiebreakers: values
+    const tiebreakers = (values[0] === 14 && values[1] === 5) ? [5] : [values[0]]
+    return { type: HandType.STRAIGHT_FLUSH, name: '同花顺', tiebreakers }
+  }
+
+  if (topCount === 4) {
+    return { 
+      type: HandType.FOUR_OF_A_KIND, 
+      name: '四条', 
+      tiebreakers: [countEntries[0].value, countEntries[1].value] 
     }
   }
 
-  if (counts[0] === 4) {
-    const fourValue = countValues.find(c => c.count === 4)!.value
-    const kicker = countValues.find(c => c.count === 1)!.value
-    return {
-      type: HandType.FOUR_OF_A_KIND,
-      name: '四条',
-      tiebreakers: [fourValue, kicker]
-    }
-  }
-
-  if (counts[0] === 3 && counts[1] === 2) {
-    const threeValue = countValues.find(c => c.count === 3)!.value
-    const pairValue = countValues.find(c => c.count === 2)!.value
-    return {
-      type: HandType.FULL_HOUSE,
-      name: '葫芦',
-      tiebreakers: [threeValue, pairValue]
+  if (topCount === 3 && secondCount === 2) {
+    return { 
+      type: HandType.FULL_HOUSE, 
+      name: '葫芦', 
+      tiebreakers: [countEntries[0].value, countEntries[1].value] 
     }
   }
 
   if (isFlush) {
-    return {
-      type: HandType.FLUSH,
-      name: '同花',
-      tiebreakers: values
-    }
+    return { type: HandType.FLUSH, name: '同花', tiebreakers: values }
   }
 
   if (isStraight) {
-    // 处理 A-2-3-4-5 顺子
-    if (values[0] === 14 && values[1] === 5) {
-      return {
-        type: HandType.STRAIGHT,
-        name: '顺子',
-        tiebreakers: [5, 4, 3, 2, 1]
-      }
-    }
-    return {
-      type: HandType.STRAIGHT,
-      name: '顺子',
-      tiebreakers: values
-    }
+    const tiebreakers = (values[0] === 14 && values[1] === 5) ? [5] : [values[0]]
+    return { type: HandType.STRAIGHT, name: '顺子', tiebreakers }
   }
 
-  if (counts[0] === 3) {
-    const threeValue = countValues.find(c => c.count === 3)!.value
-    const kickers = countValues.filter(c => c.count === 1).map(c => c.value)
-    return {
-      type: HandType.THREE_OF_A_KIND,
-      name: '三条',
-      tiebreakers: [threeValue, ...kickers]
-    }
+  if (topCount === 3) {
+    const kickers = countEntries.slice(1).map(e => e.value)
+    return { type: HandType.THREE_OF_A_KIND, name: '三条', tiebreakers: [countEntries[0].value, ...kickers] }
   }
 
-  if (counts[0] === 2 && counts[1] === 2) {
-    const pairs = countValues.filter(c => c.count === 2).map(c => c.value).sort((a, b) => b - a)
-    const kicker = countValues.find(c => c.count === 1)!.value
-    return {
-      type: HandType.TWO_PAIR,
-      name: '两对',
-      tiebreakers: [...pairs, kicker]
-    }
+  if (topCount === 2 && secondCount === 2) {
+    const pairs = [countEntries[0].value, countEntries[1].value].sort((a, b) => b - a)
+    const kicker = countEntries[2].value
+    return { type: HandType.TWO_PAIR, name: '两对', tiebreakers: [...pairs, kicker] }
   }
 
-  if (counts[0] === 2) {
-    const pairValue = countValues.find(c => c.count === 2)!.value
-    const kickers = countValues.filter(c => c.count === 1).map(c => c.value)
-    return {
-      type: HandType.ONE_PAIR,
-      name: '一对',
-      tiebreakers: [pairValue, ...kickers]
-    }
+  if (topCount === 2) {
+    const kickers = countEntries.slice(1).map(e => e.value).sort((a, b) => b - a)
+    return { type: HandType.ONE_PAIR, name: '一对', tiebreakers: [countEntries[0].value, ...kickers] }
   }
 
-  return {
-    type: HandType.HIGH_CARD,
-    name: '高牌',
-    tiebreakers: values
-  }
+  return { type: HandType.HIGH_CARD, name: '高牌', tiebreakers: values }
 }
 
 // 比较两手牌
-// 返回值：>0 表示 hand1 赢，<0 表示 hand2 赢，=0 表示平局
 export function compareHands(hand1: HandResult, hand2: HandResult): number {
   if (hand1.type !== hand2.type) {
     return hand1.type - hand2.type
@@ -246,85 +208,30 @@ export function compareHands(hand1: HandResult, hand2: HandResult): number {
   for (let i = 0; i < Math.max(hand1.tiebreakers.length, hand2.tiebreakers.length); i++) {
     const t1 = hand1.tiebreakers[i] || 0
     const t2 = hand2.tiebreakers[i] || 0
-    if (t1 !== t2) {
-      return t1 - t2
-    }
+    if (t1 !== t2) return t1 - t2
   }
 
   return 0
 }
 
-// 评估当前牌面的潜力（用于 AI 决策）
+// 评估当前牌面的潜力
 export function evaluateHandPotential(cards: Card[]): {
   currentStrength: number
   potential: number
   handType: HandType
 } {
-  const visibleCards = cards.filter(c => !c.isHidden)
-
-  if (visibleCards.length < 2) {
-    return { currentStrength: 0.5, potential: 0.5, handType: HandType.HIGH_CARD }
-  }
-
   const handResult = evaluateHand(cards)
-
-  // 当前强度（0-1）
   const currentStrength = handResult.type / 9
-
-  // 潜力评估
-  let potential = 0.5
-
-  // 有对子
-  const values = visibleCards.map(c => c.value)
+  
+  let potential = currentStrength
+  const values = cards.filter(c => !c.isHidden).map(c => c.value)
   const valueCount: Record<number, number> = {}
-  for (const v of values) {
-    valueCount[v] = (valueCount[v] || 0) + 1
-  }
-
-  const pairs = Object.values(valueCount).filter(c => c === 2).length
-  const threeOfAKind = Object.values(valueCount).some(c => c === 3)
-  const fourOfAKind = Object.values(valueCount).some(c => c === 4)
-
-  if (fourOfAKind) potential = 1.0
-  else if (threeOfAKind) potential = 0.85
-  else if (pairs >= 2) potential = 0.75
-  else if (pairs === 1) potential = 0.6
-
-  // 同花潜力
-  const suits = visibleCards.map(c => c.suit)
-  const suitCount: Record<string, number> = {}
-  for (const s of suits) {
-    suitCount[s] = (suitCount[s] || 0) + 1
-  }
-  const maxSuitCount = Math.max(...Object.values(suitCount))
-  if (maxSuitCount >= 4 && visibleCards.length >= 4) {
-    potential = Math.max(potential, 0.7)
-  }
-  if (maxSuitCount === 5) {
-    potential = Math.max(potential, 0.85)
-  }
-
-  // 顺子潜力
-  const uniqueValues = [...new Set(values)].sort((a, b) => a - b)
-  let consecutiveCount = 1
-  let maxConsecutive = 1
-  for (let i = 1; i < uniqueValues.length; i++) {
-    if (uniqueValues[i] - uniqueValues[i - 1] === 1) {
-      consecutiveCount++
-      maxConsecutive = Math.max(maxConsecutive, consecutiveCount)
-    } else {
-      consecutiveCount = 1
-    }
-  }
-
-  // 检查 A-2-3-4-5 的情况
-  if (values.includes(14) && values.includes(2) && values.includes(3) && values.includes(4) && values.includes(5)) {
-    maxConsecutive = Math.max(maxConsecutive, 5)
-  }
-
-  if (maxConsecutive >= 4 && visibleCards.length >= 4) {
-    potential = Math.max(potential, 0.65)
-  }
-
+  values.forEach(v => valueCount[v] = (valueCount[v] || 0) + 1)
+  
+  const counts = Object.values(valueCount).sort((a, b) => b - a)
+  if (counts[0] === 3) potential = 0.8
+  else if (counts[0] === 2 && counts[1] === 2) potential = 0.7
+  else if (counts[0] === 2) potential = 0.5
+  
   return { currentStrength, potential, handType: handResult.type }
 }

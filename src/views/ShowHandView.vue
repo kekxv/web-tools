@@ -13,9 +13,7 @@
               <span class="brand-sub">PRO EDITION</span>
             </div>
           </div>
-          
           <div class="header-center mobile-hide"></div>
-
           <div class="header-right">
             <div class="round-indicator-modern">
               <span class="l">局</span>
@@ -75,10 +73,7 @@
                 <div class="ai-profile-box">
                   <div class="avatar-box ai">
                     <el-icon><Monitor /></el-icon>
-                    <!-- Bubble now has a transition for the delayed hide -->
-                    <Transition name="bubble-fade">
-                      <div v-if="ai.message" class="bubble ai">{{ ai.message }}</div>
-                    </Transition>
+                    <Transition name="bubble-fade"><div v-if="ai.message" class="bubble ai">{{ ai.message }}</div></Transition>
                   </div>
                   <div class="ai-info-pill">
                     <span class="name">{{ ai.name }}</span>
@@ -222,7 +217,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
-  Grid, Menu, HomeFilled, Refresh, RefreshRight, Coin, Monitor, Money, User, Trophy, CircleClose
+  Grid, HomeFilled, Refresh, RefreshRight, Coin, Monitor, Money, User, Trophy, CircleClose
 } from '@element-plus/icons-vue'
 import { Deck, Card, HandType, evaluateHand, compareHands, evaluateHandPotential } from '../utils/poker'
 
@@ -288,10 +283,13 @@ const startGame = () => {
 const newRound = () => {
   deck.value = new Deck(); deck.value.shuffle(); pot.value = 0; highestBet.value = 0; currentRound.value = 1
   currentBet.value = 0; isPlayerFolded.value = false; playerVisibleCards.value = []; playerHasActed.value = false
-  opponents.value.forEach(ai => { ai.isFolded = false; ai.visibleCards = []; ai.currentBet = 0; ai.message = ''; ai.hasActed = false })
+  opponents.value.forEach(ai => { ai.isFolded = false; ai.visibleCards = []; ai.currentBet = 0; ai.message = ''; ai.hasActed = false; ai.chips = Math.max(ai.chips, 100) })
+  if (playerChips.value < 10) playerChips.value = initialChips.value
+  
   showCardsRevealed.value = false; showResult.value = false
   playerHiddenCard.value = deck.value.deal(); playerVisibleCards.value.push(deck.value.deal())
   opponents.value.forEach(ai => { ai.hiddenCard = deck.value!.deal(); ai.visibleCards.push(deck.value!.deal()) })
+  
   placeBet(-1, 10); opponents.value.forEach((_, i) => placeBet(i, 10)); determineFirstPlayer()
 }
 
@@ -299,21 +297,35 @@ const placeBet = (idx: number, amt: number) => {
   const actual = idx === -1 ? Math.min(amt, playerChips.value) : Math.min(amt, opponents.value[idx].chips)
   if (idx === -1) { playerChips.value -= actual; currentBet.value += actual }
   else { opponents.value[idx].chips -= actual; opponents.value[idx].currentBet += actual }
-  pot.value += actual; highestBet.value = Math.max(highestBet.value, (idx === -1 ? currentBet.value : opponents.value[idx].currentBet))
+  pot.value += actual
+  const totalBet = idx === -1 ? currentBet.value : opponents.value[idx].currentBet
+  if (totalBet > highestBet.value) {
+    highestBet.value = totalBet
+    // If someone raises, everyone else needs to act again
+    playerHasActed.value = (idx === -1)
+    opponents.value.forEach((ai, i) => { if (i !== idx) ai.hasActed = false })
+  }
 }
 
 const determineFirstPlayer = () => {
-  let scores = opponents.value.map((ai, i) => ({ idx: i, hand: evaluateHand(ai.visibleCards.map(c => ({...c, isHidden: false}))) }))
-  if (!isPlayerFolded.value) scores.push({ idx: opponents.value.length, hand: evaluateHand(playerVisibleCards.value.map(c => ({...c, isHidden: false}))) })
-  scores.sort((a, b) => compareHands(b.hand, a.hand)); activePlayerIndex.value = scores[0].idx; nextTurn()
+  let scores = opponents.value.map((ai, i) => ({ idx: i, hand: evaluateHand(ai.visibleCards) }))
+  if (!isPlayerFolded.value) scores.push({ idx: opponents.value.length, hand: evaluateHand(playerVisibleCards.value) })
+  scores.sort((a, b) => compareHands(b.hand, a.hand))
+  activePlayerIndex.value = scores[0].idx; nextTurn()
 }
 
 const nextTurn = () => {
   const activeCount = [!isPlayerFolded.value, ...opponents.value.map(ai => !ai.isFolded)].filter(v => v).length
   if (activeCount <= 1) { showdown(); return }
-  const players = [...opponents.value, { isFolded: isPlayerFolded.value, currentBet: currentBet.value, hasActed: playerHasActed.value }]
+  
+  const players = [...opponents.value.map(ai => ({ isFolded: ai.isFolded, currentBet: ai.currentBet, hasActed: ai.hasActed })), { isFolded: isPlayerFolded.value, currentBet: currentBet.value, hasActed: playerHasActed.value }]
   const everyoneActed = players.every(p => p.isFolded || (p.hasActed && p.currentBet === highestBet.value))
-  if (everyoneActed) { if (currentRound.value < 4) nextRound(); else showdown(); return }
+  
+  if (everyoneActed) {
+    if (currentRound.value < 4) nextRound(); else showdown()
+    return
+  }
+
   if (activePlayerIndex.value === opponents.value.length) {
     if (isPlayerFolded.value) { activePlayerIndex.value = 0; nextTurn() } else startPlayerTurn()
   } else {
@@ -329,12 +341,9 @@ const startPlayerTurn = () => {
   minRaise.value = callAmount.value + 10; maxRaise.value = playerChips.value; raiseAmount.value = minRaise.value
 }
 
-// Helper to clear AI message after delay
 const setAiMessage = (ai: any, msg: string) => {
   ai.message = msg
-  setTimeout(() => {
-    if (ai.message === msg) ai.message = ''
-  }, 2500)
+  setTimeout(() => { if (ai.message === msg) ai.message = '' }, 2500)
 }
 
 const aiDecision = () => {
@@ -342,21 +351,30 @@ const aiDecision = () => {
   const evalPot = evaluateHandPotential([ai.hiddenCard!, ...ai.visibleCards])
   const toCall = highestBet.value - ai.currentBet
   let action: 'fold' | 'call' | 'raise' | 'check' = toCall > 0 ? 'call' : 'check'
-  if (evalPot.handType >= HandType.TWO_PAIR && Math.random() > 0.7) action = 'raise'
-  if (toCall > ai.chips * 0.6 && evalPot.handType < HandType.ONE_PAIR) action = 'fold'
+  
+  // AI strategy: Aggressive with variety
+  if (evalPot.potential > 0.6 && Math.random() > 0.5) action = 'raise'
+  else if (evalPot.potential < 0.3 && toCall > ai.chips * 0.3) action = 'fold'
+  else if (toCall === 0 && Math.random() > 0.8) action = 'raise' // Occasional bluff/aggressive bet
   
   if (action === 'fold') { ai.isFolded = true; setAiMessage(ai, '弃牌') }
-  else if (action === 'raise') { placeBet(activePlayerIndex.value, toCall + 50); setAiMessage(ai, '加注') }
+  else if (action === 'raise') { 
+    const raiseAmt = Math.min(ai.chips, toCall + 50)
+    placeBet(activePlayerIndex.value, raiseAmt); setAiMessage(ai, '加注') 
+  }
   else if (toCall > 0) { placeBet(activePlayerIndex.value, toCall); setAiMessage(ai, '跟注') }
-  else setAiMessage(ai, '过牌')
+  else { setAiMessage(ai, '过牌') }
   
   ai.hasActed = true; activePlayerIndex.value = (activePlayerIndex.value + 1) % (opponents.value.length + 1); nextTurn()
 }
 
 const updatePlayerAction = () => { playerHasActed.value = true; activePlayerIndex.value = (activePlayerIndex.value + 1) % (opponents.value.length + 1); nextTurn() }
-const check = () => updatePlayerAction(); const call = () => { placeBet(-1, callAmount.value); updatePlayerAction() }
-const fold = () => { isPlayerFolded.value = true; updatePlayerAction() }; const raise = () => { placeBet(-1, raiseAmount.value); showRaiseInput.value = false; updatePlayerAction() }
-const openRaiseDialog = () => { showRaiseInput.value = true }; const allIn = () => { raiseAmount.value = playerChips.value; raise() }
+const check = () => updatePlayerAction()
+const call = () => { placeBet(-1, callAmount.value); updatePlayerAction() }
+const fold = () => { isPlayerFolded.value = true; updatePlayerAction() }
+const raise = () => { placeBet(-1, raiseAmount.value); showRaiseInput.value = false; updatePlayerAction() }
+const openRaiseDialog = () => { showRaiseInput.value = true }
+const allIn = () => { raiseAmount.value = playerChips.value; raise() }
 
 const nextRound = () => {
   currentRound.value++; playerHasActed.value = false; opponents.value.forEach(ai => ai.hasActed = false)
@@ -368,17 +386,19 @@ const nextRound = () => {
 const showdown = () => {
   gameState.value = 'round_over'; roundCount.value++; showCardsRevealed.value = true
   const results = []
-  if (!isPlayerFolded.value) results.push({ name: '你', hand: evaluateHand([{...playerHiddenCard.value!, isHidden: false}, ...playerVisibleCards.value]), cards: [playerHiddenCard.value!, ...playerVisibleCards.value], type: 'player' })
-  opponents.value.forEach(ai => { if (!ai.isFolded) results.push({ name: ai.name, hand: evaluateHand([{...ai.hiddenCard!, isHidden: false}, ...ai.visibleCards]), cards: [ai.hiddenCard!, ...ai.visibleCards], type: 'ai' }) })
+  if (!isPlayerFolded.value) results.push({ name: '你', hand: evaluateHand([playerHiddenCard.value!, ...playerVisibleCards.value]), cards: [playerHiddenCard.value!, ...playerVisibleCards.value], type: 'player' })
+  opponents.value.forEach(ai => { if (!ai.isFolded) results.push({ name: ai.name, hand: evaluateHand([ai.hiddenCard!, ...ai.visibleCards]), cards: [ai.hiddenCard!, ...ai.visibleCards], type: 'ai' }) })
+  
   if (results.length === 0) { resetGame(); return }
   results.sort((a, b) => compareHands(b.hand, a.hand)); const winner = results[0]
   showdownResults.value = results.map(r => ({ name: r.name, handType: r.hand.name, cards: r.cards, isWinner: r.name === winner.name }))
   lastPot.value = pot.value
+  
   if (winner.type === 'player') { playerChips.value += pot.value; playerWins.value++; resultTitle.value = '胜利!'; resultClass.value = 'win' }
   else {
     const aiIdx = opponents.value.findIndex(ai => ai.name === winner.name)
     if (aiIdx !== -1) opponents.value[aiIdx].chips += pot.value
-    aiWins.value++; resultTitle.value = '战败'; resultClass.value = 'loss'
+    aiWins.value++; resultTitle.value = '落败'; resultClass.value = 'loss'
   }
   setTimeout(() => { showResult.value = true }, 1000)
 }
@@ -404,12 +424,6 @@ const resetGame = () => { gameState.value = 'not_started'; showResult.value = fa
 .brand-sub { font-size: 0.55rem; color: #94a3b8; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
 
 .header-center { flex: 1; display: flex; justify-content: center; }
-.win-loss-pills { display: flex; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 20px; padding: 4px 16px; gap: 12px; align-items: center; }
-.pill { font-size: 0.8rem; font-weight: 800; }
-.pill.win { color: #22c55e; }
-.pill.loss { color: #ef4444; }
-.pill-divider { width: 1px; height: 12px; background: #e2e8f0; }
-
 .header-right { display: flex; align-items: center; gap: 15px; }
 .round-indicator-modern { font-size: 0.85rem; font-weight: 900; color: #64748b; }
 .round-indicator-modern .v { color: #3b82f6; font-size: 1.2rem; margin-left: 2px; }
