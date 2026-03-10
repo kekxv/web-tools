@@ -517,13 +517,13 @@ onUnmounted(() => stopSelectionCountdown())
 .header-reset-btn:hover { border-color: #ef4444; color: #ef4444; background: #fef2f2; }
 
 /* Table Felt */
-.poker-table-container { flex: 1; padding: 12px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.poker-table { width: 100%; max-width: 880px; height: 100%; max-height: 72vh; background: #15803d; border: 10px solid #475569; border-radius: 48px; position: relative; box-shadow: inset 0 0 100px rgba(0,0,0,0.5); }
-.table-felt { height: 100%; padding: 15px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+.poker-table-container { flex: 1; padding: 20px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.poker-table { width: 100%; max-width: 1100px; height: 100%; max-height: 75vh; background: #15803d; border: 12px solid #475569; border-radius: 60px; position: relative; box-shadow: inset 0 0 120px rgba(0,0,0,0.6); }
+.table-felt { height: 100%; padding: 25px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
 
-/* AI Seating - Adjusted height to provide natural spacing */
-.opponents-zone { position: relative; flex: 0 0 140px; width: 100%; }
-.ai-node { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: all 0.4s; width: 140px; } 
+/* AI Seating - Adjusted for larger elements */
+.opponents-zone { position: relative; flex: 0 0 220px; width: 100%; }
+.ai-node { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 8px; transition: all 0.4s; width: 160px; } 
 .pos-1-0 { top: 15px; left: 50%; transform: translateX(-50%); }
 .pos-2-0 { top: 5%; left: 20%; transform: translateX(-50%); }
 .pos-2-1 { top: 5%; left: 80%; transform: translateX(-50%); }
@@ -531,60 +531,60 @@ onUnmounted(() => stopSelectionCountdown())
 .pos-3-1 { top: 15px; left: 50%; transform: translateX(-50%); }
 .pos-3-2 { top: 5%; left: 85%; transform: translateX(-50%); }
 
-.ai-profile-box { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
-.avatar-box { width: 44px; height: 44px; border-radius: 12px; background: #1e293b; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.4); position: relative; }
-.active .avatar-box { outline: 4px solid #facc15; box-shadow: 0 0 25px #facc15; z-index: 2; }
+.ai-profile-box { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
+.avatar-box { width: 60px; height: 60px; border-radius: 16px; background: #1e293b; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 2rem; box-shadow: 0 6px 15px rgba(0,0,0,0.4); position: relative; }
+.active .avatar-box { outline: 5px solid #facc15; box-shadow: 0 0 35px #facc15; z-index: 2; }
 .folded { opacity: 0.4; filter: grayscale(1); }
 
-.ai-info-pill { background: rgba(255,255,255,0.98); padding: 3px 10px; border-radius: 20px; display: flex; gap: 6px; font-size: 0.65rem; font-weight: 800; box-shadow: 0 2px 8px rgba(0,0,0,0.15); white-space: nowrap; max-width: 130px; justify-content: center; border: 1px solid #e2e8f0; }
+.ai-info-pill { background: rgba(255,255,255,0.98); padding: 4px 14px; border-radius: 20px; display: flex; gap: 8px; font-size: 0.8rem; font-weight: 800; box-shadow: 0 2px 8px rgba(0,0,0,0.15); white-space: nowrap; max-width: 150px; justify-content: center; border: 1px solid #e2e8f0; }
 .ai-info-pill .chips { color: #f59e0b; }
 
 .cards-area { display: flex; justify-content: center; position: relative; }
-.cards-area.stacked .card-slot + .card-slot { margin-left: -20px; }
-.cards-area.stacked.mini .card-slot + .card-slot { margin-left: -12px; }
+.cards-area.stacked .card-slot + .card-slot { margin-left: -30px; }
+.cards-area.stacked.mini .card-slot + .card-slot { margin-left: -20px; }
 .cards-area .card-slot { flex-shrink: 0; position: relative; }
 
-.card { width: 54px; height: 76px; background: #fff; border-radius: 8px; position: relative; transform-style: preserve-3d; transition: transform 0.6s; box-shadow: 2px 4px 12px rgba(0,0,0,0.3); border: 1px solid rgba(0,0,0,0.05); flex-shrink: 0; }
-.card.mini { width: 38px; height: 52px; }
-.card-front { position: absolute; inset: 0; background: #fff; border-radius: 8px; backface-visibility: hidden; transform: rotateY(180deg); display: flex; flex-direction: column; align-items: flex-start; padding: 4px 6px; box-sizing: border-box; }
-.card.mini .card-front { padding: 2px 4px; }
+.card { width: 76px; height: 106px; background: #fff; border-radius: 10px; position: relative; transform-style: preserve-3d; transition: transform 0.6s; box-shadow: 3px 5px 15px rgba(0,0,0,0.3); border: 1px solid rgba(0,0,0,0.05); flex-shrink: 0; }
+.card.mini { width: 52px; height: 72px; }
+.card-front { position: absolute; inset: 0; background: #fff; border-radius: 10px; backface-visibility: hidden; transform: rotateY(180deg); display: flex; flex-direction: column; align-items: flex-start; padding: 6px 8px; box-sizing: border-box; }
+.card.mini .card-front { padding: 4px 6px; }
 
 /* Card Components */
-.card-num { display: flex; flex-direction: column; align-items: flex-start; line-height: 0.95; }
-.card-num span:first-child { font-weight: 900; font-size: 1.15rem; letter-spacing: -1px; }
-.card.mini .card-num span:first-child { font-size: 0.9rem; }
-.suit-mini { font-size: 0.85rem; margin-top: 1px; }
-.card.mini .suit-mini { font-size: 0.65rem; }
+.card-num { display: flex; flex-direction: column; align-items: flex-start; line-height: 0.9; }
+.card-num span:first-child { font-weight: 900; font-size: 1.5rem; letter-spacing: -1px; }
+.card.mini .card-num span:first-child { font-size: 1.1rem; }
+.suit-mini { font-size: 1.1rem; margin-top: 2px; }
+.card.mini .suit-mini { font-size: 0.8rem; }
 
-.card-pattern { position: absolute; inset: 0; background: #3b82f6; border: 2px solid #fff; border-radius: 8px; background-image: radial-gradient(circle, #fff 1px, transparent 1px); background-size: 5px 5px; }
+.card-pattern { position: absolute; inset: 0; background: #3b82f6; border: 3px solid #fff; border-radius: 10px; background-image: radial-gradient(circle, #fff 1.5px, transparent 1.5px); background-size: 7px 7px; }
 .is-flipped { transform: rotateY(180deg); }
 .card-red { color: #ef4444; } .card-black { color: #1e293b; }
 
 /* Hole Card Sash Style Update */
 .hole-card-sash.bottom-left { 
-  position: absolute; bottom: 0; left: 0; width: 24px; height: 24px; 
-  overflow: hidden; z-index: 10; border-radius: 0 0 0 8px;
+  position: absolute; bottom: 0; left: 0; width: 32px; height: 32px; 
+  overflow: hidden; z-index: 10; border-radius: 0 0 0 10px;
 }
 .hole-card-sash.bottom-left span { 
-  position: absolute; bottom: 4px; left: -12px; width: 42px; 
+  position: absolute; bottom: 6px; left: -15px; width: 55px; 
   background: linear-gradient(to right, #facc15, #fbbf24); 
-  color: #000; font-size: 0.5rem; font-weight: 900; 
+  color: #000; font-size: 0.65rem; font-weight: 900; 
   transform: rotate(45deg); text-align: center; border: 1px solid rgba(0,0,0,0.1);
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-.bet-chip-pill { background: #fff; color: #ef4444; padding: 1px 8px; border-radius: 20px; font-size: 0.6rem; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.2); margin-top: -2px; }
+.bet-chip-pill { background: #fff; color: #ef4444; padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 900; box-shadow: 0 2px 6px rgba(0,0,0,0.2); margin-top: -4px; }
 
 /* Center Zone - Fills middle space and centers content vertically */
 .center-zone { 
   flex: 1; display: flex; flex-direction: column; align-items: center; 
-  justify-content: center; gap: 8px; z-index: 60; 
+  justify-content: center; gap: 12px; z-index: 60; margin-top: 125px;
 }
-.pot-display-modern { background: rgba(0,0,0,0.85); padding: 8px 35px; border-radius: 40px; border: 3px solid #facc15; color: #facc15; text-align: center; box-shadow: 0 8px 25px rgba(0,0,0,0.4); }
-.pot-display-modern .label { font-size: 0.55rem; font-weight: 900; letter-spacing: 2px; }
-.pot-display-modern .val { font-size: 1.8rem; font-weight: 900; display: flex; align-items: center; gap: 8px; }
-.round-tag { font-size: 0.7rem; color: #fff; font-weight: 900; background: rgba(255,255,255,0.15); padding: 3px 14px; border-radius: 12px; }
-.status-hint { font-size: 0.85rem; font-weight: 800; color: #fff; height: 24px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+.pot-display-modern { background: rgba(0,0,0,0.85); padding: 12px 45px; border-radius: 50px; border: 4px solid #facc15; color: #facc15; text-align: center; box-shadow: 0 12px 35px rgba(0,0,0,0.4); }
+.pot-display-modern .label { font-size: 0.65rem; font-weight: 900; letter-spacing: 3px; }
+.pot-display-modern .val { font-size: 2.4rem; font-weight: 900; display: flex; align-items: center; gap: 10px; }
+.round-tag { font-size: 0.85rem; color: #fff; font-weight: 900; background: rgba(255,255,255,0.15); padding: 4px 18px; border-radius: 14px; }
+.status-hint { font-size: 1.1rem; font-weight: 800; color: #fff; height: 30px; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
 
 /* Selection UI (Integrated into bottom bar) */
 .selection-phase-ui-v2 { 
@@ -606,13 +606,16 @@ onUnmounted(() => stopSelectionCountdown())
 @media (max-width: 600px) {
   .poker-table { border-radius: 40px; }
   .opponents-zone { flex: 0 0 110px; }
-  .center-zone { margin-top: 125px; } /* Increased to 125px to avoid overlapping top AI */
-  .pot-display-modern { padding: 4px 20px; }
-  .pot-display-modern .val { font-size: 1.4rem; }
+  .center-zone { margin-top: 135px; gap: 3px; } /* Increased margin to 135px and tighter gaps */
+  .pot-display-modern { padding: 3px 15px; border-width: 2px; }
+  .pot-display-modern .label { font-size: 0.45rem; letter-spacing: 1px; }
+  .pot-display-modern .val { font-size: 1rem; gap: 4px; }
+  .round-tag { font-size: 0.6rem; padding: 1px 8px; }
+  .status-hint { font-size: 0.7rem; height: 16px; }
   .ai-node { width: 120px; }
   .pos-3-0 { top: 10%; } .pos-3-2 { top: 10%; }
-  .selection-phase-ui-v2 { scale: 0.9; padding: 6px 10px; }
-  .confirm-selection-btn { padding: 8px 15px; font-size: 0.9rem; }
+  .selection-phase-ui-v2 { scale: 0.8; padding: 6px 8px; }
+  .confirm-selection-btn { padding: 8px 12px; font-size: 0.8rem; }
 }
 @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 
