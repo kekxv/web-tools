@@ -52,9 +52,9 @@
                 <div class="form-row">
                   <span class="label">对手数量</span>
                   <el-radio-group v-model="aiCount" class="full-w custom-radio">
-                    <el-radio-button :label="1">1 VS 1</el-radio-button>
-                    <el-radio-button :label="2">1 VS 2</el-radio-button>
-                    <el-radio-button :label="3">1 VS 3</el-radio-button>
+                    <el-radio-button :value="1">1 VS 1</el-radio-button>
+                    <el-radio-button :value="2">1 VS 2</el-radio-button>
+                    <el-radio-button :value="3">1 VS 3</el-radio-button>
                   </el-radio-group>
                 </div>
               </div>
@@ -68,7 +68,7 @@
             <div class="opponents-zone">
               <div v-for="(ai, index) in opponents" :key="ai.id" 
                 class="ai-node" 
-                :class="[`pos-${aiCount}-${index}`, { 'active': activePlayerIndex === index && gameState === 'ai_turn', 'folded': ai.isFolded }]"
+                :class="[`pos-${aiCount}-${index}`, { 'active': activePlayerIndex === index && (gameState === 'ai_turn' || gameState === 'choosing_hole_card'), 'folded': ai.isFolded }]"
               >
                 <div class="ai-profile-box">
                   <div class="avatar-box ai">
@@ -83,7 +83,7 @@
                 <!-- AI Hands -->
                 <div class="cards-area stacked mini ai-hand-row">
                   <TransitionGroup name="deal">
-                    <div v-if="ai.hiddenCard" key="h" class="card-slot mini">
+                    <div v-if="ai.hiddenCard" :key="`ai-${ai.id}-h`" class="card-slot mini">
                       <div class="card mini card-back" :class="{ 'is-flipped': showCardsRevealed }">
                         <div class="card-front" :class="getCardClass(ai.hiddenCard)">
                           <div class="card-num"><span>{{ ai.hiddenCard.display }}</span><span class="suit-mini">{{ ai.hiddenCard.suit }}</span></div>
@@ -91,7 +91,7 @@
                         <div class="card-pattern"></div>
                       </div>
                     </div>
-                    <div v-for="(card, cIdx) in ai.visibleCards" :key="cIdx" class="card-slot mini">
+                    <div v-for="(card, cIdx) in ai.visibleCards" :key="`ai-${ai.id}-v-${cIdx}`" class="card-slot mini">
                       <div class="card mini" :class="getCardClass(card)">
                         <div class="card-num"><span>{{ card.display }}</span><span class="suit-mini">{{ card.suit }}</span></div>
                       </div>
@@ -110,20 +110,36 @@
               </div>
               <div class="round-tag">ROUND {{ currentRound }}</div>
               <div class="status-hint" :class="messageType">{{ message }}</div>
+              
+              <!-- Selection Phase Indicator with Countdown -->
+              <div v-if="gameState === 'choosing_hole_card'" class="selection-box">
+                <div class="selection-tip">点击牌切换底牌</div>
+                <button @click="confirmHoleCard" class="confirm-select-btn">
+                  确定底牌 ({{ selectionCountdown }}s)
+                </button>
+              </div>
             </div>
 
             <!-- Player Zone -->
             <div v-if="gameState !== 'not_started'" class="player-zone" :class="{ 'active': activePlayerIndex === opponents.length && gameState === 'player_turn', 'folded': isPlayerFolded }">
               <div class="cards-area stacked player-hand-row">
                 <TransitionGroup name="deal">
-                  <div v-if="playerHiddenCard" key="ph" class="card-slot">
-                    <div class="card" :class="getCardClass(playerHiddenCard)">
+                  <!-- Hidden Card -->
+                  <div v-if="playerHiddenCard" key="ph" class="card-slot" 
+                    :class="{ 'selectable': gameState === 'choosing_hole_card' }"
+                    @click="handleCardClick(-1)"
+                  >
+                    <div class="card" :class="[getCardClass(playerHiddenCard), { 'selection-glow': gameState === 'choosing_hole_card' }]">
                       <div class="card-num"><span>{{ playerHiddenCard.display }}</span><span class="suit-mini">{{ playerHiddenCard.suit }}</span></div>
                       <div class="hole-card-sash bottom-left"><span>底</span></div>
                     </div>
                   </div>
-                  <div v-for="(card, idx) in playerVisibleCards" :key="'pv'+idx" class="card-slot">
-                    <div class="card" :class="getCardClass(card)">
+                  <!-- Visible Cards -->
+                  <div v-for="(card, idx) in playerVisibleCards" :key="'pv'+idx" class="card-slot" 
+                    :class="{ 'selectable': gameState === 'choosing_hole_card' && idx === playerVisibleCards.length - 1 }"
+                    @click="handleCardClick(idx)"
+                  >
+                    <div class="card" :class="[getCardClass(card), { 'selection-glow': gameState === 'choosing_hole_card' && idx === playerVisibleCards.length - 1 }]">
                       <div class="card-num"><span>{{ card.display }}</span><span class="suit-mini">{{ card.suit }}</span></div>
                     </div>
                   </div>
@@ -147,6 +163,12 @@
 
       <!-- Action Controls -->
       <div v-if="gameState !== 'not_started'" class="bottom-controls">
+        <!-- Selection Phase Hint -->
+        <div v-if="gameState === 'choosing_hole_card'" class="selection-phase-ui">
+          <span class="hint-text">发牌中：您可以将最新的明牌设为底牌</span>
+        </div>
+
+        <!-- Normal Betting Controls -->
         <div v-if="gameState === 'player_turn'" class="btn-group">
           <button @click="fold" class="game-btn gray">弃牌</button>
           <button v-if="canCheck" @click="check" class="game-btn blue">过牌</button>
@@ -154,13 +176,15 @@
           <button v-if="playerChips > 0" @click="openRaiseDialog" class="game-btn orange">加注</button>
           <button v-if="playerChips > 0 && canAllIn" @click="allIn" class="game-btn red pulse">梭哈</button>
         </div>
+
         <div v-if="gameState === 'ai_turn'" class="thinking-ui">
           <div class="loader-dots"><span></span><span></span><span></span></div>
           <span class="txt">{{ opponents[activePlayerIndex]?.name }} 行动中...</span>
         </div>
+
         <div v-if="gameState === 'round_over'" class="end-actions">
-          <el-button type="primary" @click="newRound" size="large" round>下一局</el-button>
-          <el-button @click="resetGame" size="large" round plain>重设</el-button>
+          <el-button type="primary" @click="newRound" size="large" round v-if="playerChips > 0">下一局</el-button>
+          <el-button @click="resetGame" size="large" round plain>重新开局</el-button>
         </div>
       </div>
     </div>
@@ -188,10 +212,14 @@
     <el-dialog v-model="showResult" :show-close="false" width="400px" class="poker-dialog-v2 result-mode" :align-center="true">
       <div class="result-wrap-v2" :class="resultClass">
         <div class="res-head">
-          <el-icon class="res-icon"><Trophy v-if="resultClass==='win'"/><CircleClose v-else/></el-icon>
+          <el-icon class="res-icon">
+            <Trophy v-if="resultClass==='win'"/>
+            <CircleClose v-else-if="resultClass==='loss'"/>
+            <WarningFilled v-else/>
+          </el-icon>
           <h2>{{ resultTitle }}</h2>
         </div>
-        <div class="showdown-list">
+        <div v-if="showdownResults.length > 0" class="showdown-list">
           <div v-for="p in showdownResults" :key="p.name" class="showdown-item" :class="{ 'is-winner': p.isWinner }">
             <div class="p-info">
               <span class="p-name">{{ p.name }}</span>
@@ -203,28 +231,30 @@
           </div>
         </div>
         <div class="res-footer">
-          <span>总底池: <strong>{{ lastPot }}</strong></span>
+          <span v-if="resultClass !== 'game_over'">总底池: <strong>{{ lastPot }}</strong></span>
+          <span v-else>您已输光所有筹码，请重新开始</span>
         </div>
       </div>
       <template #footer>
-        <el-button type="primary" @click="closeResultDialog" round size="large" class="dialog-action-btn">继续</el-button>
+        <el-button v-if="resultClass !== 'game_over'" type="primary" @click="closeResultDialog" round size="large" class="dialog-action-btn">继续</el-button>
+        <el-button v-else type="danger" @click="resetGame" round size="large" class="dialog-action-btn">回到大厅</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
-  Grid, HomeFilled, Refresh, RefreshRight, Coin, Monitor, Money, User, Trophy, CircleClose
+  Grid, HomeFilled, Refresh, RefreshRight, Coin, Monitor, Money, User, Trophy, CircleClose, WarningFilled
 } from '@element-plus/icons-vue'
 import { Deck, Card, HandType, evaluateHand, compareHands, evaluateHandPotential } from '../utils/poker'
 
 const router = useRouter()
 const showMenu = ref(false)
 
-type GameState = 'not_started' | 'player_turn' | 'ai_turn' | 'round_over'
+type GameState = 'not_started' | 'choosing_hole_card' | 'player_turn' | 'ai_turn' | 'round_over'
 const gameState = ref<GameState>('not_started')
 const initialChips = ref(1000)
 const aiCount = ref(1)
@@ -269,6 +299,9 @@ const canCheck = ref(false)
 const canAllIn = ref(false)
 const callAmount = ref(0)
 
+const selectionCountdown = ref(5)
+let countdownInterval: any = null
+
 const goHome = () => router.push('/')
 const getCardClass = (c: Card | null) => (!c ? '' : (c.suit === '♥' || c.suit === '♦' ? 'card-red' : 'card-black'))
 
@@ -284,19 +317,62 @@ const startGame = () => {
 }
 
 const newRound = () => {
+  if (playerChips.value <= 0) { resetGame(); return }
   deck.value = new Deck(); deck.value.shuffle(); pot.value = 0; highestBet.value = 0; currentRound.value = 1
   currentBet.value = 0; isPlayerFolded.value = false; playerVisibleCards.value = []; playerHasActed.value = false
   opponents.value.forEach(ai => { ai.isFolded = false; ai.visibleCards = []; ai.currentBet = 0; ai.message = ''; ai.hasActed = false; ai.chips = Math.max(ai.chips, 100) })
-  if (playerChips.value < 10) playerChips.value = initialChips.value
   
-  showCardsRevealed.value = false; showResult.value = false
-  playerHiddenCard.value = deck.value.deal(); playerVisibleCards.value.push(deck.value.deal())
+  showCardsRevealed.value = false; showResult.value = false; showdownResults.value = []
+  playerHiddenCard.value = deck.value.deal(); 
+  playerVisibleCards.value.push(deck.value.deal())
   opponents.value.forEach(ai => { ai.hiddenCard = deck.value!.deal(); ai.visibleCards.push(deck.value!.deal()) })
   
-  placeBet(-1, 10); opponents.value.forEach((_, i) => placeBet(i, 10)); determineFirstPlayer()
+  enterSelectionPhase()
+}
+
+const enterSelectionPhase = () => {
+  gameState.value = 'choosing_hole_card'
+  message.value = '点击牌选择底牌'
+  startSelectionCountdown()
+}
+
+const startSelectionCountdown = () => {
+  selectionCountdown.value = 5
+  if (countdownInterval) clearInterval(countdownInterval)
+  countdownInterval = setInterval(() => {
+    selectionCountdown.value--
+    if (selectionCountdown.value <= 0) confirmHoleCard()
+  }, 1000)
+}
+
+const stopSelectionCountdown = () => { if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null } }
+
+const handleCardClick = (idx: number) => {
+  if (gameState.value !== 'choosing_hole_card' || !playerHiddenCard.value) return
+  stopSelectionCountdown()
+  if (idx === playerVisibleCards.value.length - 1) {
+    const temp = playerHiddenCard.value; playerHiddenCard.value = playerVisibleCards.value[idx]; playerVisibleCards.value[idx] = temp
+  }
+}
+
+const confirmHoleCard = () => {
+  stopSelectionCountdown()
+  opponents.value.forEach(ai => {
+    if (ai.isFolded) return
+    const newCard = ai.visibleCards[ai.visibleCards.length - 1]
+    if (newCard.value > ai.hiddenCard!.value) {
+      const temp = ai.hiddenCard!; ai.hiddenCard = newCard; ai.visibleCards[ai.visibleCards.length - 1] = temp
+    }
+  })
+  if (currentRound.value === 1) {
+    placeBet(-1, 10); opponents.value.forEach((_, i) => placeBet(i, 10))
+  }
+  determineFirstPlayer()
 }
 
 const placeBet = (idx: number, amt: number) => {
+  const player = idx === -1 ? { chips: playerChips.value, currentBet: currentBet.value } : opponents.value[idx]
+  if (player.chips <= 0 && amt > 0) return 
   const actual = idx === -1 ? Math.min(amt, playerChips.value) : Math.min(amt, opponents.value[idx].chips)
   if (idx === -1) { playerChips.value -= actual; currentBet.value += actual }
   else { opponents.value[idx].chips -= actual; opponents.value[idx].currentBet += actual }
@@ -304,8 +380,7 @@ const placeBet = (idx: number, amt: number) => {
   const totalBet = idx === -1 ? currentBet.value : opponents.value[idx].currentBet
   if (totalBet > highestBet.value) {
     highestBet.value = totalBet
-    playerHasActed.value = (idx === -1)
-    opponents.value.forEach((ai, i) => { if (i !== idx) ai.hasActed = false })
+    playerHasActed.value = (idx === -1); opponents.value.forEach((ai, i) => { if (i !== idx) ai.hasActed = false })
   }
 }
 
@@ -317,69 +392,81 @@ const determineFirstPlayer = () => {
 }
 
 const nextTurn = () => {
+  if (gameState.value === 'round_over' || gameState.value === 'not_started') return
+
   const activeCount = [!isPlayerFolded.value, ...opponents.value.map(ai => !ai.isFolded)].filter(v => v).length
   if (activeCount <= 1) { showdown(); return }
   
-  const players = [...opponents.value.map(ai => ({ isFolded: ai.isFolded, currentBet: ai.currentBet, hasActed: ai.hasActed })), { isFolded: isPlayerFolded.value, currentBet: currentBet.value, hasActed: playerHasActed.value }]
-  const everyoneActed = players.every(p => p.isFolded || (p.hasActed && p.currentBet === highestBet.value))
+  const totalPlayers = opponents.value.length + 1
+  if (activePlayerIndex.value >= totalPlayers) activePlayerIndex.value = 0
+
+  const players = [...opponents.value.map(ai => ({ isFolded: ai.isFolded, currentBet: ai.currentBet, hasActed: ai.hasActed, chips: ai.chips })), 
+                   { isFolded: isPlayerFolded.value, currentBet: currentBet.value, hasActed: playerHasActed.value, chips: playerChips.value }]
+  
+  const everyoneActed = players.every(p => p.isFolded || (p.hasActed && (p.currentBet === highestBet.value || p.chips === 0)) || (p.chips === 0 && p.currentBet <= highestBet.value))
   
   if (everyoneActed) {
-    if (currentRound.value < 4) nextRound(); else showdown()
+    if (currentRound.value < 4) nextRound(); else showdown(); return
+  }
+
+  const currentPlayer = activePlayerIndex.value === opponents.value.length ? 
+    { isFolded: isPlayerFolded.value, chips: playerChips.value } : 
+    opponents.value[activePlayerIndex.value];
+
+  if (!currentPlayer || currentPlayer.isFolded || (currentPlayer.chips === 0 && (activePlayerIndex.value !== opponents.value.length || playerHasActed.value))) {
+    activePlayerIndex.value = (activePlayerIndex.value + 1) % totalPlayers
+    nextTurn()
     return
   }
 
-  if (activePlayerIndex.value === opponents.value.length) {
-    if (isPlayerFolded.value) { activePlayerIndex.value = 0; nextTurn() } else startPlayerTurn()
-  } else {
-    if (opponents.value[activePlayerIndex.value].isFolded) { activePlayerIndex.value = (activePlayerIndex.value + 1) % (opponents.value.length + 1); nextTurn() }
-    else { gameState.value = 'ai_turn'; setTimeout(aiDecision, 1000) }
-  }
+  if (activePlayerIndex.value === opponents.value.length) startPlayerTurn()
+  else { gameState.value = 'ai_turn'; setTimeout(aiDecision, 1000) }
 }
 
 const startPlayerTurn = () => {
-  gameState.value = 'player_turn'; callAmount.value = highestBet.value - currentBet.value
+  if (isPlayerFolded.value || playerChips.value <= 0) {
+    playerHasActed.value = true
+    activePlayerIndex.value = (activePlayerIndex.value + 1) % (opponents.value.length + 1)
+    nextTurn()
+    return
+  }
+  gameState.value = 'player_turn'; message.value = '到你了'
+  callAmount.value = highestBet.value - currentBet.value
   canCall.value = callAmount.value > 0 && playerChips.value >= callAmount.value
   canCheck.value = callAmount.value === 0; canAllIn.value = playerChips.value > 0
   minRaise.value = callAmount.value + 10; maxRaise.value = playerChips.value; raiseAmount.value = minRaise.value
 }
 
 const setAiMessage = (ai: any, msg: string) => {
-  ai.message = msg
-  setTimeout(() => { if (ai.message === msg) ai.message = '' }, 2500)
+  ai.message = msg; setTimeout(() => { if (ai.message === msg) ai.message = '' }, 2500)
 }
 
 const aiDecision = () => {
+  if (gameState.value !== 'ai_turn') return
   const ai = opponents.value[activePlayerIndex.value]
-  const { score, handType } = evaluateHandPotential([ai.hiddenCard!, ...ai.visibleCards])
+  if (!ai) return
+
+  const { score } = evaluateHandPotential([ai.hiddenCard!, ...ai.visibleCards])
   const toCall = highestBet.value - ai.currentBet
-  
   let action: 'fold' | 'call' | 'raise' | 'check' = toCall > 0 ? 'call' : 'check'
   const aggroFactor = ai.personality === 'aggressive' ? 1.3 : (ai.personality === 'tight' ? 0.7 : 1.0)
-  const bluffChance = ai.personality === 'aggressive' ? 0.15 : 0.05
-  
-  const raiseThreshold = 0.4 / aggroFactor
-  if (score > raiseThreshold || Math.random() < bluffChance) action = 'raise'
-  
-  const foldThreshold = 0.15 * aggroFactor
-  if (toCall > ai.chips * 0.4 && score < foldThreshold) action = 'fold'
+  if (score > 0.4 / aggroFactor || Math.random() < (ai.personality === 'aggressive' ? 0.15 : 0.05)) action = 'raise'
+  if (toCall > ai.chips * 0.4 && score < 0.15 * aggroFactor) action = 'fold'
   if (toCall === 0 && action === 'check' && Math.random() < (0.4 * aggroFactor)) action = 'raise'
-
   if (action === 'fold') { ai.isFolded = true; setAiMessage(ai, '弃牌') }
   else if (action === 'raise') { 
-    const raiseAmt = Math.max(50, highestBet.value)
-    const actualAdd = Math.min(ai.chips, toCall + raiseAmt)
+    const raiseAmt = Math.max(50, highestBet.value); const actualAdd = Math.min(ai.chips, toCall + raiseAmt)
     placeBet(activePlayerIndex.value, actualAdd); setAiMessage(ai, '加注') 
   }
   else if (toCall > 0) { placeBet(activePlayerIndex.value, toCall); setAiMessage(ai, '跟注') }
-  else { setAiMessage(ai, '过牌') }
-  
+  else setAiMessage(ai, '过牌')
   ai.hasActed = true; activePlayerIndex.value = (activePlayerIndex.value + 1) % (opponents.value.length + 1); nextTurn()
 }
 
 const updatePlayerAction = () => { playerHasActed.value = true; activePlayerIndex.value = (activePlayerIndex.value + 1) % (opponents.value.length + 1); nextTurn() }
 const check = () => updatePlayerAction()
 const call = () => { placeBet(-1, callAmount.value); updatePlayerAction() }
-const fold = () => { isPlayerFolded.value = true; updatePlayerAction() }
+const fold = () => { isPlayerFolded.value = true; showdown() }
 const raise = () => { placeBet(-1, raiseAmount.value); showRaiseInput.value = false; updatePlayerAction() }
 const openRaiseDialog = () => { showRaiseInput.value = true }
 const allIn = () => { raiseAmount.value = playerChips.value; raise() }
@@ -388,7 +475,7 @@ const nextRound = () => {
   currentRound.value++; playerHasActed.value = false; opponents.value.forEach(ai => ai.hasActed = false)
   playerVisibleCards.value.push(deck.value!.deal())
   opponents.value.forEach(ai => { if (!ai.isFolded) ai.visibleCards.push(deck.value!.deal()) })
-  determineFirstPlayer()
+  enterSelectionPhase()
 }
 
 const showdown = () => {
@@ -404,15 +491,17 @@ const showdown = () => {
   
   if (winner.type === 'player') { playerChips.value += pot.value; playerWins.value++; resultTitle.value = '胜利!'; resultClass.value = 'win' }
   else {
-    const aiIdx = opponents.value.findIndex(ai => ai.name === winner.name)
-    if (aiIdx !== -1) opponents.value[aiIdx].chips += pot.value
+    const aiIdx = opponents.value.findIndex(ai => ai.name === winner.name); if (aiIdx !== -1) opponents.value[aiIdx].chips += pot.value
     aiWins.value++; resultTitle.value = '落败'; resultClass.value = 'loss'
   }
+  // Check Game Over
+  if (playerChips.value < 10) { resultTitle.value = '筹码耗尽！'; resultClass.value = 'game_over' }
   setTimeout(() => { showResult.value = true }, 1000)
 }
 
 const closeResultDialog = () => { showResult.value = false; newRound() }
-const resetGame = () => { gameState.value = 'not_started'; showResult.value = false }
+const resetGame = () => { stopSelectionCountdown(); gameState.value = 'not_started'; showResult.value = false; showdownResults.value = [] }
+onUnmounted(() => stopSelectionCountdown())
 </script>
 
 <style scoped>
@@ -449,9 +538,9 @@ const resetGame = () => { gameState.value = 'not_started'; showResult.value = fa
 .pos-1-0 { top: 0; left: 50%; transform: translateX(-50%); }
 .pos-2-0 { top: 10%; left: 20%; transform: translateX(-50%); }
 .pos-2-1 { top: 10%; left: 80%; transform: translateX(-50%); }
-.pos-3-0 { top: 15%; left: 15%; transform: translateX(-50%); }
+.pos-3-0 { top: 12%; left: 15%; transform: translateX(-50%); }
 .pos-3-1 { top: 0; left: 50%; transform: translateX(-50%); }
-.pos-3-2 { top: 15%; left: 85%; transform: translateX(-50%); }
+.pos-3-2 { top: 12%; left: 85%; transform: translateX(-50%); }
 
 .ai-profile-box { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
 .avatar-box { width: 44px; height: 44px; border-radius: 12px; background: #1e293b; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.4); position: relative; }
@@ -482,23 +571,58 @@ const resetGame = () => { gameState.value = 'not_started'; showResult.value = fa
 .is-flipped { transform: rotateY(180deg); }
 .card-red { color: #ef4444; } .card-black { color: #1e293b; }
 
-/* Hole Card Sash */
-.hole-card-sash.bottom-left { position: absolute; bottom: 0; left: 0; width: 22px; height: 22px; overflow: hidden; z-index: 10; border-radius: 0 0 0 8px; }
-.hole-card-sash.bottom-left span { position: absolute; bottom: 3px; left: -10px; width: 38px; background: #facc15; color: #000; font-size: 0.45rem; font-weight: 900; transform: rotate(45deg); text-align: center; border: 1px solid #000; }
+/* Hole Card Sash Style Update */
+.hole-card-sash.bottom-left { 
+  position: absolute; bottom: 0; left: 0; width: 24px; height: 24px; 
+  overflow: hidden; z-index: 10; border-radius: 0 0 0 8px;
+}
+.hole-card-sash.bottom-left span { 
+  position: absolute; bottom: 4px; left: -12px; width: 42px; 
+  background: linear-gradient(to right, #facc15, #fbbf24); 
+  color: #000; font-size: 0.5rem; font-weight: 900; 
+  transform: rotate(45deg); text-align: center; border: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
 
-.bet-chip-pill { background: #fff; color: #ef4444; padding: 1px 8px; border-radius: 20px; font-size: 0.6rem; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.2); margin-top: 4px; }
+.bet-chip-pill { background: #fff; color: #ef4444; padding: 1px 8px; border-radius: 20px; font-size: 0.6rem; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.2); margin-top: -2px; }
 
 /* Center Zone */
-.center-zone { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.center-zone { display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 60; }
 .pot-display-modern { background: rgba(0,0,0,0.8); padding: 8px 30px; border-radius: 40px; border: 3px solid #facc15; color: #facc15; text-align: center; }
 .pot-display-modern .label { font-size: 0.55rem; font-weight: 900; letter-spacing: 2px; }
 .pot-display-modern .val { font-size: 1.8rem; font-weight: 900; display: flex; align-items: center; gap: 8px; }
 .round-tag { font-size: 0.7rem; color: #fff; font-weight: 900; background: rgba(255,255,255,0.15); padding: 3px 14px; border-radius: 12px; }
 .status-hint { font-size: 0.85rem; font-weight: 800; color: #fff; height: 20px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
 
+/* Hole Card Selection UI - Moved Higher */
+.selection-box { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: -45px; z-index: 100; position: relative; }
+.selection-tip { background: #facc15; color: #000; padding: 4px 15px; border-radius: 20px; font-weight: 900; font-size: 0.75rem; animation: bounce 1s infinite; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+.confirm-select-btn { background: #22c55e; color: #fff; border: none; padding: 12px 35px; border-radius: 16px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 0 rgba(21,128,61,1); font-size: 1.05rem; transition: all 0.2s; }
+.confirm-select-btn:active { transform: translateY(2px); box-shadow: none; }
+
+@media (max-width: 600px) {
+  .poker-table { border-radius: 40px; }
+  .opponents-zone { flex: 0 0 110px; }
+  .selection-box { margin-top: -65px; scale: 0.9; }
+  .confirm-select-btn { padding: 10px 25px; }
+  .pot-display-modern { padding: 4px 20px; }
+  .pot-display-modern .val { font-size: 1.4rem; }
+  .ai-node { width: 120px; }
+  .pos-3-0 { top: 10%; } .pos-3-2 { top: 10%; }
+}
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
 /* Player Zone */
 .player-zone { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .player-hand-row { min-height: 80px; }
+.card-slot.selectable { cursor: pointer; transition: transform 0.3s ease; }
+.selection-glow { 
+  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4), 0 0 10px rgba(59, 130, 246, 0.2);
+  transform: translateY(-10px) scale(1.05);
+  z-index: 50;
+  border: 2px solid #3b82f6 !important;
+}
+
 .user-seat-modern { display: flex; align-items: center; gap: 12px; }
 .user-info-card { background: #fff; padding: 6px 16px; border-radius: 14px; min-width: 150px; box-shadow: 0 4px 15px rgba(0,0,0,0.25); }
 .user-info-card .row-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
@@ -508,13 +632,16 @@ const resetGame = () => { gameState.value = 'not_started'; showResult.value = fa
 
 /* Control Bar */
 .bottom-controls { background: #fff; padding: 12px; border-top: 1px solid #e2e8f0; display: flex; justify-content: center; min-height: 90px; flex-shrink: 0; }
+.selection-phase-ui { display: flex; align-items: center; justify-content: center; background: #eff6ff; padding: 8px 20px; border-radius: 12px; border: 1px dashed #3b82f6; }
+.selection-phase-ui .hint-text { color: #1d4ed8; font-weight: 900; font-size: 0.85rem; }
+
 .btn-group { display: flex; gap: 10px; width: 100%; max-width: 540px; }
 .game-btn { flex: 1; border: none; border-radius: 12px; padding: 12px 0; font-weight: 900; font-size: 0.85rem; color: #fff; cursor: pointer; box-shadow: 0 4.5px 0 rgba(0,0,0,0.1); transition: all 0.2s; }
 .game-btn:active { transform: translateY(3px); box-shadow: none; }
 .gray { background: #64748b; } .blue { background: #0ea5e9; } .green { background: #22c55e; } .orange { background: #f59e0b; } .red { background: #ef4444; }
 
 .bubble.ai { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); background: #fff; padding: 4px 14px; border-radius: 14px; font-size: 0.75rem; font-weight: 900; color: #1e293b; box-shadow: 0 5px 15px rgba(0,0,0,0.2); white-space: nowrap; z-index: 100; }
-.bubble.ai::after { content: ''; position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 8px solid #fff; }
+.bubble.ai::after { color: #fff; }
 
 /* Transitions for AI Messages */
 .bubble-fade-enter-active, .bubble-fade-leave-active { transition: all 0.3s ease; }
@@ -547,7 +674,7 @@ const resetGame = () => { gameState.value = 'not_started'; showResult.value = fa
 .result-wrap-v2 { text-align: center; }
 .res-head { margin-bottom: 20px; }
 .res-icon { font-size: 3.5rem; margin-bottom: 10px; }
-.win .res-icon { color: #facc15; } .loss .res-icon { color: #94a3b8; }
+.win .res-icon { color: #facc15; } .loss .res-icon { color: #94a3b8; } .game_over .res-icon { color: #ef4444; }
 .res-head h2 { font-size: 1.8rem; font-weight: 900; margin: 0; color: #1e293b; }
 
 .showdown-list { background: #f8fafc; border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; border: 1.5px solid #e2e8f0; }
