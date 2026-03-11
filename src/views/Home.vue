@@ -58,6 +58,12 @@ const tools = [
     title: '梭哈',
     description: '经典扑克游戏，与 AI 对战比拼牌力',
     icon: 'Van'
+  },
+  {
+    path: '/mahjong',
+    title: '广东麻将',
+    description: '经典广东麻将，1 人对战 3 个 AI',
+    icon: 'Grid'
   }
 ]
 </script>

@@ -7,6 +7,7 @@ import HashView from '../views/HashView.vue'
 import GobangView from '../views/GobangView.vue'
 import Game24View from '../views/Game24View.vue'
 import ShowHandView from '../views/ShowHandView.vue'
+import MahjongView from '../views/MahjongView.vue'
 
 const routes = [
   {
@@ -54,6 +55,12 @@ const routes = [
         name: 'ShowHand',
         component: ShowHandView,
         meta: { title: '梭哈' }
+      },
+      {
+        path: 'mahjong',
+        name: 'Mahjong',
+        component: MahjongView,
+        meta: { title: '广东麻将' }
       }
     ]
   }
