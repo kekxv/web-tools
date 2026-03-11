@@ -1,31 +1,6 @@
 <template>
   <div class="showhand-view" ref="gameContainer">
     <div class="game-wrapper">
-      <!-- Optimized Header -->
-      <header class="app-header">
-        <div class="header-content">
-          <div class="header-left">
-            <button @click="toggleMenu" class="menu-trigger-btn">
-              <el-icon><Menu /></el-icon>
-            </button>
-            <div class="brand-box">
-              <h1 class="brand-title">梭哈对决</h1>
-              <span class="brand-sub">PRO EDITION</span>
-            </div>
-          </div>
-          <div class="header-center mobile-hide"></div>
-          <div class="header-right">
-            <div class="round-indicator-modern">
-              <span class="l">局</span>
-              <span class="v">{{ roundCount + 1 }}</span>
-            </div>
-            <button @click="resetGame" class="header-reset-btn" title="重开本局">
-              <el-icon><RefreshRight /></el-icon>
-            </button>
-          </div>
-        </div>
-      </header>
-
       <!-- Poker Table Container -->
       <div class="poker-table-container">
         <div class="poker-table">
@@ -46,6 +21,10 @@
                     <el-radio-button :value="2">1 VS 2</el-radio-button>
                     <el-radio-button :value="3">1 VS 3</el-radio-button>
                   </el-radio-group>
+                </div>
+                <div class="form-row">
+                  <span class="label">底牌设置</span>
+                  <el-checkbox v-model="allowSwitchHoleCard" class="full-w">允许切换底牌</el-checkbox>
                 </div>
               </div>
               <button @click="startGame" class="start-btn-modern">开始游戏</button>
@@ -105,21 +84,21 @@
               <div class="cards-area stacked player-hand-row">
                 <TransitionGroup name="deal">
                   <!-- Hidden Card -->
-                  <div v-if="playerHiddenCard" key="ph" class="card-slot" 
-                    :class="{ 'selectable': gameState === 'choosing_hole_card' }"
-                    @click="handleCardClick(-1)"
+                  <div v-if="playerHiddenCard" key="ph" class="card-slot"
+                    :class="{ 'selectable': gameState === 'choosing_hole_card' && allowSwitchHoleCard }"
+                    @click="allowSwitchHoleCard ? handleCardClick(-1) : null"
                   >
-                    <div class="card" :class="[getCardClass(playerHiddenCard), { 'selection-glow': gameState === 'choosing_hole_card' }]">
+                    <div class="card" :class="[getCardClass(playerHiddenCard), { 'selection-glow': gameState === 'choosing_hole_card' && allowSwitchHoleCard }]">
                       <div class="card-num"><span>{{ playerHiddenCard.display }}</span><span class="suit-mini">{{ playerHiddenCard.suit }}</span></div>
                       <div class="hole-card-sash bottom-left"><span>底</span></div>
                     </div>
                   </div>
                   <!-- Visible Cards -->
-                  <div v-for="(card, idx) in playerVisibleCards" :key="'pv'+idx" class="card-slot" 
-                    :class="{ 'selectable': gameState === 'choosing_hole_card' && idx === playerVisibleCards.length - 1 }"
-                    @click="handleCardClick(idx)"
+                  <div v-for="(card, idx) in playerVisibleCards" :key="'pv'+idx" class="card-slot"
+                    :class="{ 'selectable': gameState === 'choosing_hole_card' && allowSwitchHoleCard && idx === playerVisibleCards.length - 1 }"
+                    @click="allowSwitchHoleCard ? handleCardClick(idx) : null"
                   >
-                    <div class="card" :class="[getCardClass(card), { 'selection-glow': gameState === 'choosing_hole_card' && idx === playerVisibleCards.length - 1 }]">
+                    <div class="card" :class="[getCardClass(card), { 'selection-glow': gameState === 'choosing_hole_card' && allowSwitchHoleCard && idx === playerVisibleCards.length - 1 }]">
                       <div class="card-num"><span>{{ card.display }}</span><span class="suit-mini">{{ card.suit }}</span></div>
                     </div>
                   </div>
@@ -144,7 +123,7 @@
       <!-- Action Controls -->
       <div v-if="gameState !== 'not_started'" class="bottom-controls">
         <!-- Selection Phase UI (Integrated into bottom bar) -->
-        <div v-if="gameState === 'choosing_hole_card'" class="selection-phase-ui-v2">
+        <div v-if="gameState === 'choosing_hole_card' && allowSwitchHoleCard" class="selection-phase-ui-v2">
           <div class="hint-stack">
             <span class="l1">发牌中...</span>
             <span class="l2">点击牌面切换底牌</span>
@@ -243,6 +222,7 @@ type GameState = 'not_started' | 'choosing_hole_card' | 'player_turn' | 'ai_turn
 const gameState = ref<GameState>('not_started')
 const initialChips = ref(1000)
 const aiCount = ref(1)
+const allowSwitchHoleCard = ref(true)
 
 interface AIPlayer {
   id: number; name: string; chips: number;
@@ -289,11 +269,6 @@ let countdownInterval: any = null
 
 const getCardClass = (c: Card | null) => (!c ? '' : (c.suit === '♥' || c.suit === '♦' ? 'card-red' : 'card-black'))
 
-const toggleMenu = () => {
-  // 触发自定义事件，通知父组件切换菜单
-  window.dispatchEvent(new CustomEvent('toggle-sidebar'))
-}
-
 const startGame = () => {
   const personalities: ('aggressive' | 'tight' | 'balanced')[] = ['aggressive', 'tight', 'balanced'];
   opponents.value = Array.from({ length: aiCount.value }, (_, i) => ({
@@ -320,6 +295,12 @@ const newRound = () => {
 }
 
 const enterSelectionPhase = () => {
+  if (!allowSwitchHoleCard.value) {
+    // 不允许切换底牌，直接进入下注阶段
+    gameState.value = 'player_turn' // 临时设置状态，避免 nextTurn 直接返回
+    confirmHoleCard()
+    return
+  }
   gameState.value = 'choosing_hole_card'
   message.value = '点击牌选择底牌'
   startSelectionCountdown()
@@ -423,7 +404,9 @@ const startPlayerTurn = () => {
   callAmount.value = highestBet.value - currentBet.value
   canCall.value = callAmount.value > 0 && playerChips.value >= callAmount.value
   canCheck.value = callAmount.value === 0; canAllIn.value = playerChips.value > 0
-  minRaise.value = callAmount.value + 10; maxRaise.value = playerChips.value; raiseAmount.value = minRaise.value
+  maxRaise.value = playerChips.value
+  minRaise.value = Math.min(callAmount.value + 10, maxRaise.value)
+  raiseAmount.value = minRaise.value
 }
 
 const setAiMessage = (ai: any, msg: string) => {
@@ -494,27 +477,8 @@ onUnmounted(() => stopSelectionCountdown())
 </script>
 
 <style scoped>
-.showhand-view { background: #f1f5f9; height: 100vh; width: 100vw; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; overflow: hidden; }
+.showhand-view { background: #f1f5f9; height: calc(100vh - 60px); width: 100%; display: flex; flex-direction: column; position: relative; overflow: hidden; }
 .game-wrapper { flex: 1; display: flex; flex-direction: column; height: 100%; }
-
-/* Optimized Header Style */
-.app-header { background: #fff; padding: 0 20px; height: 64px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.02); flex-shrink: 0; }
-.header-content { width: 100%; max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
-
-.header-left { display: flex; align-items: center; gap: 15px; }
-.menu-trigger-btn { background: #f8fafc; border: 1.5px solid #e2e8f0; width: 40px; height: 40px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #1e293b; transition: all 0.2s; }
-.menu-trigger-btn:hover { background: #fff; border-color: #3b82f6; color: #3b82f6; }
-
-.brand-box { display: flex; flex-direction: column; line-height: 1.1; }
-.brand-title { font-size: 1.1rem; font-weight: 900; color: #0f172a; margin: 0; letter-spacing: -0.5px; }
-.brand-sub { font-size: 0.55rem; color: #94a3b8; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
-
-.header-center { flex: 1; display: flex; justify-content: center; }
-.header-right { display: flex; align-items: center; gap: 15px; }
-.round-indicator-modern { font-size: 0.85rem; font-weight: 900; color: #64748b; }
-.round-indicator-modern .v { color: #3b82f6; font-size: 1.2rem; margin-left: 2px; }
-.header-reset-btn { background: #fff; border: 1.5px solid #e2e8f0; width: 38px; height: 38px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: #64748b; transition: all 0.2s; }
-.header-reset-btn:hover { border-color: #ef4444; color: #ef4444; background: #fef2f2; }
 
 /* Table Felt */
 .poker-table-container { flex: 1; padding: 20px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
@@ -540,8 +504,8 @@ onUnmounted(() => stopSelectionCountdown())
 .ai-info-pill .chips { color: #f59e0b; }
 
 .cards-area { display: flex; justify-content: center; position: relative; }
-.cards-area.stacked .card-slot + .card-slot { margin-left: -30px; }
-.cards-area.stacked.mini .card-slot + .card-slot { margin-left: -20px; }
+.cards-area.stacked .card-slot + .card-slot { margin-left: -15px; }
+.cards-area.stacked.mini .card-slot + .card-slot { margin-left: -10px; }
 .cards-area .card-slot { flex-shrink: 0; position: relative; }
 
 .card { width: 76px; height: 106px; background: #fff; border-radius: 10px; position: relative; transform-style: preserve-3d; transition: transform 0.6s; box-shadow: 3px 5px 15px rgba(0,0,0,0.3); border: 1px solid rgba(0,0,0,0.05); flex-shrink: 0; }
@@ -606,7 +570,7 @@ onUnmounted(() => stopSelectionCountdown())
 @media (max-width: 600px) {
   .poker-table { border-radius: 40px; }
   .opponents-zone { flex: 0 0 110px; }
-  .center-zone { margin-top: 135px; gap: 3px; } /* Increased margin to 135px and tighter gaps */
+  .center-zone { margin-top: 135px; gap: 3px; }
   .pot-display-modern { padding: 3px 15px; border-width: 2px; }
   .pot-display-modern .label { font-size: 0.45rem; letter-spacing: 1px; }
   .pot-display-modern .val { font-size: 1rem; gap: 4px; }
@@ -616,6 +580,8 @@ onUnmounted(() => stopSelectionCountdown())
   .pos-3-0 { top: 10%; } .pos-3-2 { top: 10%; }
   .selection-phase-ui-v2 { scale: 0.8; padding: 6px 8px; }
   .confirm-selection-btn { padding: 8px 12px; font-size: 0.8rem; }
+  .header-title { font-size: 16px; }
+  .round-indicator { font-size: 13px; }
 }
 @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 
@@ -658,6 +624,7 @@ onUnmounted(() => stopSelectionCountdown())
 .hero-icon { font-size: 3rem; color: #f59e0b; margin-bottom: 12px; }
 .setup-form .form-row { display: flex; flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 20px; }
 .setup-form .label { font-size: 0.9rem; font-weight: 800; color: #64748b; text-align: left; }
+.setup-form .full-w { width: 100%; }
 .start-btn-modern { width: 100%; height: 56px; background: linear-gradient(135deg, #0ea5e9, #2563eb); border: none; border-radius: 16px; color: #fff; font-size: 1.15rem; font-weight: 900; cursor: pointer; margin-top: 20px; box-shadow: 0 8px 20px rgba(37,99,235,0.3); }
 
 /* Premium Dialog V2 Styles */
@@ -696,14 +663,12 @@ onUnmounted(() => stopSelectionCountdown())
 
 @media (max-width: 480px) {
   .app-header { padding: 0 12px; height: 56px; }
-  .brand-title { font-size: 1rem; }
-  .round-indicator-modern .v { font-size: 1.1rem; }
+  .header-title { font-size: 16px; }
   .poker-table { border-radius: 50px; }
   .ai-hand-row { gap: 0 !important; }
   .card { width: 44px; height: 62px; }
   .card.mini { width: 30px; height: 42px; }
   .user-info-card { min-width: 130px; }
   .game-btn { font-size: 0.75rem; }
-  .mobile-hide { display: none; }
 }
 </style>
