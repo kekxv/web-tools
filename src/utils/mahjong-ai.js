@@ -466,7 +466,8 @@ export function aiAfterDraw(hand, drawnTile, config = {}) {
     return { discardIndex: Math.floor(Math.random() * hand.length) }
   }
 
-  const fullHand = [...hand, drawnTile]
+  // 检查手牌是否已经包含摸到的牌（14 张）
+  const fullHand = hand.length === 14 ? hand : [...hand, drawnTile]
 
   // 检查是否能和
   const tsumoResult = aiDecideTsumo(hand, drawnTile, config)

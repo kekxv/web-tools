@@ -59,19 +59,31 @@
                 <span class="score">{{ players[2]?.score }}</span>
               </div>
             </div>
-            <!-- 手牌（横向，背面） -->
-            <div class="hand-tiles horizontal">
-              <div v-for="i in getHandCount(2)" :key="i" class="tile-back h-tile"></div>
+            <!-- 手牌（只显示一张） -->
+            <div class="hand-tiles horizontal single-tile">
+              <div class="tile-back h-tile"></div>
+              <span class="hand-count-label">{{ getHandCount(2) }}牌</span>
             </div>
             <!-- 副露 -->
             <div class="exposed-zone">
               <div v-for="(set, idx) in players[2]?.exposedSets" :key="idx" class="exposed-set">
-                <span v-for="(tile, i) in set.tiles" :key="i" class="exposed-tile" :class="getTileClass(tile)">
-                  <span class="tile-num">{{ getTileNumber(tile) }}</span>
-                  <span v-if="tile.color === 'man'" class="wan">萬</span>
-                  <span v-else-if="tile.color === 'pin'" class="ping">筒</span>
-                  <span v-else-if="tile.color === 'sou'" class="sou">索</span>
-                </span>
+                <!-- 大屏：显示所有牌 -->
+                <div class="exposed-tiles-full">
+                  <span v-for="(tile, i) in set.tiles" :key="i" class="exposed-tile" :class="getTileClass(tile)">
+                    <span class="tile-num">{{ getTileNumber(tile) }}</span>
+                    <span v-if="tile.color === 'man'" class="wan">萬</span>
+                    <span v-else-if="tile.color === 'pin'" class="ping">筒</span>
+                    <span v-else-if="tile.color === 'sou'" class="sou">索</span>
+                  </span>
+                </div>
+                <!-- 小屏：只显示一张牌 + 标签 -->
+                <div class="exposed-tile-simple" :class="getTileClass(set.tiles[0])">
+                  <span class="tile-num">{{ getTileNumber(set.tiles[0]) }}</span>
+                  <span v-if="set.tiles[0].color === 'man'" class="wan">萬</span>
+                  <span v-else-if="set.tiles[0].color === 'pin'" class="ping">筒</span>
+                  <span v-else-if="set.tiles[0].color === 'sou'" class="sou">索</span>
+                  <span class="exposed-label">{{ set.type }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -87,19 +99,31 @@
                 <span class="score">{{ players[1]?.score }}</span>
               </div>
             </div>
-            <!-- 手牌（纵向，背面，两列） -->
-            <div class="hand-tiles vertical double-column">
-              <div v-for="i in getHandCount(1)" :key="i" class="tile-back v-tile"></div>
+            <!-- 手牌（只显示一张） -->
+            <div class="hand-tiles vertical single-tile">
+              <div class="tile-back v-tile"></div>
+              <span class="hand-count-label">{{ getHandCount(1) }}牌</span>
             </div>
             <!-- 副露 -->
             <div class="exposed-zone vertical">
               <div v-for="(set, idx) in players[1]?.exposedSets" :key="idx" class="exposed-set">
-                <span v-for="(tile, i) in set.tiles" :key="i" class="exposed-tile small" :class="getTileClass(tile)">
-                  <span class="tile-num">{{ getTileNumber(tile) }}</span>
-                  <span v-if="tile.color === 'man'" class="wan">萬</span>
-                  <span v-else-if="tile.color === 'pin'" class="ping">筒</span>
-                  <span v-else-if="tile.color === 'sou'" class="sou">索</span>
-                </span>
+                <!-- 大屏：显示所有牌 -->
+                <div class="exposed-tiles-full">
+                  <span v-for="(tile, i) in set.tiles" :key="i" class="exposed-tile small" :class="getTileClass(tile)">
+                    <span class="tile-num">{{ getTileNumber(tile) }}</span>
+                    <span v-if="tile.color === 'man'" class="wan">萬</span>
+                    <span v-else-if="tile.color === 'pin'" class="ping">筒</span>
+                    <span v-else-if="tile.color === 'sou'" class="sou">索</span>
+                  </span>
+                </div>
+                <!-- 小屏：只显示一张牌 + 标签 -->
+                <div class="exposed-tile-simple" :class="getTileClass(set.tiles[0])">
+                  <span class="tile-num">{{ getTileNumber(set.tiles[0]) }}</span>
+                  <span v-if="set.tiles[0].color === 'man'" class="wan">萬</span>
+                  <span v-else-if="set.tiles[0].color === 'pin'" class="ping">筒</span>
+                  <span v-else-if="set.tiles[0].color === 'sou'" class="sou">索</span>
+                  <span class="exposed-label">{{ set.type }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -115,19 +139,31 @@
                 <span class="score">{{ players[3]?.score }}</span>
               </div>
             </div>
-            <!-- 手牌（纵向，背面，两列） -->
-            <div class="hand-tiles vertical double-column">
-              <div v-for="i in getHandCount(3)" :key="i" class="tile-back v-tile"></div>
+            <!-- 手牌（只显示一张） -->
+            <div class="hand-tiles vertical single-tile">
+              <div class="tile-back v-tile"></div>
+              <span class="hand-count-label">{{ getHandCount(3) }}牌</span>
             </div>
             <!-- 副露 -->
             <div class="exposed-zone vertical">
               <div v-for="(set, idx) in players[3]?.exposedSets" :key="idx" class="exposed-set">
-                <span v-for="(tile, i) in set.tiles" :key="i" class="exposed-tile small" :class="getTileClass(tile)">
-                  <span class="tile-num">{{ getTileNumber(tile) }}</span>
-                  <span v-if="tile.color === 'man'" class="wan">萬</span>
-                  <span v-else-if="tile.color === 'pin'" class="ping">筒</span>
-                  <span v-else-if="tile.color === 'sou'" class="sou">索</span>
-                </span>
+                <!-- 大屏：显示所有牌 -->
+                <div class="exposed-tiles-full">
+                  <span v-for="(tile, i) in set.tiles" :key="i" class="exposed-tile small" :class="getTileClass(tile)">
+                    <span class="tile-num">{{ getTileNumber(tile) }}</span>
+                    <span v-if="tile.color === 'man'" class="wan">萬</span>
+                    <span v-else-if="tile.color === 'pin'" class="ping">筒</span>
+                    <span v-else-if="tile.color === 'sou'" class="sou">索</span>
+                  </span>
+                </div>
+                <!-- 小屏：只显示一张牌 + 标签 -->
+                <div class="exposed-tile-simple" :class="getTileClass(set.tiles[0])">
+                  <span class="tile-num">{{ getTileNumber(set.tiles[0]) }}</span>
+                  <span v-if="set.tiles[0].color === 'man'" class="wan">萬</span>
+                  <span v-else-if="set.tiles[0].color === 'pin'" class="ping">筒</span>
+                  <span v-else-if="set.tiles[0].color === 'sou'" class="sou">索</span>
+                  <span class="exposed-label">{{ set.type }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -163,11 +199,6 @@
                 </div>
               </div>
             </div>
-
-            <!-- 状态消息 -->
-            <div class="status-message" :class="messageType">
-              {{ message }}
-            </div>
           </div>
 
           <!-- 玩家区域（底部） -->
@@ -175,12 +206,23 @@
             <!-- 副露 -->
             <div class="exposed-zone player-exposed">
               <div v-for="(set, idx) in players[0]?.exposedSets" :key="idx" class="exposed-set">
-                <span v-for="(tile, i) in set.tiles" :key="i" class="exposed-tile" :class="getTileClass(tile)">
-                  <span class="tile-num">{{ getTileNumber(tile) }}</span>
-                  <span v-if="tile.color === 'man'" class="wan">萬</span>
-                  <span v-else-if="tile.color === 'pin'" class="ping">筒</span>
-                  <span v-else-if="tile.color === 'sou'" class="sou">索</span>
-                </span>
+                <!-- 大屏：显示所有牌 -->
+                <div class="exposed-tiles-full">
+                  <span v-for="(tile, i) in set.tiles" :key="i" class="exposed-tile" :class="getTileClass(tile)">
+                    <span class="tile-num">{{ getTileNumber(tile) }}</span>
+                    <span v-if="tile.color === 'man'" class="wan">萬</span>
+                    <span v-else-if="tile.color === 'pin'" class="ping">筒</span>
+                    <span v-else-if="tile.color === 'sou'" class="sou">索</span>
+                  </span>
+                </div>
+                <!-- 小屏：只显示一张牌 + 标签 -->
+                <div class="exposed-tile-simple" :class="getTileClass(set.tiles[0])">
+                  <span class="tile-num">{{ getTileNumber(set.tiles[0]) }}</span>
+                  <span v-if="set.tiles[0].color === 'man'" class="wan">萬</span>
+                  <span v-else-if="set.tiles[0].color === 'pin'" class="ping">筒</span>
+                  <span v-else-if="set.tiles[0].color === 'sou'" class="sou">索</span>
+                  <span class="exposed-label">{{ set.type }}</span>
+                </div>
               </div>
             </div>
 
@@ -335,6 +377,9 @@ import { AIPlayer, AI_CONFIG } from '../utils/mahjong-ai'
 const gameState = ref('not_started')
 const initialScore = ref(2000)
 const aiDifficulty = ref('normal')
+
+// AI 执行锁，防止多个 AI 同时执行
+let isAiProcessing = false
 const isDealer = ref(true)
 const roundCount = ref(0)
 const currentWind = ref('东')
@@ -496,64 +541,219 @@ const newRound = () => {
 
 // AI 回合
 const aiTurn = async () => {
+  // 防止多个 AI 同时执行
+  if (isAiProcessing) {
+    console.log(`[AI 等待] 玩家${currentPlayer.value} 等待其他 AI 执行，100ms 后重试`)
+    setTimeout(() => aiTurn(), 100)
+    return
+  }
+  isAiProcessing = true
+  console.log(`[AI 锁获取] 玩家${currentPlayer.value} 获取锁`)
+
   gameState.value = 'ai_thinking'
   const ai = players.value[currentPlayer.value]
 
-  // 确保 AI 手牌数量正确
-  if (ai.hand.length < 13) {
-    console.error('AI 手牌数量不足:', ai.hand.length)
+  // 计算正常手牌数量
+  // 麻将规则：13 张手牌，摸牌后 14 张，打牌后回 13 张
+  // 吃/碰：移除 2 张 + 别人 1 张组成副露，然后打 1 张 → 手牌 = 13 - 3 = 10 张（待摸）
+  // 杠：移除 3 张 + 别人 1 张组成副露，然后打 1 张 → 手牌 = 13 - 4 = 9 张（待摸）
+  const chiPonCount = ai.exposedSets.filter(s => s.type === 'chi' || s.type === 'pon').length
+  const kanCount = ai.exposedSets.filter(s => s.type === 'kan').length
+  const expectedHandSize = 13 - chiPonCount * 3 - kanCount * 4
+
+  console.log(`[AI 回合] 玩家${currentPlayer.value} (${ai.name}), 手牌数：${ai.hand.length}, 预期：${expectedHandSize}, 副露：${JSON.stringify(ai.exposedSets.map(s => ({ type: s.type, tiles: s.tiles.length })))}`)
+
+  // 手牌数量应该是 expectedHandSize（待摸牌）或 expectedHandSize + 1（已摸牌）
+  if (ai.hand.length < expectedHandSize) {
+    console.error('AI 手牌数量不足:', ai.hand.length, 'expected:', expectedHandSize, 'exposedSets:', ai.exposedSets)
     handleExhaustedDraw()
     return
   }
 
   await nextTick()
 
-  // 如果 AI 手牌是 13 张，先摸牌
-  if (ai.hand.length === 13) {
+  // 如果 AI 手牌是 expectedHandSize 张，先摸牌
+  if (ai.hand.length === expectedHandSize) {
     const drawnTile = deck.value.draw()
     if (!drawnTile) {
+      console.log(`[AI 流局] 玩家${currentPlayer.value} 摸不到牌，流局`)
       handleExhaustedDraw()
       return
     }
     ai.addTile(drawnTile)
     remainingTiles.value = deck.value.remaining()
+    console.log(`[AI 摸牌] 玩家${currentPlayer.value} 摸到 ${drawnTile.display}`)
 
-    // 稍微延迟，模拟思考
+  // 稍微延迟，模拟思考
     setTimeout(async () => {
-      // 传入 13 张手牌和摸到的牌
-      const hand13 = ai.hand.slice(0, 13)
-      const decision = await ai.think('draw', drawnTile, hand13)
+      console.log(`[AI 思考] 玩家${currentPlayer.value} 开始思考`)
+      try {
+        // 直接传入完整手牌（14 张），让 AI 基于实际手牌做决策
+        const decision = await ai.think('draw', drawnTile, ai.hand)
+        console.log(`[AI 决策] 玩家${currentPlayer.value} 决策：${JSON.stringify(decision)}`)
 
-      if (decision.tsumo) {
-        endRound(ai.id, { type: '自摸', fan: 1, isZimo: true }, true)
-        return
+        if (decision.tsumo) {
+          console.log(`[AI 自摸] 玩家${currentPlayer.value} 自摸`)
+          endRound(ai.id, { type: '自摸', fan: 1, isZimo: true }, true)
+          return
+        }
+
+        let discardIdx = decision.index !== undefined ? decision.index : (decision.discardIndex !== undefined ? decision.discardIndex : -1)
+
+        // 边界检查：确保索引在有效范围内
+        if (discardIdx < 0 || discardIdx >= ai.hand.length) {
+          console.warn(`[AI 警告] 玩家${currentPlayer.value} 决策索引无效：${discardIdx}, 手牌数：${ai.hand.length}, 重新决策`)
+          // 重新调用 AI 决策，传入实际手牌
+          const retryDecision = await ai.think('discard', null, ai.hand)
+          discardIdx = retryDecision.index !== undefined ? retryDecision.index : (retryDecision.discardIndex !== undefined ? retryDecision.discardIndex : 0)
+          // 如果还是无效，使用默认索引 0
+          if (discardIdx < 0 || discardIdx >= ai.hand.length) {
+            discardIdx = 0
+          }
+        }
+
+        if (discardIdx >= 0 && discardIdx < ai.hand.length) {
+          const discarded = ai.discardTile(discardIdx)
+          if (discarded) {
+            console.log(`[AI 打牌] 玩家${currentPlayer.value} 打出 ${discarded.display}`)
+            discardPool.value.push(discarded)
+            lastDiscard.value = discarded
+            lastDiscardFrom.value = ai.id
+            console.log(`[AI 完成] 玩家${currentPlayer.value} 完成，调用 checkNextAction`)
+            checkNextAction(ai.id)
+          } else {
+            console.error(`[AI 错误] 玩家${currentPlayer.value} 打牌失败，尝试随机打牌`)
+            // 尝试随机打一张牌
+            const randomIdx = Math.floor(Math.random() * ai.hand.length)
+            const randomDiscarded = ai.discardTile(randomIdx)
+            if (randomDiscarded) {
+              discardPool.value.push(randomDiscarded)
+              lastDiscard.value = randomDiscarded
+              lastDiscardFrom.value = ai.id
+              checkNextAction(ai.id)
+            } else {
+              console.error(`[AI 致命] 玩家${currentPlayer.value} 手牌为空，强制流局`)
+              handleExhaustedDraw()
+            }
+          }
+        } else {
+          console.error(`[AI 错误] 玩家${currentPlayer.value} 决策索引无效：${discardIdx}, 手牌数：${ai.hand.length}`)
+          // 尝试随机打一张牌
+          if (ai.hand.length > 0) {
+            const randomIdx = Math.floor(Math.random() * ai.hand.length)
+            const randomDiscarded = ai.discardTile(randomIdx)
+            if (randomDiscarded) {
+              discardPool.value.push(randomDiscarded)
+              lastDiscard.value = randomDiscarded
+              lastDiscardFrom.value = ai.id
+              checkNextAction(ai.id)
+            } else {
+              handleExhaustedDraw()
+            }
+          } else {
+            handleExhaustedDraw()
+          }
+        }
+      } catch (e) {
+        console.error(`[AI 异常] 玩家${currentPlayer.value} 思考出错：`, e)
+      } finally {
+        console.log(`[AI 锁释放] 玩家${currentPlayer.value} 释放锁`)
+        isAiProcessing = false
       }
+    }, ai.config.THINK_TIME)
+  } else if (ai.hand.length === expectedHandSize + 1) {
+    // AI 是庄家或刚摸过牌，直接打牌
+    setTimeout(async () => {
+      console.log(`[AI 思考] 玩家${currentPlayer.value} 开始思考（直接打牌）`)
+      try {
+        const decision = await ai.think('discard', null)
+        let discardIdx = decision.index !== undefined ? decision.index : (decision.discardIndex !== undefined ? decision.discardIndex : 0)
 
-      if (decision.discardIndex !== undefined) {
-        const discarded = ai.discardTile(decision.discardIndex)
+        // 边界检查
+        if (discardIdx < 0 || discardIdx >= ai.hand.length) {
+          console.warn(`[AI 警告] 玩家${currentPlayer.value} 决策索引无效：${discardIdx}, 手牌数：${ai.hand.length}, 使用默认索引 0`)
+          discardIdx = 0
+        }
+
+        const discarded = ai.discardTile(discardIdx)
         if (discarded) {
+          console.log(`[AI 打牌] 玩家${currentPlayer.value} 打出 ${discarded.display}`)
           discardPool.value.push(discarded)
           lastDiscard.value = discarded
           lastDiscardFrom.value = ai.id
           checkNextAction(ai.id)
+        } else {
+          console.error(`[AI 错误] 玩家${currentPlayer.value} 打牌失败，尝试随机打牌`)
+          const randomIdx = Math.floor(Math.random() * ai.hand.length)
+          const randomDiscarded = ai.discardTile(randomIdx)
+          if (randomDiscarded) {
+            discardPool.value.push(randomDiscarded)
+            lastDiscard.value = randomDiscarded
+            lastDiscardFrom.value = ai.id
+            checkNextAction(ai.id)
+          } else {
+            handleExhaustedDraw()
+          }
         }
+      } catch (e) {
+        console.error(`[AI 异常] 玩家${currentPlayer.value} 思考出错：`, e)
+      } finally {
+        console.log(`[AI 锁释放] 玩家${currentPlayer.value} 释放锁`)
+        isAiProcessing = false
       }
     }, ai.config.THINK_TIME)
-  } else if (ai.hand.length === 14) {
-    // AI 是庄家，已经有 14 张牌，直接打牌
-    setTimeout(async () => {
-      const decision = await ai.think('discard', null)
-
-      if (decision.discardIndex !== undefined) {
-        const discarded = ai.discardTile(decision.discardIndex)
-        if (discarded) {
-          discardPool.value.push(discarded)
-          lastDiscard.value = discarded
-          lastDiscardFrom.value = ai.id
-          checkNextAction(ai.id)
+  } else {
+    // 手牌数量异常，强制处理
+    console.error(`[AI 异常] 玩家${currentPlayer.value} 手牌数量异常：${ai.hand.length}, 预期：${expectedHandSize}`)
+    // 强制摸牌或打牌
+    if (ai.hand.length > expectedHandSize) {
+      // 手牌多了，直接打出一张
+      setTimeout(async () => {
+        try {
+          const decision = await ai.think('discard', null)
+          const discardIdx = decision.index !== undefined ? decision.index : (decision.discardIndex !== undefined ? decision.discardIndex : 0)
+          const discarded = ai.discardTile(discardIdx)
+          if (discarded) {
+            discardPool.value.push(discarded)
+            lastDiscard.value = discarded
+            lastDiscardFrom.value = ai.id
+            checkNextAction(ai.id)
+          }
+        } finally {
+          console.log(`[AI 锁释放] 玩家${currentPlayer.value} 异常分支释放锁`)
+          isAiProcessing = false
         }
+      }, ai.config.THINK_TIME)
+    } else {
+      // 手牌少了，摸一张
+      const drawnTile = deck.value.draw()
+      if (drawnTile) {
+        ai.addTile(drawnTile)
+        remainingTiles.value = deck.value.remaining()
+        setTimeout(async () => {
+          try {
+            const decision = await ai.think('draw', drawnTile, ai.hand)
+            const discardIdx = decision.index !== undefined ? decision.index : (decision.discardIndex !== undefined ? decision.discardIndex : -1)
+            if (discardIdx >= 0) {
+              const discarded = ai.discardTile(discardIdx)
+              if (discarded) {
+                discardPool.value.push(discarded)
+                lastDiscard.value = discarded
+                lastDiscardFrom.value = ai.id
+                checkNextAction(ai.id)
+              }
+            }
+          } finally {
+            console.log(`[AI 锁释放] 玩家${currentPlayer.value} 摸牌分支释放锁`)
+            isAiProcessing = false
+          }
+        }, ai.config.THINK_TIME)
+      } else {
+        // 摸不到牌，流局
+        console.log(`[AI 流局] 玩家${currentPlayer.value} 手牌异常且摸不到牌`)
+        handleExhaustedDraw()
       }
-    }, ai.config.THINK_TIME)
+    }
   }
 }
 
@@ -561,25 +761,32 @@ const aiTurn = async () => {
 const checkNextAction = (fromPlayer) => {
   // 按座位顺序，下一个玩家
   const nextPlayer = (fromPlayer + 1) % 4
+  console.log(`[checkNextAction] 玩家${fromPlayer} 完成，下一个玩家：${nextPlayer}`)
 
   if (nextPlayer === 0) {
     // 玩家行动
+    console.log(`[checkNextAction] 调用 checkPlayerActions`)
     checkPlayerActions(lastDiscard.value)
   } else {
     // 检查 AI 是否可以碰、杠、胡
-    checkAiActions(nextPlayer, lastDiscard.value)
+    console.log(`[checkNextAction] 调用 checkAiActions(${nextPlayer})`)
+    checkAiActions(nextPlayer, lastDiscard.value, lastDiscardFrom.value)
   }
 }
 
 // 检查 AI 可执行操作
-const checkAiActions = (aiIndex, tile) => {
+const checkAiActions = (aiIndex, tile, fromPlayer) => {
   const ai = players.value[aiIndex]
+  console.log(`[checkAiActions] 玩家${aiIndex}, 牌：${tile?.display}, from: ${fromPlayer}`)
 
   // 检查荣和
   const canRon = checkCanRon(ai.hand, tile, ai.exposedSets)
   if (canRon) {
+    console.log(`[checkAiActions] 玩家${aiIndex} 可以荣和`)
     // AI 荣和
     setTimeout(() => {
+      isAiProcessing = true
+      console.log(`[checkAiActions] 玩家${aiIndex} 荣和执行`)
       doAiRon(aiIndex)
     }, ai.config.THINK_TIME)
     return
@@ -588,8 +795,11 @@ const checkAiActions = (aiIndex, tile) => {
   // 检查碰
   const canPeng = canPon(ai.hand, tile)
   if (canPeng && Math.random() < ai.config.PON_PROBABILITY) {
+    console.log(`[checkAiActions] 玩家${aiIndex} 可以碰`)
     // AI 碰
     setTimeout(() => {
+      isAiProcessing = true
+      console.log(`[checkAiActions] 玩家${aiIndex} 碰执行`)
       doAiPeng(aiIndex)
     }, ai.config.THINK_TIME)
     return
@@ -598,8 +808,11 @@ const checkAiActions = (aiIndex, tile) => {
   // 检查杠
   const canGang = canDaiminkan(ai.hand, tile)
   if (canGang && Math.random() < 0.75) {
+    console.log(`[checkAiActions] 玩家${aiIndex} 可以杠`)
     // AI 杠
     setTimeout(() => {
+      isAiProcessing = true
+      console.log(`[checkAiActions] 玩家${aiIndex} 杠执行`)
       doAiGang(aiIndex)
     }, ai.config.THINK_TIME)
     return
@@ -609,31 +822,28 @@ const checkAiActions = (aiIndex, tile) => {
   const chiPatterns = canChii(ai.hand, tile)
   const canChi = chiPatterns.length > 0 && ((aiIndex === 2 && fromPlayer === 1) || (aiIndex === 3 && fromPlayer === 2) || (aiIndex === 1 && fromPlayer === 0))
   if (canChi && Math.random() < ai.config.CHII_PROBABILITY) {
+    console.log(`[checkAiActions] 玩家${aiIndex} 可以吃`)
     // AI 吃
     setTimeout(() => {
+      isAiProcessing = true
+      console.log(`[checkAiActions] 玩家${aiIndex} 吃执行`)
       doAiChi(aiIndex, chiPatterns[0].tiles)
     }, ai.config.THINK_TIME)
     return
   }
 
-  // 没有特殊操作，轮到下家
-  setTimeout(() => {
-    const nextPlayer = (aiIndex + 1) % 4
-    if (nextPlayer === 0) {
-      // 玩家摸牌
-      playerDrawPhase()
-    } else {
-      // 继续检查下家
-      currentPlayer.value = nextPlayer
-      aiTurn()
-    }
-  }, 100)
+  // 没有特殊操作，当前 AI 摸牌打牌
+  console.log(`[checkAiActions] 玩家${aiIndex} 无特殊操作，调用 aiTurn`)
+  currentPlayer.value = aiIndex
+  aiTurn()
 }
 
 // AI 碰
-const doAiPeng = (aiIndex) => {
+const doAiPeng = async (aiIndex) => {
   const ai = players.value[aiIndex]
   const tile = lastDiscard.value
+
+  console.log(`[AI 碰] 玩家${aiIndex} 碰 ${tile.display}, 碰前手牌：${ai.hand.length}张`)
 
   // 从手牌中移除两张相同的牌
   let removed = 0
@@ -644,6 +854,8 @@ const doAiPeng = (aiIndex) => {
     }
   }
 
+  console.log(`[AI 碰] 移除了${removed}张牌，碰后手牌：${ai.hand.length}张`)
+
   ai.exposedSets.push({ type: 'pon', tiles: [tile, tile, tile] })
 
   // 从 discardPool 移除最后一张牌
@@ -651,21 +863,30 @@ const doAiPeng = (aiIndex) => {
     discardPool.value.pop()
   }
 
+  // 设置当前玩家为碰牌的 AI，并设置为碰后打牌状态
+  currentPlayer.value = aiIndex
+  gameState.value = 'ai_discarding'
+
   // 碰后打牌
-  setTimeout(() => {
-    const decision = ai.think('discard', null)
-    const discarded = ai.discardTile(decision.discardIndex || 0)
-    if (discarded) {
-      discardPool.value.push(discarded)
-      lastDiscard.value = discarded
-      lastDiscardFrom.value = aiIndex
-      checkNextAction(aiIndex)
+  setTimeout(async () => {
+    try {
+      const decision = await ai.think('discard', null)
+      const discarded = ai.discardTile(decision.index !== undefined ? decision.index : (decision.discardIndex || 0))
+      if (discarded) {
+        discardPool.value.push(discarded)
+        lastDiscard.value = discarded
+        lastDiscardFrom.value = aiIndex
+        gameState.value = 'ai_thinking'
+        checkNextAction(aiIndex)
+      }
+    } finally {
+      isAiProcessing = false
     }
   }, ai.config.THINK_TIME)
 }
 
 // AI 杠
-const doAiGang = (aiIndex) => {
+const doAiGang = async (aiIndex) => {
   const ai = players.value[aiIndex]
   const tile = lastDiscard.value
 
@@ -685,26 +906,35 @@ const doAiGang = (aiIndex) => {
     discardPool.value.pop()
   }
 
+  // 设置当前玩家为杠牌的 AI
+  currentPlayer.value = aiIndex
+  gameState.value = 'ai_discarding'
+
   // 杠后摸牌
   const drawnTile = deck.value.draw()
   remainingTiles.value = deck.value.remaining()
 
-  setTimeout(() => {
-    const testHand = [...ai.hand, drawnTile]
-    const result = checkAgari(testHand)
-    if (result.agari) {
-      endRound(aiIndex, { type: '杠上开花', fan: 3, isZimo: true }, true)
-      return
-    }
+  setTimeout(async () => {
+    try {
+      const testHand = [...ai.hand, drawnTile]
+      const result = checkAgari(testHand)
+      if (result.agari) {
+        endRound(aiIndex, { type: '杠上开花', fan: 3, isZimo: true }, true)
+        return
+      }
 
-    // 打牌
-    const decision = ai.think('discard', null)
-    const discarded = ai.discardTile(decision.discardIndex || 0)
-    if (discarded) {
-      discardPool.value.push(discarded)
-      lastDiscard.value = discarded
-      lastDiscardFrom.value = aiIndex
-      checkNextAction(aiIndex)
+      // 打牌
+      const decision = await ai.think('discard', null)
+      const discarded = ai.discardTile(decision.index !== undefined ? decision.index : (decision.discardIndex || 0))
+      if (discarded) {
+        discardPool.value.push(discarded)
+        lastDiscard.value = discarded
+        lastDiscardFrom.value = aiIndex
+        gameState.value = 'ai_thinking'
+        checkNextAction(aiIndex)
+      }
+    } finally {
+      isAiProcessing = false
     }
   }, ai.config.THINK_TIME)
 }
@@ -719,34 +949,47 @@ const doAiRon = (aiIndex) => {
 }
 
 // AI 吃
-const doAiChi = (aiIndex, tiles) => {
+const doAiChi = async (aiIndex, tiles) => {
   const ai = players.value[aiIndex]
   const tile = lastDiscard.value
 
-  // 从手牌中移除用于吃的两张牌
+  // 吃牌：手牌 2 张 + 别人 1 张 = 3 张
+  const chiTiles = [tile]
+
+  // 从手牌中移除用于吃的两张牌，并加入副露
   for (const idx of tiles) {
     const tileIdx = ai.hand.findIndex(t => t.type === tile.type && t.index === idx)
     if (tileIdx >= 0) {
+      chiTiles.push(ai.hand[tileIdx])
       ai.hand.splice(tileIdx, 1)
     }
   }
 
-  ai.exposedSets.push({ type: 'chi', tiles: [tile] })
+  ai.exposedSets.push({ type: 'chi', tiles: chiTiles })
 
   // 从 discardPool 移除最后一张牌
   if (discardPool.value.length > 0) {
     discardPool.value.pop()
   }
 
+  // 设置当前玩家为吃牌的 AI，并设置为吃后打牌状态
+  currentPlayer.value = aiIndex
+  gameState.value = 'ai_discarding'
+
   // 吃后打牌
-  setTimeout(() => {
-    const decision = ai.think('discard', null)
-    const discarded = ai.discardTile(decision.discardIndex || 0)
-    if (discarded) {
-      discardPool.value.push(discarded)
-      lastDiscard.value = discarded
-      lastDiscardFrom.value = aiIndex
-      checkNextAction(aiIndex)
+  setTimeout(async () => {
+    try {
+      const decision = await ai.think('discard', null)
+      const discarded = ai.discardTile(decision.index !== undefined ? decision.index : (decision.discardIndex || 0))
+      if (discarded) {
+        discardPool.value.push(discarded)
+        lastDiscard.value = discarded
+        lastDiscardFrom.value = aiIndex
+        gameState.value = 'ai_thinking'
+        checkNextAction(aiIndex)
+      }
+    } finally {
+      isAiProcessing = false
     }
   }, ai.config.THINK_TIME)
 }
@@ -799,10 +1042,13 @@ const playerDrawPhase = () => {
   // 摸牌后先不加入手牌，单独显示
   // 检查是否能自摸（14 张牌）
   const testHand = [...playerHand.value, drawnTile.value]
-  const result = checkAgari(testHand)
+  const exposedSets = players.value[0]?.exposedSets || []
+  const result = checkAgari(testHand, exposedSets, { isZimo: true, isDealer: players.value[0]?.isDealer })
   if (result.agari) {
     canZimo.value = true
     message.value = '可以自摸！'
+  } else {
+    message.value = ''
   }
 
   const ankanTiles = canAnkan(testHand)
@@ -810,7 +1056,6 @@ const playerDrawPhase = () => {
 
   canDiscard.value = true
   canSelectDiscard.value = true
-  message.value = '请选择要打出的牌'
 }
 
 // 玩家点击手牌
@@ -899,14 +1144,15 @@ const completeChi = (idx) => {
   const tile = lastDiscard.value
   const option = chiOptions.value[idx]
 
-  // 从手牌中移除用于吃的两张牌
+  // 吃牌：手牌 2 张 + 别人 1 张 = 3 张
+  const chiTiles = [tile]
   for (let i = playerHand.value.length - 1; i >= 0; i--) {
     if (option.tiles.includes(playerHand.value[i].index)) {
+      chiTiles.push(playerHand.value[i])
       playerHand.value.splice(i, 1)
     }
   }
-
-  players.value[0].exposedSets.push({ type: 'chi', tiles: [tile] })
+  players.value[0].exposedSets.push({ type: 'chi', tiles: chiTiles })
   players.value[0].hand = playerHand.value
 
   // 从 discardPool 移除最后一张牌（被吃的牌）
@@ -1025,6 +1271,7 @@ const doZimo = () => {
 
 // 结束一局
 const endRound = (winnerId, result, isZimo) => {
+  isAiProcessing = false  // 释放锁
   gameState.value = 'round_over'
   showResultDialog.value = true
 
@@ -1049,6 +1296,7 @@ const endRound = (winnerId, result, isZimo) => {
 
 // 流局
 const handleExhaustedDraw = () => {
+  isAiProcessing = false  // 释放锁
   gameState.value = 'round_over'
   message.value = '流局'
 }
@@ -1414,6 +1662,31 @@ const formatChiPattern = (tiles) => {
   overflow: visible;
 }
 
+/* 单张牌显示 - 小屏幕优化 */
+.hand-tiles.single-tile {
+  position: relative;
+  display: inline-block;
+}
+
+.hand-tiles.single-tile .tile-back {
+  width: 28px;
+  height: 38px;
+}
+
+/* 手牌数标签 */
+.hand-count-label {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+  font-size: 0.55rem;
+  padding: 1px 3px;
+  border-radius: 3px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .tile-back {
   background: linear-gradient(135deg, #3b82f6, #1d4ed8);
   border-radius: 4px;
@@ -1436,15 +1709,84 @@ const formatChiPattern = (tiles) => {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+  margin-top: 8px;
+  justify-content: center;
 }
 
 .exposed-zone.vertical {
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .exposed-set {
   display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+/* 大屏：显示所有牌 */
+.exposed-tiles-full {
+  display: flex;
   gap: 2px;
+}
+
+/* 小屏：简化显示 */
+.exposed-tile-simple {
+  width: 28px;
+  height: 38px;
+  background: linear-gradient(180deg, #fefefe, #f5f5f5);
+  border-radius: 6px;
+  border: 1px solid #d0d0d0;
+  box-shadow: 1px 2px 4px rgba(0,0,0,0.2);
+  position: relative;
+  display: none; /* 默认隐藏，小屏显示 */
+}
+
+.exposed-tile-simple .tile-num {
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.exposed-tile-simple.tile-man .tile-num {
+  color: #dc2626;
+  font-size: 1.2rem;
+}
+
+.exposed-tile-simple.tile-pin .tile-num {
+  color: #2563eb;
+  font-size: 1.2rem;
+}
+
+.exposed-tile-simple.tile-sou .tile-num {
+  color: #16a34a;
+  font-size: 1.2rem;
+}
+
+.exposed-tile-simple .wan,
+.exposed-tile-simple .ping,
+.exposed-tile-simple .sou {
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  font-size: 0.6rem;
+  font-weight: 900;
+}
+
+/* 标签：吃/碰/杠 */
+.exposed-label {
+  position: absolute;
+  bottom: -2px;
+  left: -2px;
+  background: #f59e0b;
+  color: #fff;
+  font-size: 0.45rem;
+  padding: 1px 3px;
+  border-radius: 5px;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .exposed-tile {
@@ -1867,7 +2209,7 @@ const formatChiPattern = (tiles) => {
   .hand-zone {
     overflow: visible;
     padding-bottom: 8px;
-    min-height: 108px; /* 两行牌 + gap 的高度 */
+    min-height: 108px;
     width: 100%;
   }
 
@@ -1890,7 +2232,27 @@ const formatChiPattern = (tiles) => {
     position: relative;
   }
 
-  /* 数字左上角显示 - 调小字体 */
+  /* 小屏幕手牌只显示一张 */
+  .hand-tiles.vertical.double-column {
+    display: inline-block;
+    grid-template-columns: none;
+  }
+
+  .hand-tiles.vertical.double-column .tile-back {
+    width: 28px;
+    height: 38px;
+  }
+
+  /* 小屏幕显示简化副露 */
+  .exposed-tile-simple {
+    display: block;
+  }
+
+  .exposed-tiles-full {
+    display: none;
+  }
+
+  /* 数字左上角显示 */
   .tile-num {
     font-size: 0.55rem !important;
     font-weight: 900;
@@ -1932,7 +2294,7 @@ const formatChiPattern = (tiles) => {
     left: auto !important;
   }
 
-  /* 类型标识在右下角 - 调大字体 */
+  /* 类型标识在右下角 */
   .tile-man .wan,
   .tile-pin .ping,
   .tile-sou .sou {
@@ -1956,69 +2318,99 @@ const formatChiPattern = (tiles) => {
   }
 
   .drawn-tile::after {
-    bottom: -8px;
-    font-size: 0.3rem;
+    bottom: -10px;
+    font-size: 0.5rem;
   }
 
-  .discard-tile {
-    width: 20px;
-    height: 28px;
-    font-size: 0.65rem;
-    position: relative;
+  /* 副露区域适配 */
+  .exposed-zone {
+    margin-top: 8px;
   }
 
-  .discard-tile .tile-num {
-    font-size: 0.6rem !important;
-    position: absolute !important;
-    top: 2px !important;
-    left: 2px !important;
+  .exposed-zone.vertical {
+    margin-top: 8px;
   }
 
-  .discard-tile.tile-man .wan,
-  .discard-tile.tile-pin .ping,
-  .discard-tile.tile-sou .sou {
-    font-size: 0.5rem !important;
-    position: absolute !important;
-    bottom: 2px !important;
-    right: 2px !important;
+  .exposed-tile-simple {
+    width: 38px;
+    height: 52px;
   }
 
-  .discard-tile.tile-ji .tile-num {
-    position: static !important;
-    font-size: 0.75rem !important;
+  .exposed-tile-simple .tile-num {
+    font-size: 1.2rem !important;
   }
 
-  .exposed-tile {
-    width: 32px;
-    height: 42px;
-    font-size: 0.7rem;
-    position: relative;
+  .exposed-tile-simple .wan,
+  .exposed-tile-simple .ping,
+  .exposed-tile-simple .sou {
+    font-size: 0.7rem !important;
+    bottom: 3px !important;
+    right: 3px !important;
   }
 
-  .exposed-tile .tile-num {
-    font-size: 0.6rem !important;
-    position: absolute !important;
-    top: 2px !important;
-    left: 2px !important;
+  .exposed-label {
+    font-size: 0.55rem !important;
+    padding: 2px 4px !important;
   }
 
-  .exposed-tile.tile-man .wan,
-  .exposed-tile.tile-pin .ping,
-  .exposed-tile.tile-sou .sou {
-    font-size: 0.5rem !important;
-    position: absolute !important;
-    bottom: 2px !important;
-    right: 2px !important;
+  /* 手牌数标签 */
+  .hand-count-label {
+    font-size: 0.7rem !important;
+    padding: 2px 5px !important;
   }
 
-  .exposed-tile.tile-ji .tile-num {
-    position: static !important;
-    font-size: 0.8rem !important;
+  /* 玩家信息框 */
+  .player-info-box {
+    padding: 8px 12px !important;
+  }
+
+  .player-info-box .name {
+    font-size: 0.9rem !important;
+  }
+
+  .player-info-box .score {
+    font-size: 0.85rem !important;
+  }
+
+  /* AI 区域字体放大 */
+  .ai-zone .player-info-box .info .name {
+    font-size: 0.65rem !important;
+  }
+
+  .ai-zone .player-info-box .info .score {
+    font-size: 0.65rem !important;
+  }
+
+  /* AI 手牌牌背尺寸 */
+  .hand-tiles .tile-back {
+    width: 30px !important;
+    height: 45px !important;
+  }
+
+  /* 768px 以下隐藏牌墙 */
+  .wall-preview {
+    display: none !important;
   }
 }
 
 /* 超小屏幕进一步缩放 */
 @media (max-width: 480px) {
+  /* 玩家区域更紧凑 */
+  .player-zone {
+    bottom: 5px !important;
+    padding: 4px 8px !important;
+    gap: 4px !important;
+  }
+
+  .player-exposed {
+    margin-bottom: 2px !important;
+  }
+
+  .hand-zone {
+    min-height: 40px !important;
+    margin-top: 2px !important;
+  }
+
   /* 剩余牌和弃牌区移到左上角 */
   .center-zone {
     position: absolute;
@@ -2026,12 +2418,12 @@ const formatChiPattern = (tiles) => {
     left: 10px;
     transform: none;
     align-items: flex-start;
-    max-width: 150px;
+    max-width: 160px;
   }
 
   .remaining-tiles {
-    padding: 3px 8px;
-    font-size: 0.65rem;
+    padding: 4px 10px;
+    font-size: 0.75rem;
   }
 
   .wall-zone {
@@ -2044,71 +2436,62 @@ const formatChiPattern = (tiles) => {
 
   .discard-grid {
     grid-template-columns: repeat(5, 1fr);
-    gap: 2px;
-    padding: 4px;
+    gap: 3px;
+    padding: 5px;
     background: rgba(255,255,255,0.4);
   }
 
   .discard-tile {
-    width: 18px;
-    height: 24px;
-    font-size: 0.6rem;
+    width: 24px;
+    height: 28px;
+    font-size: 0.7rem;
     position: relative;
   }
 
   .discard-tile .tile-num {
-    font-size: 0.55rem !important;
+    font-size: 0.7rem !important;
     position: absolute !important;
-    top: 1px !important;
-    left: 1px !important;
+    top: 2px !important;
+    left: 2px !important;
   }
 
   .discard-tile.tile-man .wan,
   .discard-tile.tile-pin .ping,
   .discard-tile.tile-sou .sou {
-    font-size: 0.45rem !important;
+    font-size: 0.6rem !important;
     position: absolute !important;
-    bottom: 1px !important;
-    right: 1px !important;
+    bottom: 2px !important;
+    right: 2px !important;
   }
 
   .discard-tile.tile-ji .tile-num {
     position: static !important;
-    font-size: 0.7rem !important;
+    font-size: 0.85rem !important;
   }
 
-  .exposed-tile {
+  .exposed-tile-simple {
     width: 28px;
     height: 38px;
-    font-size: 0.65rem;
-    position: relative;
   }
 
-  .exposed-tile .tile-num {
-    font-size: 0.55rem !important;
-    position: absolute !important;
-    top: 1px !important;
-    left: 1px !important;
+  .exposed-tile-simple .tile-num {
+    font-size: 1rem !important;
   }
 
-  .exposed-tile.tile-man .wan,
-  .exposed-tile.tile-pin .ping,
-  .exposed-tile.tile-sou .sou {
-    font-size: 0.45rem !important;
-    position: absolute !important;
-    bottom: 1px !important;
-    right: 1px !important;
+  .exposed-tile-simple .wan,
+  .exposed-tile-simple .ping,
+  .exposed-tile-simple .sou {
+    font-size: 0.65rem !important;
   }
 
-  .exposed-tile.tile-ji .tile-num {
-    position: static !important;
-    font-size: 0.7rem !important;
+  .exposed-label {
+    font-size: 0.5rem !important;
   }
 
   .status-message {
-    font-size: 0.65rem;
-    padding: 3px 8px;
-    margin-top: 5px;
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    margin-top: 6px;
   }
 
   .hand-zone {
@@ -2173,36 +2556,98 @@ const formatChiPattern = (tiles) => {
   .drawn-tile-container .tile {
     width: 22px;
     height: 30px;
-    font-size: 1rem;
+    font-size: 1.1rem;
   }
 
   .btn {
-    padding: 6px 10px;
-    font-size: 0.75rem;
+    padding: 8px 14px;
+    font-size: 0.85rem;
   }
 
   .actions {
-    gap: 4px;
+    gap: 6px;
   }
 
-  /* 对家位置往下移 */
+  /* 对家位置调整 */
   .top-zone {
-    top: 70px;
+    top: 50px;
   }
 
-  /* AI 区域适配 */
-  .ai-zone {
-    transform: scale(0.8);
+  .top-zone.ai-zone {
+    right: -25px;
+    left: unset;
+  }
+
+  /* AI 区域字体放大 */
+  .ai-zone .player-info-box .info .name {
+    font-size: 0.65rem !important;
+  }
+
+  .ai-zone .player-info-box .info .score {
+    font-size: 0.65rem !important;
   }
 
   /* 左侧 AI 适配 */
   .left-zone {
-    top: 180px;
+    top: 240px;
+    left: 5px;
   }
 
   /* 右侧 AI 适配 */
   .right-zone {
-    top: 180px;
+    top: 50%;
+    right: 5px;
+    transform: translateY(-50%);
+  }
+
+  /* 对家 AI 适配 */
+  .top-zone .hand-tiles .tile-back {
+    width: 30px !important;
+    height: 45px !important;
+  }
+
+  /* 手牌数标签 */
+  .hand-count-label {
+    font-size: 0.65rem !important;
+    padding: 2px 6px !important;
+  }
+
+  /* 玩家信息框 */
+  .player-info-box {
+    padding: 4px 8px !important;
+    flex-direction: row !important;
+    gap: 6px !important;
+  }
+
+  .player-info-box .avatar {
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .player-info-box .info {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 4px !important;
+  }
+
+  .player-info-box .top {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+  }
+
+  .player-info-box .name {
+    font-size: 0.7rem !important;
+  }
+
+  .player-info-box .score {
+    font-size: 0.7rem !important;
+  }
+
+  .player-info-box .dealer-badge {
+    padding: 1px 4px !important;
+    font-size: 0.55rem !important;
   }
 }
 
