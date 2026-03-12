@@ -1240,7 +1240,7 @@ const doGang = () => {
   drawnTile.value = deck.value.draw()
   remainingTiles.value = deck.value.remaining()
 
-  const result = checkAgari([...playerHand.value, drawnTile.value])
+  const result = checkAgari([...playerHand.value, drawnTile.value], players.value[0]?.exposedSets || [], { isZimo: true, isDealer: players.value[0]?.isDealer })
   if (result.agari) {
     doZimo()
     return
