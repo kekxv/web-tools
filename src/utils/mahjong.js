@@ -561,10 +561,11 @@ export function canChii(hand, discardedTile) {
   const chiiPatterns = []
 
   // 检查能否组成顺子：(x-1,x,x+1), (x,x+1,x+2), (x-2,x-1,x)
+  // 分别对应：夹吃（中间）、边吃（低位）、边吃（高位）
   const patterns = [
-    { needs: [discardedTile.index - 1, discardedTile.index + 1], type: 'mid' },
-    { needs: [discardedTile.index + 1, discardedTile.index + 2], type: 'low' },
-    { needs: [discardedTile.index - 2, discardedTile.index - 1], type: 'high' }
+    { needs: [discardedTile.index - 1, discardedTile.index + 1], type: 'mid', label: '夹吃' },
+    { needs: [discardedTile.index + 1, discardedTile.index + 2], type: 'low', label: '边吃' },
+    { needs: [discardedTile.index - 2, discardedTile.index - 1], type: 'high', label: '边吃' }
   ]
 
   for (const pattern of patterns) {
@@ -575,9 +576,13 @@ export function canChii(hand, discardedTile) {
 
     const hasBoth = pattern.needs.every(n => indices.includes(n))
     if (hasBoth) {
+      // 返回完整的顺子（包括别人打的牌）
+      const allTiles = [discardedTile.index, ...pattern.needs].sort((a, b) => a - b)
       chiiPatterns.push({
         type: pattern.type,
-        tiles: pattern.needs
+        label: pattern.label,
+        tiles: pattern.needs,  // 需要从手牌中拿出的牌
+        allTiles: allTiles     // 完整的顺子（用于显示）
       })
     }
   }

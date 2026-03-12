@@ -758,26 +758,43 @@ const aiTurn = async () => {
 }
 
 // 检查下一步行动
+// 麻将规则：任何玩家打牌后，其他玩家都有机会检查吃碰胡
+// 优先级：胡 > 碰/杠 > 吃（只能吃上家）
 const checkNextAction = (fromPlayer) => {
-  // 按座位顺序，下一个玩家
-  const nextPlayer = (fromPlayer + 1) % 4
-  console.log(`[checkNextAction] 玩家${fromPlayer} 完成，下一个玩家：${nextPlayer}`)
+  console.log(`[checkNextAction] 玩家${fromPlayer} 打牌后`)
 
-  if (nextPlayer === 0) {
-    // 玩家行动
-    console.log(`[checkNextAction] 调用 checkPlayerActions`)
-    checkPlayerActions(lastDiscard.value)
-  } else {
-    // 检查 AI 是否可以碰、杠、胡
+  if (fromPlayer === 0) {
+    // 玩家 0 打牌后，按顺序检查 AI（只有下家可以吃）
+    const nextPlayer = (fromPlayer + 1) % 4
     console.log(`[checkNextAction] 调用 checkAiActions(${nextPlayer})`)
     checkAiActions(nextPlayer, lastDiscard.value, lastDiscardFrom.value)
+  } else {
+    // 任何 AI 打牌后，先检查玩家是否有吃碰胡的需求
+    // 玩家可以吃上家（玩家 1）的牌，可以碰/胡任何玩家的牌
+    checkPlayerActions(lastDiscard.value)
+  }
+}
+
+// 检查是否有其他玩家可以吃碰胡，如果没有，下家摸牌
+const continueToNextPlayer = (fromPlayer) => {
+  const nextPlayer = (fromPlayer + 1) % 4
+  console.log(`[continueToNextPlayer] 玩家${fromPlayer} 打牌后，所有玩家都过，下一个摸牌玩家：${nextPlayer}`)
+
+  if (nextPlayer === 0) {
+    // 玩家摸牌
+    playerDrawPhase()
+  } else {
+    // AI 摸牌
+    currentPlayer.value = nextPlayer
+    aiTurn()
   }
 }
 
 // 检查 AI 可执行操作
-const checkAiActions = (aiIndex, tile, fromPlayer) => {
+// continueChain: 如果为 true，AI 没有特殊操作时继续检查下一个玩家，而不是摸牌
+const checkAiActions = (aiIndex, tile, fromPlayer, continueChain = false) => {
   const ai = players.value[aiIndex]
-  console.log(`[checkAiActions] 玩家${aiIndex}, 牌：${tile?.display}, from: ${fromPlayer}`)
+  console.log(`[checkAiActions] 玩家${aiIndex}, 牌：${tile?.display}, from: ${fromPlayer}, continueChain: ${continueChain}`)
 
   // 检查荣和
   const canRon = checkCanRon(ai.hand, tile, ai.exposedSets)
@@ -832,10 +849,24 @@ const checkAiActions = (aiIndex, tile, fromPlayer) => {
     return
   }
 
-  // 没有特殊操作，当前 AI 摸牌打牌
-  console.log(`[checkAiActions] 玩家${aiIndex} 无特殊操作，调用 aiTurn`)
-  currentPlayer.value = aiIndex
-  aiTurn()
+  // 没有特殊操作
+  if (continueChain) {
+    // 继续检查下一个玩家
+    console.log(`[checkAiActions] 玩家${aiIndex} 无特殊操作，继续检查下一个玩家`)
+    const nextPlayer = (aiIndex + 1) % 4
+    if (nextPlayer === 0) {
+      // 下一个是玩家，但玩家已经选择过，所以打牌者的下家摸牌
+      continueToNextPlayer(fromPlayer)
+    } else {
+      // 检查下一个 AI
+      checkAiActions(nextPlayer, tile, fromPlayer, true)
+    }
+  } else {
+    // 正常流程，AI 摸牌打牌
+    console.log(`[checkAiActions] 玩家${aiIndex} 无特殊操作，调用 aiTurn`)
+    currentPlayer.value = aiIndex
+    aiTurn()
+  }
 }
 
 // AI 碰
@@ -999,33 +1030,65 @@ const checkPlayerActions = (tile) => {
   gameState.value = 'player_action'
   currentPlayer.value = 0
 
-  // 检查荣和
-  canRon.value = checkCanRon(playerHand.value, tile, players.value[0].exposedSets)
+  console.log(`[玩家行动] 检查玩家可执行操作，牌：${tile?.display}, 手牌数：${playerHand.value.length}, 打牌者：${lastDiscardFrom.value}`)
 
-  // 检查碰
+  // 检查荣和（任何玩家打牌都可以胡）
+  const ronResult = checkCanRon(playerHand.value, tile, players.value[0].exposedSets)
+  canRon.value = ronResult
+  console.log(`[玩家行动] 荣和：${ronResult}`)
+
+  // 检查碰（任何玩家打牌都可以碰）
   canPeng.value = canPon(playerHand.value, tile)
+  console.log(`[玩家行动] 碰：${canPeng.value}`)
 
-  // 检查杠
+  // 检查杠（大明杠，任何玩家打牌都可以杠）
   canGang.value = canDaiminkan(playerHand.value, tile)
+  console.log(`[玩家行动] 大明杠：${canGang.value}`)
 
-  // 检查吃（只能吃上家的牌）
+  // 检查吃（只能吃上家的牌，上家是玩家 1 - 左侧 AI）
   const chiPatterns = canChii(playerHand.value, tile)
   canChi.value = chiPatterns.length > 0 && lastDiscardFrom.value === 1
+  console.log(`[玩家行动] 吃：${canChi.value}, 上家打牌：${lastDiscardFrom.value === 1}`)
 
   if (canChi.value) {
     chiOptions.value = chiPatterns.map(p => ({
-      pattern: formatChiPattern(p.tiles)
+      pattern: formatChiPattern(p.allTiles || p.tiles),  // 显示完整的顺子
+      tiles: p.tiles  // 保存需要从手牌中拿出的牌
     }))
   }
 
   showPassOption.value = canRon.value || canPeng.value || canGang.value || canChi.value
 
-  // 如果没有特殊操作，进入摸牌阶段
-  if (!canRon.value && !canPeng.value && !canGang.value && !canChi.value) {
-    playerDrawPhase()
-  } else {
+  console.log(`[玩家行动] 状态：canRon=${canRon.value}, canPeng=${canPeng.value}, canGang=${canGang.value}, canChi=${canChi.value}`)
+
+  // 如果有可执行的操作，提示用户选择
+  if (canRon.value || canPeng.value || canGang.value || canChi.value) {
     message.value = '请选择操作'
+  } else {
+    // 玩家没有可执行的操作，继续检查下一个 AI（碰/胡）
+    console.log(`[玩家行动] 玩家没有可执行的操作，继续检查下一个 AI`)
+    const nextAi = (lastDiscardFrom.value + 1) % 4
+    if (nextAi === 0) {
+      // 下一个是玩家 0，说明所有人都过，打牌者的下家摸牌
+      continueToNextPlayer(lastDiscardFrom.value)
+    } else {
+      // 检查下一个 AI，continueChain = true 表示继续检查链
+      checkAiActions(nextAi, lastDiscard.value, lastDiscardFrom.value, true)
+    }
   }
+}
+
+// 玩家吃、碰、杠、胡、摸牌后，重置操作按钮状态，只显示出牌按钮
+const resetPlayerActions = () => {
+  canRon.value = false
+  canZimo.value = false
+  canPeng.value = false
+  canGang.value = false
+  canChi.value = false
+  canDiscard.value = true
+  canSelectDiscard.value = true
+  showPassOption.value = false
+  selectedDiscard.value = -1
 }
 
 // 玩家摸牌
@@ -1033,6 +1096,8 @@ const playerDrawPhase = () => {
   gameState.value = 'player_turn'
   drawnTile.value = deck.value.draw()
   remainingTiles.value = deck.value.remaining()
+
+  console.log(`[玩家摸牌] 摸到：${drawnTile.value?.display}, 手牌数：${playerHand.value.length}`)
 
   if (!drawnTile.value) {
     handleExhaustedDraw()
@@ -1042,20 +1107,38 @@ const playerDrawPhase = () => {
   // 摸牌后先不加入手牌，单独显示
   // 检查是否能自摸（14 张牌）
   const testHand = [...playerHand.value, drawnTile.value]
+  // 确保使用最新的副露数据
   const exposedSets = players.value[0]?.exposedSets || []
+
+  console.log(`[玩家摸牌] 手牌：${testHand.map(t => t.display).join(',')}, 副露：${exposedSets.map(s => s.type + '(' + s.tiles.map(t => t?.display || t).join(',') + ')').join(', ')}`)
+  console.log(`[玩家摸牌] 手牌数：${testHand.length}, 副露数：${exposedSets.length}`)
+
   const result = checkAgari(testHand, exposedSets, { isZimo: true, isDealer: players.value[0]?.isDealer })
+
+  console.log(`[玩家摸牌] 自摸检查：${result.agari}, 牌型：${result.type || '无'}`)
+
+  // 先重置操作状态
+  resetPlayerActions()
+
+  // 如果自摸，覆盖出牌状态
   if (result.agari) {
     canZimo.value = true
+    canDiscard.value = false  // 可以自摸时不能出牌
+    showPassOption.value = true  // 显示过按钮，让用户选择不胡
     message.value = '可以自摸！'
   } else {
     message.value = ''
   }
 
+  // 检查暗杠
   const ankanTiles = canAnkan(testHand)
-  if (ankanTiles.length > 0) canGang.value = true
+  if (ankanTiles.length > 0) {
+    canGang.value = true
+    console.log(`[玩家摸牌] 可以暗杠`)
+  }
 
-  canDiscard.value = true
-  canSelectDiscard.value = true
+  // 确保 UI 刷新
+  nextTick()
 }
 
 // 玩家点击手牌
@@ -1128,6 +1211,10 @@ const confirmDiscard = () => {
 
 // 吃
 const doChi = () => {
+  if (chiOptions.value.length === 0) {
+    console.warn('[doChi] 没有可用的吃牌选项')
+    return
+  }
   if (chiOptions.value.length === 1) {
     completeChi(0)
   } else {
@@ -1136,6 +1223,10 @@ const doChi = () => {
 }
 
 const selectChi = (idx) => {
+  if (idx < 0 || idx >= chiOptions.value.length) {
+    console.warn(`[selectChi] 无效的吃牌索引：${idx}, chiOptions.length: ${chiOptions.value.length}`)
+    return
+  }
   showChiDialog.value = false
   completeChi(idx)
 }
@@ -1144,11 +1235,33 @@ const completeChi = (idx) => {
   const tile = lastDiscard.value
   const option = chiOptions.value[idx]
 
+  console.log(`[completeChi] idx: ${idx}, chiOptions: ${JSON.stringify(chiOptions.value)}, option: ${JSON.stringify(option)}`)
+
+  if (!option || !option.tiles) {
+    console.error(`[completeChi] 无效的吃牌选项：${idx}, option:`, option)
+    return
+  }
+
   // 吃牌：手牌 2 张 + 别人 1 张 = 3 张
   const chiTiles = [tile]
+
+  // 需要同类型同花色的牌，不能只看 index
+  const tileType = tile.type
+  const neededIndices = option.tiles.filter(idx => idx !== tile.index)
+
+  console.log(`[completeChi] 需要移除的手牌索引：${neededIndices.join(',')}, 类型：${tileType}`)
+
+  // 跟踪已经拿走的索引，避免重复拿相同的牌
+  const usedIndices = []
+
   for (let i = playerHand.value.length - 1; i >= 0; i--) {
-    if (option.tiles.includes(playerHand.value[i].index)) {
-      chiTiles.push(playerHand.value[i])
+    const handTile = playerHand.value[i]
+    // 同时检查类型和索引，并且确保每个索引只拿一张
+    if (handTile && handTile.type === tileType &&
+        neededIndices.includes(handTile.index) &&
+        !usedIndices.includes(handTile.index)) {
+      chiTiles.push(handTile)
+      usedIndices.push(handTile.index)
       playerHand.value.splice(i, 1)
     }
   }
@@ -1160,17 +1273,9 @@ const completeChi = (idx) => {
     discardPool.value.pop()
   }
 
-  // 重置其他操作状态
-  canRon.value = false
-  canPeng.value = false
-  canGang.value = false
-  canChi.value = false
-  showPassOption.value = false
+  // 重置操作状态，只保留出牌
+  resetPlayerActions()
 
-  gameState.value = 'player_turn'
-  canDiscard.value = true
-  canSelectDiscard.value = true
-  selectedDiscard.value = -1
   currentPlayer.value = 0
   message.value = '请选择要打出的牌'
 }
@@ -1194,24 +1299,78 @@ const doPeng = () => {
     discardPool.value.pop()
   }
 
-  // 重置其他操作状态
-  canRon.value = false
-  canPeng.value = false
-  canGang.value = false
-  canChi.value = false
-  showPassOption.value = false
+  // 重置操作状态，只保留出牌
+  resetPlayerActions()
 
-  message.value = `碰了 ${tile.display}`
-  gameState.value = 'player_turn'
-  canDiscard.value = true
-  canSelectDiscard.value = true
-  selectedDiscard.value = -1
   currentPlayer.value = 0
   message.value = '请选择要打出的牌'
 }
 
-// 杠
+// 杠 - 根据情况处理大明杠或暗杠
 const doGang = () => {
+  // 检查是否是暗杠（摸牌后）
+  const testHand = drawnTile.value ? [...playerHand.value, drawnTile.value] : playerHand.value
+
+  // 检查是否有 4 张相同的牌（暗杠）
+  const counts = {}
+  for (const tile of testHand) {
+    counts[tile.value] = (counts[tile.value] || 0) + 1
+  }
+
+  const ankanValue = Object.keys(counts).find(v => counts[v] === 4)
+
+  if (ankanValue) {
+    // 暗杠
+    doAnkan(parseInt(ankanValue))
+  } else if (lastDiscard.value) {
+    // 大明杠
+    doDaiminkan()
+  } else {
+    console.warn('[doGang] 无法确定杠的类型')
+  }
+}
+
+// 暗杠
+const doAnkan = (tileValue) => {
+  // 找到 4 张相同的牌
+  const kanTiles = []
+  for (let i = playerHand.value.length - 1; i >= 0; i--) {
+    if (playerHand.value[i].value === tileValue) {
+      kanTiles.push(playerHand.value[i])
+      playerHand.value.splice(i, 1)
+      if (kanTiles.length === 4) break
+    }
+  }
+
+  console.log(`[暗杠] 暗杠牌：${kanTiles.map(t => t.display).join(',')}`)
+
+  players.value[0].exposedSets.push({ type: 'kan', tiles: kanTiles })
+  players.value[0].hand = playerHand.value
+
+  // 暗杠后摸牌
+  drawnTile.value = deck.value.draw()
+  remainingTiles.value = deck.value.remaining()
+
+  console.log(`[暗杠] 摸到：${drawnTile.value?.display}`)
+
+  // 检查是否杠上开花
+  const result = checkAgari([...playerHand.value, drawnTile.value], players.value[0]?.exposedSets || [], { isZimo: true, isDealer: players.value[0]?.isDealer })
+  if (result.agari) {
+    // 杠上开花，直接自摸
+    message.value = '杠上开花！'
+    doZimo()
+    return
+  }
+
+  // 重置操作状态，只保留出牌
+  resetPlayerActions()
+
+  currentPlayer.value = 0
+  message.value = '请选择要打出的牌'
+}
+
+// 大明杠
+const doDaiminkan = () => {
   const tile = lastDiscard.value
   // 从手牌中移除三张相同的牌
   let removed = 0
@@ -1229,27 +1388,22 @@ const doGang = () => {
     discardPool.value.pop()
   }
 
-  // 重置其他操作状态
-  canRon.value = false
-  canPeng.value = false
-  canGang.value = false
-  canChi.value = false
-  showPassOption.value = false
-
   // 杠后摸牌
   drawnTile.value = deck.value.draw()
   remainingTiles.value = deck.value.remaining()
 
+  // 检查是否杠上开花
   const result = checkAgari([...playerHand.value, drawnTile.value], players.value[0]?.exposedSets || [], { isZimo: true, isDealer: players.value[0]?.isDealer })
   if (result.agari) {
+    // 杠上开花，直接自摸
+    message.value = '杠上开花！'
     doZimo()
     return
   }
 
-  gameState.value = 'player_turn'
-  canDiscard.value = true
-  canSelectDiscard.value = true
-  selectedDiscard.value = -1
+  // 重置操作状态，只保留出牌
+  resetPlayerActions()
+
   currentPlayer.value = 0
   message.value = '请选择要打出的牌'
 }
@@ -1324,12 +1478,18 @@ const passAction = () => {
   canGang.value = false
   canChi.value = false
   showPassOption.value = false
-  currentPlayer.value = (currentPlayer.value + 1) % 4
 
-  if (currentPlayer.value === 0) {
-    playerDrawPhase()
+  // 玩家选择"过"后，继续检查下一个 AI
+  // 下一个 AI 是 (lastDiscardFrom.value + 1) % 4
+  const nextAi = (lastDiscardFrom.value + 1) % 4
+  console.log(`[passAction] 玩家选择过，检查下一个 AI：${nextAi}`)
+
+  if (nextAi === 0) {
+    // 下一个是玩家 0，说明所有人都过，打牌者的下家摸牌
+    continueToNextPlayer(lastDiscardFrom.value)
   } else {
-    aiTurn()
+    // 检查下一个 AI，continueChain = true 表示继续检查链
+    checkAiActions(nextAi, lastDiscard.value, lastDiscardFrom.value, true)
   }
 }
 
