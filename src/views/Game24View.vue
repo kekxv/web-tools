@@ -4,14 +4,92 @@
       <h2 class="page-title">24 点游戏</h2>
       <p class="page-description">使用加减乘除和括号，将 4 张牌的数字计算出 24</p>
 
+      <!-- 游戏结束视图 -->
+      <div v-if="gameOver" class="game-over-overlay" :class="{ 'game-over-animate': showGameOverAnimate }">
+        <div class="game-over-content">
+          <div class="game-over-icon">
+            <el-icon :size="80">
+              <Trophy v-if="gameWon" />
+              <CircleCloseFilled v-else />
+            </el-icon>
+          </div>
+          <h3 class="game-over-title">{{ gameWon ? '恭喜升级！' : '游戏结束' }}</h3>
+          <div class="game-result">
+            <span class="result-text" :class="gameWon ? 'victory' : 'defeat'">
+              {{ gameWon ? '胜利' : '失败' }}
+            </span>
+          </div>
+          <div class="score-stats">
+            <div class="stat-item">
+              <el-icon><SuccessFilled /></el-icon>
+              <span>{{ correctCount }} 正确</span>
+            </div>
+            <div class="stat-item">
+              <el-icon><View /></el-icon>
+              <span>{{ showSolutionCount }} 看答案</span>
+            </div>
+            <div class="stat-item">
+              <el-icon><RefreshRight /></el-icon>
+              <span>{{ skipCount }} 跳过</span>
+            </div>
+          </div>
+          <div class="game-over-comment">{{ gameComment }}</div>
+          <!-- 答案显示（看答案结束游戏时显示） -->
+          <div v-if="endGameSolution && endGameAllSolutions.length > 0" class="end-game-solution">
+            <div class="solution-title">
+              <el-icon><MagicStick /></el-icon>
+              <span>本题答案</span>
+              <span class="solution-count" v-if="endGameAllSolutions.length > 1">
+                ({{ endGameSolutionIndex + 1 }} / {{ endGameAllSolutions.length }})
+              </span>
+            </div>
+            <div class="solution-preview">
+              <template v-for="(item, idx) in parseSolution(endGameSolution)" :key="idx">
+                <span v-if="typeof item === 'number'" class="sol-num">{{ getCardDisplay(item) }}</span>
+                <span v-else class="sol-op">{{ formatOperator(item) }}</span>
+              </template>
+            </div>
+            <div class="solution-nav-btns" v-if="endGameAllSolutions.length > 1">
+              <el-button size="small" @click="prevEndGameSolution" :disabled="endGameSolutionIndex === 0" circle>
+                <el-icon><ArrowLeft /></el-icon>
+              </el-button>
+              <el-button size="small" @click="nextEndGameSolution" :disabled="endGameSolutionIndex >= endGameAllSolutions.length - 1" circle>
+                <el-icon><ArrowRight /></el-icon>
+              </el-button>
+            </div>
+          </div>
+          <el-button type="primary" @click="restartGame" size="large" class="restart-btn">
+            <el-icon><RefreshRight /></el-icon>
+            重新开始
+          </el-button>
+        </div>
+      </div>
+
       <div class="game-container">
+        <!-- 积分显示 -->
+        <div class="score-display">
+          <div class="score-info">
+            <el-icon :size="20"><Coin /></el-icon>
+            <span class="score-label">积分</span>
+          </div>
+          <div class="score-value-wrap">
+            <span class="current-score" :class="getScoreClass(score)">{{ score }}</span>
+          </div>
+          <!-- 分数变化动画 -->
+          <transition name="score-change">
+            <div v-if="showScoreChange" class="score-change" :class="scoreChangeType">
+              {{ scoreChangeText }}
+            </div>
+          </transition>
+        </div>
+
         <!-- 游戏牌面 - 可点击选择 -->
         <div class="cards-display">
           <div
             v-for="(card, index) in cards"
-            :key="index"
+            :key="`card-${cardRefreshKey}-${index}`"
             class="card"
-            :class="[getCardSuitClass(card), { 'card-used': cardUsed[index] }]"
+            :class="[getCardSuitClass(card), { 'card-used': cardUsed[index] }, { 'card-correct': showCorrectAnimate && cardUsed[index] }]"
             @click="addCardToExpression(index)"
           >
             <div class="card-value">{{ card.display }}</div>
@@ -92,13 +170,13 @@
             <el-icon><RefreshLeft /></el-icon>
             清除
           </el-button>
-          <el-button @click="newGame" size="default">
+          <el-button @click="skipGame" size="default" :disabled="score <= 1 || gameOver">
             <el-icon><RefreshRight /></el-icon>
-            换一局
+            跳过
           </el-button>
-          <el-button @click="showSolution" size="default">
+          <el-button @click="showSolutionOrRestart" size="default">
             <el-icon><View /></el-icon>
-            看答案
+            {{ gameOver || score <= 0 ? '重来一局' : '看答案' }}
           </el-button>
         </div>
 
@@ -134,17 +212,36 @@
             </el-button>
           </div>
         </div>
+
+        <!-- 庆祝特效 -->
+        <div v-if="showCelebrate" class="celebrate-overlay">
+          <div class="celebrate-content">
+            <div class="celebrate-text">
+              <span v-for="(char, i) in celebrateText" :key="i" :style="{ animationDelay: i * 0.1 + 's' }">
+                {{ char }}
+              </span>
+            </div>
+            <div class="celebrate-icons">
+              <span class="icon-item" v-for="n in 5" :key="n" :style="{ animationDelay: n * 0.15 + 's' }">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="#fbbf24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   Operation, RefreshLeft, RefreshRight, View, InfoFilled,
-  Coin, Star, ArrowLeft, ArrowRight, FolderDelete, CircleCloseFilled
+  Coin, Star, ArrowLeft, ArrowRight, FolderDelete, CircleCloseFilled,
+  Trophy, SuccessFilled, MagicStick
 } from '@element-plus/icons-vue'
 
 // 扑克牌花色和值
@@ -181,6 +278,58 @@ const showSolutionArea = ref(false)
 const allSolutions = ref([])
 const currentSolutionIndex = ref(0)
 const currentSolution = ref('')
+
+// 积分系统
+const score = ref(10) // 初始 10 分
+const finalScore = ref(0)
+const gameOver = ref(false)
+const gameWon = ref(false) // 是否胜利（达到 45 分）
+const showGameOverAnimate = ref(false)
+const correctCount = ref(0)
+const showSolutionCount = ref(0)
+const skipCount = ref(0)
+
+// 当前题目状态
+const currentRound = ref(0) // 当前回合数
+const viewedSolution = ref(false) // 当前题目是否看过答案
+const viewedSolutionRound = ref(-1) // 看答案的回合数
+const cardRefreshKey = ref(0) // 卡片刷新 key，用于触发动画
+
+// 按钮防重复点击
+const isProcessing = ref(false) // 是否正在处理中
+
+// 游戏结束时答案显示
+const endGameSolution = ref('')
+const endGameAllSolutions = ref([])
+const endGameSolutionIndex = ref(0)
+
+// 趣味效果
+const shakeEffect = ref(false)
+const showScoreChange = ref(false)
+const scoreChangeText = ref('')
+const scoreChangeType = ref('') // 'positive' or 'negative'
+const showCorrectAnimate = ref(false)
+const showCelebrate = ref(false)
+const celebrateText = ref('')
+
+// 游戏评论
+const gameComments = {
+  victory: ['恭喜升级！', '太厉害了！', '完美通关！'],
+  defeat: ['再接再厉', '别灰心，加油！', '从头再来，你可以的！']
+}
+
+const gameComment = computed(() => {
+  if (gameWon.value) {
+    return gameComments.victory[Math.floor(Math.random() * gameComments.victory.length)]
+  } else {
+    return gameComments.defeat[Math.floor(Math.random() * gameComments.defeat.length)]
+  }
+})
+
+// 是否可以看答案
+const canShowSolution = computed(() => {
+  return score.value > 0 || !gameOver.value
+})
 
 // 生成随机卡牌
 const generateCards = () => {
@@ -298,6 +447,127 @@ const newGame = () => {
   allSolutions.value = []
   currentSolutionIndex.value = 0
   currentSolution.value = ''
+  showCorrectAnimate.value = false
+  showCelebrate.value = false
+  isProcessing.value = false
+  currentRound.value++
+  endGameSolution.value = ''
+  cardRefreshKey.value++ // 触发卡牌动画
+}
+
+// 跳过游戏
+const skipGame = () => {
+  if (isProcessing.value || gameOver.value) return
+
+  if (score.value <= 1) {
+    message.value = '分数不足，无法跳过'
+    messageType.value = 'warning'
+    return
+  }
+
+  isProcessing.value = true
+  updateScore(-1, 'skip')
+  skipCount.value++
+  viewedSolution.value = false
+  viewedSolutionRound.value = -1
+  setTimeout(() => {
+    newGame()
+  }, 500)
+}
+
+// 更新分数
+const updateScore = (delta, reason) => {
+  const oldScore = score.value
+  score.value += delta
+
+  // 显示分数变化动画
+  scoreChangeText.value = (delta > 0 ? '+' : '') + delta
+  scoreChangeType.value = delta > 0 ? 'positive' : 'negative'
+  showScoreChange.value = true
+
+  setTimeout(() => { showScoreChange.value = false }, 1000)
+
+  // 检查游戏升级（达到 45 分）
+  if (score.value >= 45 && reason === 'correct') {
+    triggerCelebrate() // 触发庆祝动画
+    setTimeout(() => {
+      endGame(true) // 胜利
+    }, 1000)
+    return
+  }
+
+  // 检查游戏结束（分数 <= 0）
+  if (score.value <= 0 && reason !== 'correct') {
+    endGame(false) // 失败
+  }
+}
+
+// 游戏结束
+const endGame = (isVictory = false) => {
+  gameWon.value = isVictory
+  // 先保存所有答案（如果看过答案）
+  if (viewedSolution.value && endGameAllSolutions.value.length > 0) {
+    // 答案已经保存在 endGameAllSolutions 中
+    endGameSolutionIndex.value = Math.min(endGameSolutionIndex.value, endGameAllSolutions.value.length - 1)
+    endGameSolution.value = endGameAllSolutions.value[endGameSolutionIndex.value]
+  } else {
+    endGameSolution.value = ''
+    endGameAllSolutions.value = []
+    endGameSolutionIndex.value = 0
+  }
+
+  gameOver.value = true
+  showGameOverAnimate.value = true
+}
+
+// 上一个答案（游戏结束页面）
+const prevEndGameSolution = () => {
+  if (endGameSolutionIndex.value > 0) {
+    endGameSolutionIndex.value--
+    endGameSolution.value = endGameAllSolutions.value[endGameSolutionIndex.value]
+  }
+}
+
+// 下一个答案（游戏结束页面）
+const nextEndGameSolution = () => {
+  if (endGameSolutionIndex.value < endGameAllSolutions.value.length - 1) {
+    endGameSolutionIndex.value++
+    endGameSolution.value = endGameAllSolutions.value[endGameSolutionIndex.value]
+  }
+}
+
+// 重新开始游戏
+const restartGame = () => {
+  if (isProcessing.value) return
+
+  score.value = 10
+  finalScore.value = 0
+  gameWon.value = false
+  gameOver.value = false
+  showGameOverAnimate.value = false
+  correctCount.value = 0
+  showSolutionCount.value = 0
+  skipCount.value = 0
+  currentRound.value = 0
+  viewedSolution.value = false
+  viewedSolutionRound.value = -1
+  newGame()
+}
+
+// 获取分数样式类
+const getScoreClass = (val) => {
+  if (val >= 15) return 'score-excellent'
+  if (val >= 10) return 'score-good'
+  if (val >= 5) return 'score-normal'
+  return 'score-low'
+}
+
+// 庆祝动画
+const triggerCelebrate = () => {
+  const texts = ['太棒了！', '完美！', '正确！', '厉害！', '666！']
+  celebrateText.value = texts[Math.floor(Math.random() * texts.length)].split('')
+  showCelebrate.value = true
+  setTimeout(() => { showCelebrate.value = false }, 2000)
 }
 
 // 获取花色样式类
@@ -413,6 +683,8 @@ const evaluateExpression = (expr) => {
 
 // 检查结果
 const checkResult = () => {
+  if (isProcessing.value) return
+
   const exprStr = expression.value.map(item => item.value).join('')
   if (!exprStr) {
     message.value = '请输入表达式'
@@ -435,12 +707,33 @@ const checkResult = () => {
     return
   }
 
+  isProcessing.value = true
+
   if (Math.abs(result - 24) < 0.000001) {
     message.value = '恭喜！计算正确！'
     messageType.value = 'success'
+
+    // 如果看过答案，不加分
+    if (!viewedSolution.value || viewedSolutionRound.value !== currentRound.value) {
+      updateScore(1, 'correct')
+      correctCount.value++
+    }
+
+    // 播放庆祝动画
+    showCorrectAnimate.value = true
+    triggerCelebrate()
+
+    setTimeout(() => {
+      showCorrectAnimate.value = false
+      viewedSolution.value = false
+      viewedSolutionRound.value = -1
+      // 自动进入下一局
+      setTimeout(() => newGame(), 1500)
+    }, 1000)
   } else {
     message.value = `结果是 ${result}，不是 24，再试一次！`
     messageType.value = 'error'
+    isProcessing.value = false
   }
 }
 
@@ -467,23 +760,76 @@ const parseSolution = (expr) => {
 
 // 显示答案
 const showSolution = () => {
-  const nums = cards.value.map(c => c.value)
-  allSolutions.value = findAllSolutions(nums)
+  if (isProcessing.value || gameOver.value) return
 
-  if (allSolutions.value.length > 0) {
-    currentSolutionIndex.value = 0
-    currentSolution.value = allSolutions.value[0]
-    showSolutionArea.value = true
-    message.value = `找到 ${allSolutions.value.length} 种解法`
+  // 同一道题只扣一次分
+  if (viewedSolution.value && viewedSolutionRound.value === currentRound.value) {
+    message.value = '当前题目已看过答案，不再重复扣分'
     messageType.value = 'info'
+    showSolutionArea.value = true
+    return
+  }
+
+  isProcessing.value = true
+  const nums = cards.value.map(c => c.value)
+  const solutions = findAllSolutions(nums)
+
+  if (solutions.length > 0) {
+    // 先保存答案数据
+    endGameAllSolutions.value = solutions
+    endGameSolutionIndex.value = 0
+    endGameSolution.value = solutions[0]
+
+    currentSolutionIndex.value = 0
+    currentSolution.value = solutions[0]
+    showSolutionArea.value = true
+    message.value = `找到 ${solutions.length} 种解法`
+    messageType.value = 'info'
+    showSolutionCount.value++
+    viewedSolution.value = true
+    viewedSolutionRound.value = currentRound.value
+
+    // 扣分
+    score.value -= 2
+
+    // 显示分数变化动画
+    scoreChangeText.value = '-2'
+    scoreChangeType.value = 'negative'
+    showScoreChange.value = true
+    setTimeout(() => { showScoreChange.value = false }, 1000)
+
+    // 如果分数 <= 0，延迟结束游戏
+    if (score.value <= 0) {
+      setTimeout(() => {
+        endGame()
+      }, 800)
+    }
+    isProcessing.value = false
   } else {
     message.value = '未找到解法'
     messageType.value = 'error'
+    isProcessing.value = false
   }
+}
+
+// 看答案或重来一局
+const showSolutionOrRestart = () => {
+  if (gameOver.value) {
+    restartGame()
+    return
+  }
+
+  if (score.value <= 0) {
+    restartGame()
+    return
+  }
+
+  showSolution()
 }
 
 // 上一个答案
 const prevSolution = () => {
+  if (isProcessing.value) return
   if (currentSolutionIndex.value > 0) {
     currentSolutionIndex.value--
     currentSolution.value = allSolutions.value[currentSolutionIndex.value]
@@ -492,6 +838,7 @@ const prevSolution = () => {
 
 // 下一个答案
 const nextSolution = () => {
+  if (isProcessing.value) return
   if (currentSolutionIndex.value < allSolutions.value.length - 1) {
     currentSolutionIndex.value++
     currentSolution.value = allSolutions.value[currentSolutionIndex.value]
@@ -500,6 +847,8 @@ const nextSolution = () => {
 
 // 填入表达式
 const fillSolution = () => {
+  if (isProcessing.value) return
+
   // 先清除表达式并释放所有牌
   expression.value = []
   cardUsed.value = [false, false, false, false]
@@ -552,6 +901,388 @@ newGame()
 .game-container {
   max-width: 600px;
   margin: 0 auto;
+  position: relative;
+}
+
+/* 游戏结束覆盖层 */
+.game-over-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.game-over-animate {
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.game-over-content {
+  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 20px;
+  padding: 35px 30px;
+  text-align: center;
+  color: #1e293b;
+  max-width: 488px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border: 1px solid #e2e8f0;
+}
+
+.game-over-icon {
+  color: #ffd700;
+  margin-bottom: 20px;
+  animation: bounceIn 0.8s ease;
+}
+
+@keyframes bounceIn {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+.game-over-title {
+  font-size: 24px;
+  margin-bottom: 18px;
+  color: #f59e0b;
+}
+
+.game-result {
+  background: rgba(241, 245, 249, 0.8);
+  border-radius: 15px;
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+.game-result .result-text {
+  font-size: 42px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.game-result .result-text.victory {
+  color: #16a34a;
+}
+
+.game-result .result-text.defeat {
+  color: #dc2626;
+}
+
+.score-stats {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 18px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.stat-item .el-icon {
+  color: #64748b;
+}
+
+.game-over-comment {
+  font-size: 15px;
+  color: #475569;
+  margin-bottom: 22px;
+  font-style: italic;
+}
+
+/* 游戏结束答案显示 */
+.end-game-solution {
+  background: rgba(241, 245, 249, 0.8);
+  border-radius: 16px;
+  padding: 18px 20px;
+  margin-bottom: 22px;
+  border: 1px solid #cbd5e1;
+}
+
+.solution-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #f59e0b;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.solution-title .el-icon {
+  font-size: 18px;
+}
+
+.solution-count {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 400;
+}
+
+.solution-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  background: rgba(203, 213, 225, 0.3);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.sol-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 50px;
+  background: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
+  border: 2px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 19px;
+  font-weight: bold;
+  color: #1e293b;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.sol-op {
+  font-size: 20px;
+  font-weight: 700;
+  color: #f59e0b;
+  padding: 0 1px;
+}
+
+.solution-nav-btns {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.solution-nav-btns .el-button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.restart-btn {
+  width: 100%;
+  padding: 15px 30px;
+  font-size: 18px;
+}
+
+/* 积分显示 */
+.score-display {
+  position: absolute;
+  top: -45px;
+  right: 0;
+  background: #f0fdf4;
+  border-radius: 20px;
+  padding: 8px 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #86efac;
+  z-index: 10;
+}
+
+.score-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.score-info .score-label {
+  color: #15803d;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.game-over-content .score-label {
+  color: #64748b;
+}
+
+.score-value-wrap {
+  position: relative;
+}
+
+.current-score {
+  font-size: 24px;
+  font-weight: bold;
+  color: #166534;
+}
+
+.current-score.score-excellent { color: #a855f7; }
+.current-score.score-good { color: #16a34a; }
+.current-score.score-normal { color: #2563eb; }
+.current-score.score-low { color: #dc2626; }
+
+/* 分数变化动画 */
+.score-change-enter-active,
+.score-change-leave-active {
+  transition: all 0.5s ease;
+}
+
+.score-change-enter-from,
+.score-change-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.score-change {
+  position: absolute;
+  top: -35px;
+  right: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  animation: floatUp 1s ease forwards;
+}
+
+.score-change.positive {
+  color: #16a34a;
+}
+
+.score-change.negative {
+  color: #dc2626;
+}
+
+@keyframes floatUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) scale(1.2);
+  }
+}
+
+/* 答对动画 */
+.card-correct {
+  animation: correctFade 0.4s ease forwards;
+}
+
+@keyframes correctFade {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+    background: #f0fdf4;
+  }
+}
+
+/* 庆祝特效 */
+.celebrate-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+}
+
+.celebrate-content {
+  text-align: center;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 20px;
+  padding: 30px 40px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  animation: celebrate-pop 0.4s ease-out forwards;
+}
+
+@keyframes celebrate-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.celebrate-text {
+  font-size: 36px;
+  font-weight: bold;
+  color: #16a34a;
+  margin-bottom: 10px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.celebrate-text span {
+  display: inline-block;
+  animation: celebrateFade 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes celebrateFade {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.celebrate-icons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.icon-item {
+  animation: starFade 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+.icon-item .el-icon {
+  color: #fbbf24;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+}
+
+@keyframes starFade {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* 卡牌显示 */
@@ -567,8 +1298,10 @@ newGame()
   width: 70px;
   height: 100px;
   border-radius: 12px;
-  background: linear-gradient(145deg, #fff 0%, #f8f9fa 100%);
-  border: 2px solid #e4e7ed;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 249, 250, 0.8) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 2px solid rgba(228, 231, 237, 0.8);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -577,11 +1310,29 @@ newGame()
   font-size: 24px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
   position: relative;
   overflow: hidden;
+  animation: card-fade-in 0.5s ease-out forwards;
+  opacity: 0;
 }
+
+@keyframes card-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.card:nth-child(1) { animation-delay: 0.1s; }
+.card:nth-child(2) { animation-delay: 0.2s; }
+.card:nth-child(3) { animation-delay: 0.3s; }
+.card:nth-child(4) { animation-delay: 0.4s; }
 
 .card:hover:not(.card-used) {
   transform: translateY(-4px);
@@ -931,6 +1682,27 @@ newGame()
     max-width: 100%;
   }
 
+  /* 积分显示移动端适配 */
+  .score-display {
+    position: relative;
+    top: auto;
+    right: auto;
+    justify-content: center;
+    margin-bottom: 15px;
+  }
+
+  .score-info {
+    font-size: 13px;
+  }
+
+  .score-label {
+    font-size: 14px;
+  }
+
+  .current-score {
+    font-size: 20px;
+  }
+
   .cards-display {
     gap: 12px;
     margin-bottom: 20px;
@@ -1102,12 +1874,100 @@ newGame()
     padding: 10px 8px;
     font-size: 13px;
   }
+
+  /* 游戏结束覆盖层移动端适配 */
+  .game-over-overlay {
+    padding: 15px;
+  }
+
+  .game-over-content {
+    padding: 25px 20px;
+  }
+
+  .game-over-title {
+    font-size: 20px;
+  }
+
+  .score-value {
+    font-size: 42px;
+  }
+
+  .score-stats {
+    gap: 10px;
+  }
+
+  .stat-item {
+    font-size: 11px;
+  }
+
+  .stat-item .el-icon {
+    font-size: 18px;
+  }
+
+  .game-over-comment {
+    font-size: 13px;
+  }
+
+  /* 游戏结束答案显示移动端适配 */
+  .end-game-solution {
+    padding: 15px 18px;
+  }
+
+  .solution-title {
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+
+  .solution-preview {
+    padding: 10px;
+    gap: 5px;
+  }
+
+  .sol-num {
+    width: 34px;
+    height: 46px;
+    font-size: 17px;
+  }
+
+  .sol-op {
+    font-size: 18px;
+    padding: 0 1px;
+  }
+
+  .solution-nav-btns .el-button {
+    width: 28px;
+    height: 28px;
+  }
+
+  /* 庆祝特效移动端适配 */
+  .celebrate-text {
+    font-size: 36px;
+  }
+
+  .celebrate-icons .el-icon {
+    width: 25px;
+    height: 25px;
+  }
 }
 
-/* 超小屏幕适配 */
+/* 超小屏幕适配（iPhone SE） */
 @media screen and (max-width: 375px) {
   .game-container {
     padding: 0 5px;
+  }
+
+  /* 积分显示超小屏幕适配 */
+  .score-display {
+    padding: 6px 12px;
+    border-radius: 15px;
+  }
+
+  .score-info {
+    font-size: 12px;
+  }
+
+  .current-score {
+    font-size: 18px;
   }
 
   .cards-display {
@@ -1222,6 +2082,49 @@ newGame()
   .btn-group .el-button {
     padding: 9px 6px;
     font-size: 12px;
+  }
+
+  /* 游戏结束覆盖层超小屏幕适配 */
+  .game-over-content {
+    padding: 20px 15px;
+  }
+
+  .game-over-title {
+    font-size: 20px;
+  }
+
+  .score-value {
+    font-size: 40px;
+  }
+
+  .score-unit {
+    font-size: 14px;
+  }
+
+  .stat-item {
+    font-size: 11px;
+  }
+
+  .stat-item .el-icon {
+    font-size: 18px;
+  }
+
+  .game-over-comment {
+    font-size: 13px;
+  }
+
+  .restart-btn {
+    padding: 12px 20px;
+    font-size: 15px;
+  }
+
+  /* 庆祝特效超小屏幕适配 */
+  .celebrate-text {
+    font-size: 28px;
+  }
+
+  .celebrate-icons {
+    gap: 10px;
   }
 }
 </style>
