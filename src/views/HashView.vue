@@ -118,6 +118,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { ElMessage } from 'element-plus'
 import { hashString, hashFile, HASH_ALGORITHMS } from '../utils/hash'
 
 const inputMode = ref('text')
@@ -146,7 +147,8 @@ const handleFileSelect = (event) => {
   const file = event.target.files?.[0]
   if (file) {
     selectedFile.value = file
-    hashResult.value = ''
+    hashResultHex.value = ''
+    hashResultBase64.value = ''
   }
 }
 
@@ -155,7 +157,8 @@ const handleDrop = (event) => {
   const file = event.dataTransfer?.files?.[0]
   if (file) {
     selectedFile.value = file
-    hashResult.value = ''
+    hashResultHex.value = ''
+    hashResultBase64.value = ''
   }
 }
 
