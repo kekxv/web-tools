@@ -27,6 +27,10 @@
                   <el-dropdown-item command="json-nested">JSON 嵌套对象</el-dropdown-item>
                   <el-dropdown-item command="json-array">JSON 数组匹配</el-dropdown-item>
                   <el-dropdown-item command="json-base64">JSON 含 Base64</el-dropdown-item>
+                  <el-dropdown-item command="json-empty">JSON 空值对比</el-dropdown-item>
+                  <el-dropdown-item command="json-type-change">JSON 类型变化</el-dropdown-item>
+                  <el-dropdown-item command="json-same-base64">JSON 相同 Base64</el-dropdown-item>
+                  <el-dropdown-item command="json-array-struct">JSON 数组结构变化</el-dropdown-item>
                   <el-dropdown-item command="xml-simple">XML 简单对比</el-dropdown-item>
                   <el-dropdown-item command="xml-nested">XML 嵌套结构</el-dropdown-item>
                 </el-dropdown-menu>
@@ -1048,6 +1052,73 @@ const testDataMap = {
     </department>
   </departments>
 </company>`
+  },
+  // JSON 空值对比
+  'json-empty': {
+    left: JSON.stringify({
+      id: '',
+      name: '测试',
+      description: '',
+      count: 0,
+      enabled: false,
+      data: null
+    }, null, 2),
+    right: JSON.stringify({
+      id: '123',
+      name: '测试',
+      description: '描述信息',
+      count: 0,
+      enabled: false,
+      data: null
+    }, null, 2)
+  },
+  // JSON 类型变化
+  'json-type-change': {
+    left: JSON.stringify({
+      id: 123,
+      value: 'string',
+      list: [1, 2, 3],
+      active: true
+    }, null, 2),
+    right: JSON.stringify({
+      id: '123',
+      value: 456,
+      list: 'not-an-array',
+      active: 'yes'
+    }, null, 2)
+  },
+  // JSON 相同 Base64
+  'json-same-base64': {
+    left: JSON.stringify({
+      id: 1,
+      name: '相同 Base64 测试',
+      avatar: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      description: '这是一个测试'
+    }, null, 2),
+    right: JSON.stringify({
+      id: 1,
+      name: '相同 Base64 测试',
+      avatar: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      description: '这是一个测试'
+    }, null, 2)
+  },
+  // JSON 数组结构变化
+  'json-array-struct': {
+    left: JSON.stringify({
+      items: [
+        { id: 1, name: 'Item 1' },
+        { id: 2, name: 'Item 2' }
+      ],
+      count: 2
+    }, null, 2),
+    right: JSON.stringify({
+      items: [
+        { id: 1, name: 'Item 1', extra: 'new field' },
+        { id: 2, name: 'Item 2 Modified' },
+        { id: 3, name: 'Item 3' }
+      ],
+      count: 3
+    }, null, 2)
   }
 }
 
@@ -1084,6 +1155,10 @@ const loadTestData = (command) => {
     'json-nested': 'JSON 嵌套对象',
     'json-array': 'JSON 数组匹配',
     'json-base64': 'JSON 含 Base64',
+    'json-empty': 'JSON 空值对比',
+    'json-type-change': 'JSON 类型变化',
+    'json-same-base64': 'JSON 相同 Base64',
+    'json-array-struct': 'JSON 数组结构变化',
     'xml-simple': 'XML 简单对比',
     'xml-nested': 'XML 嵌套结构'
   }
