@@ -55,7 +55,7 @@
                 <el-icon><Monitor /></el-icon>
               </div>
               <div class="info">
-                <span class="name">AI 对家</span>
+                <span class="name">对家</span>
                 <span class="score">{{ players[2]?.score }}</span>
               </div>
             </div>
@@ -87,7 +87,7 @@
                 <el-icon><Monitor /></el-icon>
               </div>
               <div class="info">
-                <span class="name">AI 上家</span>
+                <span class="name">上家</span>
                 <span class="score">{{ players[1]?.score }}</span>
               </div>
             </div>
@@ -119,7 +119,7 @@
                 <el-icon><Monitor /></el-icon>
               </div>
               <div class="info">
-                <span class="name">AI 下家</span>
+                <span class="name">下家</span>
                 <span class="score">{{ players[3]?.score }}</span>
               </div>
             </div>
@@ -438,9 +438,9 @@ const getHandCount = (playerId) => {
 const startGame = () => {
   players.value = [
     { id: 0, name: '你', score: initialScore.value, hand: [], exposedSets: [], isFolded: false, isDealer: isDealer.value },
-    new AIPlayer(1, 'AI 上家', aiConfig[aiDifficulty.value]),
-    new AIPlayer(2, 'AI 对家', aiConfig[aiDifficulty.value]),
-    new AIPlayer(3, 'AI 下家', aiConfig[aiDifficulty.value])
+    new AIPlayer(1, '上家', aiConfig[aiDifficulty.value]),
+    new AIPlayer(2, '对家', aiConfig[aiDifficulty.value]),
+    new AIPlayer(3, '下家', aiConfig[aiDifficulty.value])
   ]
 
   roundCount.value = 1
@@ -1096,9 +1096,12 @@ const playerDrawPhase = () => {
 
   // 检查暗杠
   const ankanTiles = canAnkan(testHand)
-  if (ankanTiles.length > 0) {
+  // 检查加杠
+  const kakanResult = canKakan(exposedSets, drawnTile.value)
+
+  if (ankanTiles.length > 0 || kakanResult.can) {
     canGang.value = true
-    console.log(`[玩家摸牌] 可以暗杠`)
+    console.log(`[玩家摸牌] 可以${ankanTiles.length > 0 ? '暗杠' : '加杠'}`)
   }
 
   // 确保 UI 刷新
@@ -1270,28 +1273,63 @@ const doPeng = () => {
   message.value = '请选择要打出的牌'
 }
 
-// 杠 - 根据情况处理大明杠或暗杠
+// 杠 - 根据情况处理大明杠、暗杠或加杠
 const doGang = () => {
-  // 检查是否是暗杠（摸牌后）
-  const testHand = drawnTile.value ? [...playerHand.value, drawnTile.value] : playerHand.value
+  // 1. 检查是否是加杠（摸到之前碰过的牌）
+  const kakanResult = canKakan(players.value[0].exposedSets, drawnTile.value)
+  if (kakanResult.can) {
+    doKakan(kakanResult.setIndex)
+    return
+  }
 
-  // 检查是否有 4 张相同的牌（暗杠）
+  // 2. 检查是否是暗杠（摸牌后手上有4张一样的）
+  const testHand = drawnTile.value ? [...playerHand.value, drawnTile.value] : playerHand.value
   const counts = {}
   for (const tile of testHand) {
     counts[tile.value] = (counts[tile.value] || 0) + 1
   }
-
   const ankanValue = Object.keys(counts).find(v => counts[v] === 4)
 
   if (ankanValue) {
-    // 暗杠
     doAnkan(parseInt(ankanValue))
   } else if (lastDiscard.value) {
-    // 大明杠
+    // 3. 大明杠
     doDaiminkan()
   } else {
     console.warn('[doGang] 无法确定杠的类型')
   }
+}
+
+// 加杠
+const doKakan = (setIndex) => {
+  const tile = drawnTile.value
+  console.log(`[加杠] 杠牌：${tile.display}, 索引：${setIndex}`)
+
+  // 更新副露：从 pon 变为 kan
+  const set = players.value[0].exposedSets[setIndex]
+  set.type = 'kan'
+  set.tiles.push(tile)
+  
+  // 清空摸到的牌
+  drawnTile.value = null
+
+  // 杠后摸牌
+  drawnTile.value = deck.value.draw()
+  remainingTiles.value = deck.value.remaining()
+
+  console.log(`[加杠] 摸到新牌：${drawnTile.value?.display}`)
+
+  // 检查是否杠上开花
+  const result = checkAgari([...playerHand.value, drawnTile.value], players.value[0]?.exposedSets || [], { isZimo: true, isDealer: players.value[0]?.isDealer })
+  if (result.agari) {
+    message.value = '杠上开花！'
+    doZimo()
+    return
+  }
+
+  resetPlayerActions()
+  currentPlayer.value = 0
+  message.value = '请选择要打出的牌'
 }
 
 // 暗杠
@@ -1656,59 +1694,54 @@ const formatChiPattern = (tiles) => {
   flex-direction: row;
   align-items: center;
   gap: 6px;
-  background: rgba(255,255,255,0.9);
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.7rem;
+  background: rgba(255,255,255,0.95);
+  padding: 4px 10px;
+  border-radius: 14px;
+  font-size: 0.85rem;
   font-weight: 700;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  color: #1e293b;
 }
 
 .ai-zone .player-info-box {
-  background: rgba(0,0,0,0.4);
-  color: #fff;
-  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(15, 23, 42, 0.8);
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 4px 12px;
 }
 
-.ai-zone .player-info-box .score {
-  color: #fbbf24;
+.ai-zone .player-info-box .info {
+  background: #409eff;
+  padding: 2px 8px;
+  border-radius: 10px;
 }
 
 .player-info-box .avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  font-size: 0.9rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 1.1rem;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #f1f5f9;
+  color: #1e293b;
 }
 
-.player-info-box .info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  background: transparent;
-  padding: 0;
-}
-
-.player-info-box .top {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.ai-zone .player-info-box .avatar {
+  background: rgba(255,255,255,0.2);
+  color: #ffffff;
 }
 
 .player-info-box .name {
-  color: #1e293b;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 700;
+  color: inherit;
 }
 
 .player-info-box .score {
   color: #f59e0b;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 800;
 }
 
@@ -1719,50 +1752,6 @@ const formatChiPattern = (tiles) => {
   font-weight: 800;
   padding: 2px 6px;
   border-radius: 4px;
-}
-
-/* AI 区域的信息框保持纵向 */
-.ai-zone .player-info-box {
-  flex-direction: row;
-  background: transparent;
-  padding: 0;
-  box-shadow: none;
-  align-items: center;
-  gap: 4px;
-}
-
-.ai-zone .player-info-box .avatar {
-  width: 24px;
-  height: 24px;
-  background: #ffffff;
-  color: #1e293b;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.ai-zone .player-info-box .info {
-  background: rgba(255,255,255,0.95);
-  padding: 2px 6px;
-  border-radius: 10px;
-  flex-direction: row;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.ai-zone .player-info-box .info .name {
-  font-size: 0.65rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.ai-zone .player-info-box .info .score {
-  font-size: 0.65rem;
-  font-weight: 800;
-  color: #f59e0b;
-  white-space: nowrap;
 }
 
 /* 手牌 */
@@ -1794,40 +1783,22 @@ const formatChiPattern = (tiles) => {
   display: inline-block;
 }
 
-.hand-tiles.single-tile .tile-back {
-  width: 28px;
-  height: 38px;
-}
-
 /* 手牌数标签 */
 .hand-count-label {
   position: absolute;
   bottom: -4px;
   right: -4px;
-  background: rgba(0,0,0,0.7);
-  color: #fff;
-  font-size: 0.55rem;
-  padding: 1px 3px;
-  border-radius: 3px;
-  font-weight: 700;
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(4px);
+  color: #fbbf24;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 900;
   white-space: nowrap;
-}
-
-.tile-back {
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  border-radius: 4px;
-  border: 1px solid rgba(255,255,255,0.3);
-  flex-shrink: 0;
-}
-
-.h-tile {
-  width: 20px;
-  height: 26px;
-}
-
-.v-tile {
-  width: 18px;
-  height: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+  z-index: 5;
 }
 
 /* 副露 */
@@ -1978,6 +1949,7 @@ const formatChiPattern = (tiles) => {
   border-radius: 12px;
   border: 1px solid rgba(255,255,255,0.2);
   min-height: 150px;
+  min-width: 240px;
 }
 
 /* 玩家区域 */
@@ -2064,6 +2036,7 @@ const formatChiPattern = (tiles) => {
     padding: 6px;
     gap: 2px;
     min-height: 80px;
+    min-width: 180px;
   }
   
   .exposed-tile-simple {
@@ -2095,59 +2068,86 @@ const formatChiPattern = (tiles) => {
     order: 3;
     width: auto;
     max-width: none;
-    border-radius: 12px;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 2px 10px;
-    margin-top: 2px;
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0 10px;
+    margin-top: 4px;
     flex-direction: row;
-    height: 22px;
-    min-width: unset;
-    box-shadow: none;
-    gap: 8px;
+    height: 24px;
+    gap: 6px;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
   }
 
   .player-zone .player-info-box .avatar {
-    width: 14px;
-    height: 14px;
-    font-size: 0.55rem;
+    width: 16px;
+    height: 16px;
+    font-size: 0.6rem;
     background: rgba(255, 255, 255, 0.2);
     color: #fff;
   }
 
   .player-zone .player-info-box .info {
     flex-direction: row;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
     width: auto;
-    justify-content: flex-start;
+    display: flex;
   }
 
   .player-zone .player-info-box .info .top {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
     gap: 4px;
   }
 
   .player-zone .player-info-box .name {
-    color: #fff;
+    color: #ffffff;
     font-size: 0.75rem;
+    white-space: nowrap;
   }
 
   .player-zone .player-info-box .score {
     color: #fbbf24;
     font-size: 0.8rem;
-    font-weight: 800;
+    font-weight: 900;
+    margin-left: 4px;
+    border-left: 1px solid rgba(255,255,255,0.2);
+    padding-left: 6px;
   }
 
-  .player-zone .player-info-box .dealer-badge {
-    padding: 0 4px;
-    font-size: 0.55rem;
-    height: 14px;
-    line-height: 14px;
+  /* 手机端 AI 信息框 - 强制配色 */
+  .ai-zone .player-info-box {
+    background: rgba(15, 23, 42, 0.8) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    padding: 4px 10px;
+  }
+
+  .ai-zone .player-info-box .name {
+    color: #ffffff !important;
+    font-size: 0.75rem;
+  }
+
+  .ai-zone .player-info-box .score {
+    color: #fbbf24 !important;
+  }
+
+  /* 手机端标签放大 */
+  .hand-count-label {
+    font-size: 0.8rem !important;
+    padding: 2px 8px;
+    bottom: -6px;
+    right: -6px;
   }
 
   .discard-grid {
     grid-template-columns: repeat(6, 1fr);
+    min-width: 160px;
   }
 
   .hand-cards {
@@ -2181,6 +2181,30 @@ const formatChiPattern = (tiles) => {
   border: 1px solid rgba(255,255,255,0.3);
   box-shadow: 1px 2px 4px rgba(0,0,0,0.3);
   position: relative;
+}
+
+/* 默认尺寸（手机端） */
+.h-tile {
+  width: 32px;
+  height: 44px;
+}
+
+.v-tile {
+  width: 30px;
+  height: 42px;
+}
+
+.tile-back::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60%;
+  height: 70%;
+  background: linear-gradient(135deg, #60a5fa, #2563eb);
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.2);
 }
 
 /* 大屏幕适配 - 放大重点区域 */
@@ -2252,29 +2276,6 @@ const formatChiPattern = (tiles) => {
     right: -10px;
     border-radius: 8px;
   }
-}
-
-.tile-back::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 60%;
-  height: 70%;
-  background: linear-gradient(135deg, #60a5fa, #2563eb);
-  border-radius: 3px;
-  border: 1px solid rgba(255,255,255,0.2);
-}
-
-.h-tile {
-  width: 20px;
-  height: 26px;
-}
-
-.v-tile {
-  width: 18px;
-  height: 24px;
 }
 
 /* 操作栏 */
