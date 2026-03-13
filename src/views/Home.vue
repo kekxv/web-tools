@@ -36,6 +36,12 @@ const tools = [
     icon: 'Document'
   },
   {
+    path: '/json-compare',
+    title: 'JSON/XML 对比',
+    description: '对比 JSON/XML 对象，高亮显示差异，支持数组匹配',
+    icon: 'DataAnalysis'
+  },
+  {
     path: '/base64',
     title: 'Base64 查看',
     description: '智能解析 Base64 数据，支持图片、PDF 等格式预览',

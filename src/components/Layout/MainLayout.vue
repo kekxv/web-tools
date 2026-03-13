@@ -26,6 +26,10 @@
             <el-icon><Document /></el-icon>
             <template #title>代码格式化</template>
           </el-menu-item>
+          <el-menu-item index="/json-compare">
+            <el-icon><DataAnalysis /></el-icon>
+            <template #title>JSON/XML 对比</template>
+          </el-menu-item>
           <el-menu-item index="/base64">
             <el-icon><DataAnalysis /></el-icon>
             <template #title>Base64 查看</template>
@@ -84,6 +88,10 @@
           <el-menu-item index="/formatter">
             <el-icon><Document /></el-icon>
             <template #title>代码格式化</template>
+          </el-menu-item>
+          <el-menu-item index="/json-compare">
+            <el-icon><DataAnalysis /></el-icon>
+            <template #title>JSON/XML 对比</template>
           </el-menu-item>
           <el-menu-item index="/base64">
             <el-icon><DataAnalysis /></el-icon>
@@ -182,12 +190,13 @@ const currentTitle = computed(() => {
     '/': '首页',
     '/diff': 'Diff 工具',
     '/formatter': '代码格式化',
+    '/json-compare': 'JSON/XML 对比',
+    '/base64': 'Base64 查看',
     '/hash': 'Hash 计算',
     '/gobang': '五子棋',
     '/game24': '24 点',
     '/showhand': '梭哈',
-    '/mahjong': '广东麻将',
-    '/base64': 'Base64 查看'
+    '/mahjong': '广东麻将'
   }
   return routeMap[route.path] || 'Web Tools'
 })

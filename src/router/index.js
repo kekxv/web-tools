@@ -9,6 +9,7 @@ import Game24View from '../views/Game24View.vue'
 import ShowHandView from '../views/ShowHandView.vue'
 import MahjongView from '../views/MahjongView.vue'
 import Base64View from '../views/Base64View.vue'
+import JsonCompareView from '../views/JsonCompareView.vue'
 
 const routes = [
   {
@@ -32,6 +33,12 @@ const routes = [
         name: 'Formatter',
         component: FormatterView,
         meta: { title: '代码格式化' }
+      },
+      {
+        path: 'json-compare',
+        name: 'JsonCompare',
+        component: JsonCompareView,
+        meta: { title: 'JSON/XML 对比' }
       },
       {
         path: 'hash',
