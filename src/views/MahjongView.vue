@@ -319,42 +319,67 @@
     </el-dialog>
 
     <!-- 结果对话框 -->
-    <el-dialog v-model="showResultDialog" :show-close="false" width="400px" class="result-dialog">
-      <div class="result-content" :class="resultClass">
-        <div class="result-icon">
-          <el-icon v-if="resultClass === 'win'"><Trophy /></el-icon>
-          <el-icon v-else-if="resultClass === 'loss'"><CircleClose /></el-icon>
-          <el-icon v-else><WarningFilled /></el-icon>
+    <el-dialog v-model="showResultDialog" :show-close="false" width="90%" class="modern-result-dialog">
+      <div class="result-card" :class="resultClass">
+        <div class="result-header">
+          <div class="result-status-icon">
+            <el-icon v-if="resultClass === 'win'"><Trophy /></el-icon>
+            <el-icon v-else-if="resultClass === 'loss'"><CircleClose /></el-icon>
+            <el-icon v-else><WarningFilled /></el-icon>
+          </div>
+          <h2 class="result-title">{{ resultTitle }}</h2>
         </div>
-        <h2>{{ resultTitle }}</h2>
-        <div class="result-info">
-          <p><span class="label">和牌者：</span>{{ winnerName }}</p>
-          <p><span class="label">牌型：</span>{{ agariType }}</p>
-          <p><span class="label">番数：</span><span class="fan">{{ fanCount }} 番</span></p>
-          <p><span class="label">得分：</span><span class="score">{{ scoreChange }}</span></p>
+
+        <div class="result-body">
+          <div class="result-item">
+            <span class="label">和牌者</span>
+            <span class="value">{{ winnerName }}</span>
+          </div>
+          <div class="result-item">
+            <span class="label">牌型</span>
+            <span class="value highlight">{{ agariType }}</span>
+          </div>
+          <div class="result-divider"></div>
+          <div class="result-stats">
+            <div class="stat-box">
+              <span class="stat-label">番数</span>
+              <span class="stat-value fan">{{ fanCount }}</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">得分</span>
+              <span class="stat-value score">{{ scoreChange }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-footer">
+          <el-button v-if="!isGameOver" type="primary" @click="closeResultDialog" round size="large" class="action-btn">
+            继续下一局
+          </el-button>
+          <el-button v-else type="danger" @click="resetGame" round size="large" class="action-btn">
+            重新开始游戏
+          </el-button>
         </div>
       </div>
-      <template #footer>
-        <el-button v-if="!isGameOver" type="primary" @click="closeResultDialog" round size="large">继续</el-button>
-        <el-button v-else type="danger" @click="resetGame" round size="large">重新开始</el-button>
-      </template>
     </el-dialog>
 
     <!-- 查看已出牌 -->
-    <el-dialog v-model="showAllDiscards" title="已出牌" :close-on-click-modal="true" width="500px" class="discards-dialog">
-      <div class="discards-content">
-        <div class="discards-grid">
-          <div v-for="(tile, idx) in discardPool" :key="idx"
-               class="discard-tile"
-               :class="getTileClass(tile)">
-            <span class="tile-num">{{ getTileNumber(tile) }}</span>
-            <span v-if="tile.color === 'man'" class="wan">萬</span>
-            <span v-else-if="tile.color === 'pin'" class="ping">筒</span>
-            <span v-else-if="tile.color === 'sou'" class="sou">索</span>
+    <el-dialog v-model="showAllDiscards" title="本局弃牌记录" :close-on-click-modal="true" width="95%" class="modern-discards-dialog">
+      <div class="discards-container">
+        <div class="discards-scroll-area">
+          <div class="discards-grid-modern">
+            <div v-for="(tile, idx) in discardPool" :key="idx"
+                 class="modern-discard-tile"
+                 :class="getTileClass(tile)">
+              <span class="tile-num">{{ getTileNumber(tile) }}</span>
+              <span v-if="tile.color === 'man'" class="wan">萬</span>
+              <span v-else-if="tile.color === 'pin'" class="ping">筒</span>
+              <span v-else-if="tile.color === 'sou'" class="sou">索</span>
+            </div>
           </div>
         </div>
-        <div class="discards-summary">
-          <span>共 {{ discardPool.length }} 张</span>
+        <div class="discards-footer">
+          <div class="summary-badge">已出 {{ discardPool.length }} 张牌</div>
         </div>
       </div>
     </el-dialog>
@@ -503,6 +528,17 @@ const newRound = () => {
   drawnTile.value = null
   lastDiscard.value = null
   showResultDialog.value = false
+  
+  // 重置操作状态
+  canRon.value = false
+  canZimo.value = false
+  canPeng.value = false
+  canGang.value = false
+  canChi.value = false
+  canDiscard.value = false
+  canSelectDiscard.value = false
+  selectedDiscard.value = -1
+  showPassOption.value = false
 
   players.value.forEach(p => {
     p.hand = []
@@ -3060,114 +3096,252 @@ const formatChiPattern = (tiles) => {
   border-color: #3b82f6;
 }
 
-/* 结果对话框 */
-.result-content {
+/* 弹窗样式重置与美化 */
+:deep(.el-dialog.modern-result-dialog),
+:deep(.el-dialog.modern-discards-dialog) {
+  border-radius: 24px;
+  overflow: hidden;
+  padding: 0;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  max-width: 480px;
+}
+
+:deep(.el-dialog.modern-discards-dialog) {
+  max-width: 600px;
+}
+
+:deep(.el-dialog__header) {
+  padding: 20px 24px 0;
+  margin: 0;
   text-align: center;
-  padding: 10px;
 }
 
-.result-icon {
-  font-size: 3rem;
-  margin-bottom: 10px;
-}
-
-.win .result-icon { color: #fbbf24; }
-.loss .result-icon { color: #ef4444; }
-
-.result-content h2 {
-  font-size: 1.4rem;
-  font-weight: 900;
+:deep(.el-dialog__title) {
+  font-weight: 800;
   color: #1e293b;
-  margin-bottom: 16px;
+  font-size: 1.2rem;
 }
 
-.result-info {
-  background: #f8fafc;
-  border-radius: 12px;
-  padding: 14px;
+:deep(.el-dialog__body) {
+  padding: 16px 24px 24px;
+}
+
+/* 结果卡片 */
+.result-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  border: 1.5px solid #e2e8f0;
+  gap: 20px;
+  padding: 10px 0;
 }
 
-.result-info p {
+.result-header {
   display: flex;
-  justify-content: space-between;
-  margin: 0;
-  font-size: 0.85rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
-.result-info .label {
-  color: #64748b;
-  font-weight: 700;
-}
-
-.result-info .fan {
-  color: #f59e0b;
-  font-weight: 800;
-}
-
-.result-info .score {
-  color: #22c55e;
-  font-weight: 900;
-}
-
-/* 查看已出牌按钮 */
-.view-discards-btn {
-  background: rgba(255,255,255,0.2);
-  border: none;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  font-size: 14px;
-  cursor: pointer;
+.result-status-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
-  margin-left: 8px;
-}
-
-.view-discards-btn:hover {
-  background: rgba(255,255,255,0.3);
-  transform: scale(1.1);
-}
-
-/* 已出牌对话框 */
-.discards-dialog .el-dialog__body {
-  padding: 0;
-}
-
-.discards-content {
-  padding: 20px;
-}
-
-.discards-grid {
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 6px;
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 10px;
-  background: rgba(255,255,255,0.5);
-  border-radius: 8px;
-}
-
-.discards-grid .discard-tile {
-  width: 24px;
-  height: 32px;
-  margin: 0;
-}
-
-.discards-summary {
-  text-align: center;
-  margin-top: 12px;
-  padding: 8px;
+  font-size: 32px;
   background: #f1f5f9;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 700;
+}
+
+.win .result-status-icon { background: #fef3c7; color: #d97706; }
+.loss .result-status-icon { background: #fee2e2; color: #dc2626; }
+.draw .result-status-icon { background: #f1f5f9; color: #64748b; }
+
+.result-title {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+}
+
+.win .result-title { color: #d97706; }
+.loss .result-title { color: #dc2626; }
+
+.result-body {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.result-item .label {
   color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.result-item .value {
+  color: #1e293b;
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.result-item .value.highlight {
+  color: #3b82f6;
+}
+
+.result-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 4px 0;
+}
+
+.result-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.stat-box {
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+.stat-value.fan { color: #3b82f6; }
+.stat-value.score { color: #16a34a; }
+
+.result-footer {
+  display: flex;
+  justify-content: center;
+}
+
+.action-btn {
+  width: 100%;
+  height: 54px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  border-radius: 16px;
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+}
+
+/* 已出牌区域 */
+.discards-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 70vh;
+}
+
+.discards-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+  /* 自定义滚动条 */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.discards-scroll-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.discards-scroll-area::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 10px;
+}
+
+.discards-grid-modern {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  gap: 8px;
+}
+
+.modern-discard-tile {
+  aspect-ratio: 3/4;
+  background: #fff;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: 800;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: transform 0.2s;
+}
+
+.modern-discard-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.modern-discard-tile .tile-num {
+  font-size: 1.1rem;
+}
+
+.modern-discard-tile.tile-man { color: #dc2626; border-bottom: 3px solid #dc2626; }
+.modern-discard-tile.tile-pin { color: #2563eb; border-bottom: 3px solid #2563eb; }
+.modern-discard-tile.tile-sou { color: #16a34a; border-bottom: 3px solid #16a34a; }
+.modern-discard-tile.tile-ji { color: #1e293b; border-bottom: 3px solid #94a3b8; }
+
+.modern-discard-tile .wan,
+.modern-discard-tile .ping,
+.modern-discard-tile .sou {
+  font-size: 0.6rem;
+  margin-top: -2px;
+}
+
+.discards-footer {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 12px;
+}
+
+.summary-badge {
+  background: #e2e8f0;
+  color: #475569;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .result-title { font-size: 1.5rem; }
+  .discards-grid-modern {
+    grid-template-columns: repeat(auto-fill, minmax(35px, 1fr));
+    gap: 6px;
+  }
 }
 </style>

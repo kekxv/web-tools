@@ -273,21 +273,28 @@ export function isYan(tiles) {
  * 返回是否和牌以及番数信息
  */
 export function checkAgari(hand, exposedSets = [], options = {}) {
-  if (!hand || hand.length === 0) return { agari: false }
+  if (!hand) return { agari: false }
+  
+  // 过滤掉可能存在的 null 牌，防止崩溃
+  const validHand = hand.filter(t => t != null)
+  if (validHand.length === 0) return { agari: false }
 
   const { isZimo = false, isDealer = false, wind = 'east' } = options
+
+  // 必须先排序，保证后续逻辑正确
+  const sortedHand = sortHand(validHand)
 
   // 计算期望手牌数：14 - 3*副露组数 - 4*杠组数
   const chiPonCount = exposedSets.filter(s => s.type === 'chi' || s.type === 'pon').length
   const kanCount = exposedSets.filter(s => s.type === 'kan').length
   const expectedHandSize = 14 - chiPonCount * 3 - kanCount * 4
 
-  if (hand.length !== expectedHandSize) {
+  if (sortedHand.length !== expectedHandSize) {
     return { agari: false }
   }
 
   // 检查十三幺
-  const shisanyao = checkShisanyao(hand)
+  const shisanyao = checkShisanyao(sortedHand)
   if (shisanyao) {
     return {
       agari: true,
@@ -299,7 +306,7 @@ export function checkAgari(hand, exposedSets = [], options = {}) {
   }
 
   // 检查标准牌型（4 组 + 1 眼）
-  const standard = checkStandard(hand, exposedSets)
+  const standard = checkStandard(sortedHand, exposedSets)
   if (standard) {
     const fan = calculateFan(standard, exposedSets, { isZimo, isDealer, wind })
     return {
@@ -367,87 +374,112 @@ function checkStandard(hand, exposedSets = []) {
   const exposedCount = chiPonCount + kanCount
   const setsNeeded = 4 - exposedCount
 
-  // 检查是否全为同一花色
-  const types = new Set(hand.map(t => t.type))
-  const hasJihai = hand.some(t => t.type === TILE_TYPE.JIHAI)
-
-  if (types.size === 1 && !hasJihai) {
-    details.isQingyise = true
-  } else if (types.size === 1 || (types.size === 2 && hasJihai)) {
-    details.isHunyise = true
-  }
-
-  // 检查是否全为刻子/杠子（碰碰胡）
-  const allKotsu = exposedSets.every(s => s.type === 'pon' || s.type === 'kan')
-  if (allKotsu && exposedCount === 4) {
-    details.isPengpeng = true
-  }
-
-  // 检查是否都有幺九
-  for (const tile of hand) {
-    if (!tile.isYaojiu()) {
-      details.hasYaojiu = false
-      break
+  // 找出所有可能的雀头
+  const possibleYans = []
+  for (let i = 0; i < hand.length - 1; i++) {
+    if (hand[i].value === hand[i + 1].value) {
+      // 避免重复检查相同牌值的对子
+      if (possibleYans.length > 0 && possibleYans[possibleYans.length - 1].value === hand[i].value) {
+        continue
+      }
+      possibleYans.push({
+        value: hand[i].value,
+        tiles: [hand[i], hand[i + 1]],
+        indices: [i, i + 1]
+      })
     }
   }
 
-  // 递归检查能否组成 setsNeeded 组 + 1 眼
-  const result = canFormSets(hand, 0, [], setsNeeded)
-  if (result) {
-    details.sets = result.sets
-    details.yan = result.yan
-    return { type: '鸡平胡', details }
+  // 对每个可能的雀头，尝试拆解剩余的面子
+  for (const yan of possibleYans) {
+    const remainingHand = hand.filter((_, idx) => !yan.indices.includes(idx))
+    const setsResult = canFormOnlySets(remainingHand, [], setsNeeded)
+    if (setsResult) {
+      details.sets = setsResult
+      details.yan = yan.tiles
+
+      // 判定花色
+      const allTiles = [...hand, ...exposedSets.flatMap(s => s.tiles)]
+      const types = new Set(allTiles.map(t => t.type))
+      const hasJihai = allTiles.some(t => t.type === TILE_TYPE.JIHAI)
+
+      if (types.size === 1 && !hasJihai) {
+        details.isQingyise = true
+      } else if (types.size === 1 || (types.size === 2 && hasJihai)) {
+        details.isHunyise = true
+      }
+
+      // 判定碰碰胡
+      const allSetsKotsu = [...setsResult, ...exposedSets].every(s => s.type === 'pon' || s.type === 'kan')
+      if (allSetsKotsu) {
+        details.isPengpeng = true
+      }
+
+      // 判定全带幺
+      let hasYaojiuEverywhere = true
+      for (const set of [...setsResult, ...exposedSets]) {
+        if (!set.tiles.some(t => t.isYaojiu())) {
+          hasYaojiuEverywhere = false
+          break
+        }
+      }
+      if (!yan.tiles.some(t => t.isYaojiu())) {
+        hasYaojiuEverywhere = false
+      }
+      details.hasYaojiu = hasYaojiuEverywhere
+
+      return { type: '鸡平胡', details }
+    }
   }
 
   return null
 }
 
 /**
- * 递归检查能否组成牌型
+ * 递归检查剩余牌能否完全组成面子
  */
-function canFormSets(hand, setsCount, currentSets, setsNeeded = 4) {
-  const setsRemaining = setsNeeded - setsCount
-  const tilesNeeded = setsRemaining * 3 + 2  // 每组 3 张 + 2 张雀头
-
-  if (hand.length !== tilesNeeded) {
-    return null
+function canFormOnlySets(hand, currentSets, setsNeeded) {
+  if (hand.length === 0) {
+    return currentSets.length === setsNeeded ? currentSets : null
   }
 
-  if (setsCount === setsNeeded && hand.length === 2) {
-    // 检查是否是对子
-    if (hand[0].value === hand[1].value) {
-      return { sets: currentSets, yan: [hand[0], hand[1]] }
+  // 取第一张牌，它必须属于某个面子
+  const t1 = hand[0]
+
+  // 1. 尝试作为刻子
+  const sameCount = hand.filter(t => t.value === t1.value).length
+  if (sameCount >= 3) {
+    const newHand = [...hand]
+    const removed = []
+    for (let i = 0; i < 3; i++) {
+      const idx = newHand.findIndex(t => t.value === t1.value)
+      removed.push(newHand.splice(idx, 1)[0])
     }
-    return null
+    const result = canFormOnlySets(newHand, [...currentSets, { type: 'pon', tiles: removed }], setsNeeded)
+    if (result) return result
   }
 
-  if (hand.length === 0) return null
-
-  // 尝试找刻子
-  for (let i = 0; i < hand.length - 2; i++) {
-    if (hand[i].value === hand[i + 1].value && hand[i + 1].value === hand[i + 2].value) {
-      const newHand = [...hand.slice(0, i), ...hand.slice(i + 3)]
-      const result = canFormSets(newHand, setsCount + 1, [...currentSets, { type: 'pon', tiles: [hand[i], hand[i+1], hand[i+2]] }], setsNeeded)
-      if (result) return result
-    }
-  }
-
-  // 尝试找顺子（只能数牌）
-  if (hand[0].type !== TILE_TYPE.JIHAI) {
-    const t1 = hand[0]
+  // 2. 尝试作为顺子（字牌不行）
+  if (t1.type !== TILE_TYPE.JIHAI) {
     const t2Idx = hand.findIndex(t => t.type === t1.type && t.index === t1.index + 1)
-    if (t2Idx > 0) {
-      const t3Idx = hand.findIndex(t => t.type === t1.type && t.index === t1.index + 2)
-      if (t3Idx > t2Idx) {
-        const newHand = hand.filter((_, idx) => idx !== 0 && idx !== t2Idx && idx !== t3Idx)
-        const result = canFormSets(newHand, setsCount + 1, [...currentSets, { type: 'chi', tiles: [t1, hand[t2Idx], hand[t3Idx]] }], setsNeeded)
-        if (result) return result
+    const t3Idx = hand.findIndex(t => t.type === t1.type && t.index === t1.index + 2)
+
+    if (t2Idx !== -1 && t3Idx !== -1) {
+      const newHand = [...hand]
+      // 注意删除顺序，从大到小，避免索引偏移影响
+      const indices = [0, t2Idx, t3Idx].sort((a, b) => b - a)
+      const removed = []
+      for (const idx of indices) {
+        removed.unshift(newHand.splice(idx, 1)[0])
       }
+      const result = canFormOnlySets(newHand, [...currentSets, { type: 'chi', tiles: removed }], setsNeeded)
+      if (result) return result
     }
   }
 
   return null
 }
+
 
 /**
  * 计算番数（广东麻将）
