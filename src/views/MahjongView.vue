@@ -69,19 +69,11 @@
               <div v-for="(set, idx) in players[2]?.exposedSets" :key="idx" class="exposed-set">
                 <!-- 大屏：显示所有牌 -->
                 <div class="exposed-tiles-full">
-                  <span v-for="(tile, i) in set.tiles" :key="i" class="exposed-tile" :class="getTileClass(tile)">
-                    <span class="tile-num">{{ getTileNumber(tile) }}</span>
-                    <span v-if="tile.color === 'man'" class="wan">萬</span>
-                    <span v-else-if="tile.color === 'pin'" class="ping">筒</span>
-                    <span v-else-if="tile.color === 'sou'" class="sou">索</span>
-                  </span>
+                  <MahjongTile v-for="(tile, i) in set.tiles" :key="i" :tile="tile" size="small" />
                 </div>
                 <!-- 小屏：只显示一张牌 + 标签 -->
-                <div class="exposed-tile-simple" :class="getTileClass(set.tiles[0])">
-                  <span class="tile-num">{{ getTileNumber(set.tiles[0]) }}</span>
-                  <span v-if="set.tiles[0].color === 'man'" class="wan">萬</span>
-                  <span v-else-if="set.tiles[0].color === 'pin'" class="ping">筒</span>
-                  <span v-else-if="set.tiles[0].color === 'sou'" class="sou">索</span>
+                <div class="exposed-tile-simple">
+                  <MahjongTile :tile="set.tiles[0]" size="mini" />
                   <span class="exposed-label">{{ set.type }}</span>
                 </div>
               </div>
@@ -109,19 +101,11 @@
               <div v-for="(set, idx) in players[1]?.exposedSets" :key="idx" class="exposed-set">
                 <!-- 大屏：显示所有牌 -->
                 <div class="exposed-tiles-full">
-                  <span v-for="(tile, i) in set.tiles" :key="i" class="exposed-tile small" :class="getTileClass(tile)">
-                    <span class="tile-num">{{ getTileNumber(tile) }}</span>
-                    <span v-if="tile.color === 'man'" class="wan">萬</span>
-                    <span v-else-if="tile.color === 'pin'" class="ping">筒</span>
-                    <span v-else-if="tile.color === 'sou'" class="sou">索</span>
-                  </span>
+                  <MahjongTile v-for="(tile, i) in set.tiles" :key="i" :tile="tile" size="mini" />
                 </div>
                 <!-- 小屏：只显示一张牌 + 标签 -->
-                <div class="exposed-tile-simple" :class="getTileClass(set.tiles[0])">
-                  <span class="tile-num">{{ getTileNumber(set.tiles[0]) }}</span>
-                  <span v-if="set.tiles[0].color === 'man'" class="wan">萬</span>
-                  <span v-else-if="set.tiles[0].color === 'pin'" class="ping">筒</span>
-                  <span v-else-if="set.tiles[0].color === 'sou'" class="sou">索</span>
+                <div class="exposed-tile-simple">
+                  <MahjongTile :tile="set.tiles[0]" size="mini" />
                   <span class="exposed-label">{{ set.type }}</span>
                 </div>
               </div>
@@ -149,19 +133,11 @@
               <div v-for="(set, idx) in players[3]?.exposedSets" :key="idx" class="exposed-set">
                 <!-- 大屏：显示所有牌 -->
                 <div class="exposed-tiles-full">
-                  <span v-for="(tile, i) in set.tiles" :key="i" class="exposed-tile small" :class="getTileClass(tile)">
-                    <span class="tile-num">{{ getTileNumber(tile) }}</span>
-                    <span v-if="tile.color === 'man'" class="wan">萬</span>
-                    <span v-else-if="tile.color === 'pin'" class="ping">筒</span>
-                    <span v-else-if="tile.color === 'sou'" class="sou">索</span>
-                  </span>
+                  <MahjongTile v-for="(tile, i) in set.tiles" :key="i" :tile="tile" size="mini" />
                 </div>
                 <!-- 小屏：只显示一张牌 + 标签 -->
-                <div class="exposed-tile-simple" :class="getTileClass(set.tiles[0])">
-                  <span class="tile-num">{{ getTileNumber(set.tiles[0]) }}</span>
-                  <span v-if="set.tiles[0].color === 'man'" class="wan">萬</span>
-                  <span v-else-if="set.tiles[0].color === 'pin'" class="ping">筒</span>
-                  <span v-else-if="set.tiles[0].color === 'sou'" class="sou">索</span>
+                <div class="exposed-tile-simple">
+                  <MahjongTile :tile="set.tiles[0]" size="mini" />
                   <span class="exposed-label">{{ set.type }}</span>
                 </div>
               </div>
@@ -189,14 +165,10 @@
             <!-- 弃牌区 -->
             <div class="discard-zone">
               <div class="discard-grid">
-                <div v-for="(tile, idx) in visibleDiscards" :key="idx"
-                     class="discard-tile"
-                     :class="[getTileClass(tile), { 'last': idx === visibleDiscards.length - 1 }]">
-                  <span class="tile-num">{{ getTileNumber(tile) }}</span>
-                  <span v-if="tile.color === 'man'" class="wan">萬</span>
-                  <span v-else-if="tile.color === 'pin'" class="ping">筒</span>
-                  <span v-else-if="tile.color === 'sou'" class="sou">索</span>
-                </div>
+                <MahjongTile v-for="(tile, idx) in visibleDiscards" :key="idx"
+                             :tile="tile"
+                             size="small"
+                             :class="{ 'last': idx === visibleDiscards.length - 1 }" />
               </div>
             </div>
           </div>
@@ -208,19 +180,11 @@
               <div v-for="(set, idx) in players[0]?.exposedSets" :key="idx" class="exposed-set">
                 <!-- 大屏：显示所有牌 -->
                 <div class="exposed-tiles-full">
-                  <span v-for="(tile, i) in set.tiles" :key="i" class="exposed-tile" :class="getTileClass(tile)">
-                    <span class="tile-num">{{ getTileNumber(tile) }}</span>
-                    <span v-if="tile.color === 'man'" class="wan">萬</span>
-                    <span v-else-if="tile.color === 'pin'" class="ping">筒</span>
-                    <span v-else-if="tile.color === 'sou'" class="sou">索</span>
-                  </span>
+                  <MahjongTile v-for="(tile, i) in set.tiles" :key="i" :tile="tile" size="small" />
                 </div>
                 <!-- 小屏：只显示一张牌 + 标签 -->
-                <div class="exposed-tile-simple" :class="getTileClass(set.tiles[0])">
-                  <span class="tile-num">{{ getTileNumber(set.tiles[0]) }}</span>
-                  <span v-if="set.tiles[0].color === 'man'" class="wan">萬</span>
-                  <span v-else-if="set.tiles[0].color === 'pin'" class="ping">筒</span>
-                  <span v-else-if="set.tiles[0].color === 'sou'" class="sou">索</span>
+                <div class="exposed-tile-simple">
+                  <MahjongTile :tile="set.tiles[0]" size="mini" />
                   <span class="exposed-label">{{ set.type }}</span>
                 </div>
               </div>
@@ -230,24 +194,16 @@
             <div class="hand-zone">
               <!-- 手牌 -->
               <div class="hand-cards">
-                <!-- 摸到的牌（突出显示，整合到手牌行） -->
-                <div v-if="drawnTile" class="tile card-tile drawn-tile" :class="getTileClass(drawnTile)" @click="handleDrawnTileClick">
-                  <span class="tile-num">{{ getTileNumber(drawnTile) }}</span>
-                  <span v-if="drawnTile.color === 'man'" class="wan">萬</span>
-                  <span v-else-if="drawnTile.color === 'pin'" class="ping">筒</span>
-                  <span v-else-if="drawnTile.color === 'sou'" class="sou">索</span>
-                </div>
+                <!-- 摸到的牌 -->
+                <MahjongTile v-if="drawnTile" 
+                            :tile="drawnTile" 
+                            is-drawn 
+                            @click="handleDrawnTileClick" />
 
-                <div v-for="(tile, idx) in playerHand" :key="idx"
-                     class="tile card-tile"
-                     :class="[getTileClass(tile), { 'selected': selectedDiscard === idx }]"
-                     :style="{ marginLeft: getTileMargin(idx) }"
-                     @click="handleTileClick(idx)">
-                  <span class="tile-num">{{ getTileNumber(tile) }}</span>
-                  <span v-if="tile.color === 'man'" class="wan">萬</span>
-                  <span v-else-if="tile.color === 'pin'" class="ping">筒</span>
-                  <span v-else-if="tile.color === 'sou'" class="sou">索</span>
-                </div>
+                <MahjongTile v-for="(tile, idx) in playerHand" :key="idx"
+                            :tile="tile"
+                            :selected="selectedDiscard === idx"
+                            @click="handleTileClick(idx)" />
               </div>
             </div>
 
@@ -368,14 +324,9 @@
       <div class="discards-container">
         <div class="discards-scroll-area">
           <div class="discards-grid-modern">
-            <div v-for="(tile, idx) in discardPool" :key="idx"
-                 class="modern-discard-tile"
-                 :class="getTileClass(tile)">
-              <span class="tile-num">{{ getTileNumber(tile) }}</span>
-              <span v-if="tile.color === 'man'" class="wan">萬</span>
-              <span v-else-if="tile.color === 'pin'" class="ping">筒</span>
-              <span v-else-if="tile.color === 'sou'" class="sou">索</span>
-            </div>
+            <MahjongTile v-for="(tile, idx) in discardPool" :key="idx"
+                        :tile="tile"
+                        size="small" />
           </div>
         </div>
         <div class="discards-footer">
@@ -391,6 +342,7 @@ import { ref, computed, nextTick, onMounted } from 'vue'
 import {
   RefreshRight, Van, Monitor, User, Trophy, CircleClose, WarningFilled
 } from '@element-plus/icons-vue'
+import MahjongTile from '../components/Mahjong/MahjongTile.vue'
 import {
   MahjongDeck, TILE_TYPE, TILE_VALUE,
   checkAgari, canChii, canPon, canDaiminkan, canRon as checkCanRon, canKakan, canAnkan,
@@ -477,33 +429,9 @@ const isYaojiu = (tile) => {
   return tile.index === 1 || tile.index === 9 || tile.type === TILE_TYPE.JIHAI
 }
 
-const getTileClass = (tile) => {
-  if (!tile) return ''
-  // 返回花色类型
-  return `tile-${tile.color}`
-}
-
-const getTileType = (tile) => {
-  if (!tile) return ''
-  return tile.color
-}
-
-const getTileNumber = (tile) => {
-  if (!tile) return ''
-  // 字牌直接显示
-  if (tile.color === 'ji') return tile.display
-  // 数牌显示数字
-  return tile.index.toString()
-}
-
 const getHandCount = (playerId) => {
   if (players.value[playerId]?.isFolded) return 0
   return players.value[playerId]?.hand?.length || 13
-}
-
-const getTileMargin = (idx) => {
-  // 紧凑排列，不需要额外间距
-  return '0px'
 }
 
 // 开始游戏
@@ -1599,7 +1527,7 @@ const formatChiPattern = (tiles) => {
 /* 麻将桌 */
 .table-container {
   flex: 1;
-  padding: 10px;
+  padding: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1611,13 +1539,12 @@ const formatChiPattern = (tiles) => {
   width: 100%;
   height: 100%;
   max-width: 1200px;
-  max-height: 100%;
-  aspect-ratio: 16/10;
+  aspect-ratio: 9/14;
   background: #15803d;
-  border-radius: 40px;
-  border: 12px solid #374151;
+  border-radius: 24px;
+  border: 8px solid #374151;
   position: relative;
-  box-shadow: inset 0 0 100px rgba(0,0,0,0.4);
+  box-shadow: inset 0 0 60px rgba(0,0,0,0.4);
   overflow: hidden;
 }
 
@@ -1700,34 +1627,27 @@ const formatChiPattern = (tiles) => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   padding: 0;
   transition: all 0.3s;
-  max-width: 200px;
-  max-height: 40%;
-  overflow: hidden;
-}
-
-.ai-zone.active {
-  background: rgba(250, 204, 21, 0.15);
-  border-radius: 12px;
+  z-index: 10;
 }
 
 .top-zone {
-  top: 8px;
+  top: 4px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 .left-zone {
-  left: 0;
-  top: 50%;
+  left: 4px;
+  top: 40%;
   transform: translateY(-50%);
 }
 
 .right-zone {
-  right: 0;
-  top: 50%;
+  right: 4px;
+  top: 40%;
   transform: translateY(-50%);
 }
 
@@ -1735,13 +1655,23 @@ const formatChiPattern = (tiles) => {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 8px;
-  background: rgba(255,255,255,0.95);
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 0.75rem;
+  gap: 6px;
+  background: rgba(255,255,255,0.9);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.ai-zone .player-info-box {
+  background: rgba(0,0,0,0.4);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.ai-zone .player-info-box .score {
+  color: #fbbf24;
 }
 
 .player-info-box .avatar {
@@ -1978,107 +1908,11 @@ const formatChiPattern = (tiles) => {
   left: -2px;
   background: #f59e0b;
   color: #fff;
-  font-size: 0.45rem;
-  padding: 1px 3px;
-  border-radius: 5px;
+  font-size: 0.5rem;
+  padding: 1px 4px;
+  border-radius: 4px;
   font-weight: 700;
-  text-transform: uppercase;
-}
-
-.exposed-tile {
-  width: 42px;
-  height: 56px;
-  background: linear-gradient(180deg, #fefefe, #f5f5f5);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  font-weight: 700;
-  border: 1px solid #d0d0d0;
-  box-shadow: 1px 2px 4px rgba(0,0,0,0.2);
-  position: relative;
-}
-
-.exposed-tile .tile-num {
-  font-size: 1.3rem;
-  font-weight: 900;
-}
-
-.exposed-tile.tile-man .tile-num {
-  color: #dc2626;
-  font-size: 1.6rem;
-}
-
-.exposed-tile.tile-man .wan {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  font-size: 1rem;
-  color: #dc2626;
-  font-weight: 900;
-}
-
-.exposed-tile.tile-pin .tile-num {
-  color: #2563eb;
-  font-size: 1.6rem;
-}
-
-.exposed-tile.tile-pin .ping {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  font-size: 0.85rem;
-  color: #2563eb;
-  font-weight: 900;
-}
-
-.exposed-tile.tile-sou .tile-num {
-  color: #16a34a;
-  font-size: 1.6rem;
-}
-
-.exposed-tile.tile-sou .sou {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  font-size: 1rem;
-  color: #16a34a;
-  font-weight: 900;
-}
-
-.exposed-tile.tile-ji .tile-num {
-  font-size: 1.4rem;
-}
-
-.exposed-tile.tile-ji .tile-num.red {
-  color: #dc2626;
-}
-
-.exposed-tile.tile-ji .tile-num.green {
-  color: #16a34a;
-}
-
-.exposed-tile.tile-ji .tile-num.black {
-  color: #1e293b;
-}
-
-.exposed-tile.small {
-  width: 32px;
-  height: 44px;
-  font-size: 0.85rem;
-}
-
-.exposed-tile.small .tile-num {
-  font-size: 1rem;
-}
-
-.exposed-tile.small .wan,
-.exposed-tile.small .ping,
-.exposed-tile.small .sou {
-  font-size: 0.7rem;
-  bottom: 3px;
-  right: 3px;
+  z-index: 2;
 }
 
 /* 中央区域 */
@@ -2101,14 +1935,14 @@ const formatChiPattern = (tiles) => {
   display: flex;
   gap: 6px;
   color: #fff;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .remaining-tiles .count {
   color: #fbbf24;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 .wall-preview {
@@ -2123,8 +1957,8 @@ const formatChiPattern = (tiles) => {
 }
 
 .wall-block {
-  width: 10px;
-  height: 14px;
+  width: 12px;
+  height: 16px;
   background: linear-gradient(135deg, #3b82f6, #1d4ed8);
   border-radius: 2px;
   border: 1px solid rgba(255,255,255,0.2);
@@ -2138,811 +1972,195 @@ const formatChiPattern = (tiles) => {
 .discard-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 3px;
-  padding: 8px;
-  background: rgba(255,255,255,0.5);
-  border-radius: 8px;
-  border: 1px solid rgba(0,0,0,0.1);
-}
-
-.discard-tile {
-  width: 42px;
-  height: 56px;
-  background: linear-gradient(180deg, #fefefe, #f5f5f5);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  font-weight: 700;
-  border: 1px solid #d0d0d0;
-  box-shadow: 1px 2px 4px rgba(0,0,0,0.2);
-  position: relative;
-}
-
-.discard-tile .tile-num {
-  font-size: 1.3rem;
-  font-weight: 900;
-}
-
-.discard-tile.tile-man .tile-num {
-  color: #dc2626;
-  font-size: 1.6rem;
-}
-
-.discard-tile.tile-man .wan {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  font-size: 1rem;
-  color: #dc2626;
-  font-weight: 900;
-}
-
-.discard-tile.tile-pin .tile-num {
-  color: #2563eb;
-  font-size: 1.6rem;
-}
-
-.discard-tile.tile-pin .ping {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  font-size: 0.85rem;
-  color: #2563eb;
-  font-weight: 900;
-}
-
-.discard-tile.tile-sou .tile-num {
-  color: #16a34a;
-  font-size: 1.6rem;
-}
-
-.discard-tile.tile-sou .sou {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  font-size: 1rem;
-  color: #16a34a;
-  font-weight: 900;
-}
-
-.discard-tile.tile-ji .tile-num {
-  font-size: 1.4rem;
-}
-
-.discard-tile.tile-ji .tile-num.red {
-  color: #dc2626;
-}
-
-.discard-tile.tile-ji .tile-num.green {
-  color: #16a34a;
-}
-
-.discard-tile.tile-ji .tile-num.black {
-  color: #1e293b;
-}
-
-.discard-tile.last {
-  box-shadow: 0 0 6px rgba(250, 204, 21, 0.6);
-  border-color: #fbbf24;
-}
-
-.status-message {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #fff;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
-  min-height: 16px;
-  padding: 4px 12px;
-  background: rgba(0,0,0,0.3);
+  gap: 4px;
+  padding: 12px;
+  background: rgba(255,255,255,0.15);
   border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.2);
+  min-height: 150px;
 }
 
 /* 玩家区域 */
 .player-zone {
   position: absolute;
-  bottom: 10px;
-  left: 18%;
-  right: 18%;
-  margin: auto;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: 8px;
+  padding: 8px;
   background: rgba(0,0,0,0.15);
   border-radius: 16px;
-  transition: all 0.3s;
-  max-width: calc(100% - 20px);
+  width: 98%;
+  backdrop-filter: blur(2px);
+  z-index: 50;
 }
 
 .player-zone.active {
-  background: rgba(250, 204, 21, 0.2);
+  background: rgba(250, 204, 21, 0.1);
 }
 
-.player-exposed {
-  margin-bottom: 4px;
+.player-zone .player-info-box {
+  order: 3;
+  margin-top: 4px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  border: 1px solid rgba(0,0,0,0.05);
+  padding: 2px 10px;
+  min-width: 80px;
+  border-radius: 12px;
+}
+
+.player-zone .player-info-box .avatar {
+  width: 18px;
+  height: 18px;
+  font-size: 0.7rem;
+}
+
+.player-zone .player-info-box .score {
+  font-size: 0.8rem;
 }
 
 /* 手牌区 */
 .hand-zone {
   display: flex;
-  align-items: flex-start;
-  gap: 3px;
-  max-width: 100%;
-  overflow: visible;
-  padding-bottom: 4px;
-  justify-content: center;
-  min-height: 124px; /* 两行牌 + gap 的高度 */
+  align-items: flex-end;
+  gap: 4px;
 }
 
 .hand-cards {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
-  max-width: 90%;
-  line-height: 1;
+  gap: 2px;
+  align-items: flex-end;
 }
 
-.drawn-tile {
-  border: 2px solid #fbbf24;
-  position: relative;
-}
-
-.drawn-tile::after {
-  content: '摸';
-  position: absolute;
-  bottom: -12px;
-  font-size: 0.45rem;
-  color: #fbbf24;
-  font-weight: 700;
-}
-
-/* 麻将牌基础样式 */
-.tile {
-  width: 38px;
-  height: 52px;
-  background: linear-gradient(180deg, #fefefe, #f5f5f5);
-  border-radius: 6px;
-  font-size: 1.2rem;
-  font-weight: 900;
-  border: 1px solid #d0d0d0;
-  box-shadow:
-    2px 3px 6px rgba(0,0,0,0.3),
-    inset 0 1px 0 rgba(255,255,255,0.8);
-  position: relative;
-  cursor: default;
-  transition: all 0.2s;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-/* 数字左上角显示 */
-.tile-num {
-  font-size: 0.95rem;
-  font-weight: 900;
-  line-height: 1;
-  display: block;
-  position: absolute;
-  top: 4px;
-  left: 4px;
-}
-
-/* 万子 - 红色数字 + 万字符 */
-.tile-man {
-  background: linear-gradient(180deg, #fff5f5, #fefefe);
-}
-
-.tile-man .tile-num {
-  color: #dc2626;
-  font-size: 1.5rem;
-}
-
-.tile-man .wan {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  font-size: 1.3rem;
-  color: #dc2626;
-  font-weight: 900;
-}
-
-/* 筒子 - 显示圆点 */
-.tile-pin {
-  background: linear-gradient(180deg, #fefefe, #f5f5f5);
-}
-
-.tile-pin .tile-num {
-  color: #2563eb;
-  font-size: 1.5rem;
-}
-
-.tile-pin .ping {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  font-size: 1.2rem;
-  color: #2563eb;
-  font-weight: 900;
-}
-
-/* 索子 - 绿色数字 */
-.tile-sou {
-  background: linear-gradient(180deg, #fefefe, #f5f5f5);
-}
-
-.tile-sou .tile-num {
-  color: #16a34a;
-  font-size: 1.5rem;
-}
-
-.tile-sou .sou {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  font-size: 1.3rem;
-  color: #16a34a;
-  font-weight: 900;
-}
-
-/* 字牌 - 文字居中显示 */
-.tile-ji {
-  background: linear-gradient(180deg, #fefefe, #f5f5f5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.tile-ji .tile-num {
-  position: static;
-  font-size: 1.1rem;
-}
-
-/* 小屏幕手牌两行显示，无滚动条 */
-@media (max-width: 768px) {
+@media (max-width: 400px) {
+  .mahjong-table {
+    border-radius: 12px;
+    border-width: 4px;
+  }
+  
+  .player-zone {
+    width: 98%;
+    padding: 4px;
+  }
+  
   .hand-zone {
-    overflow: visible;
-    padding-bottom: 8px;
-    min-height: 108px;
-    width: 100%;
+    gap: 2px;
   }
+}
 
-  .hand-cards {
-    gap: 3px;
-    justify-content: center;
-    max-width: 100%;
-    width: 100%;
+/* 小屏幕适配 */
+@media (max-width: 768px) {
+  .mahjong-table {
+    border-radius: 20px;
+    border-width: 6px;
+  }
+  
+  .discard-grid {
+    grid-template-columns: repeat(6, 1fr);
+    padding: 6px;
+    gap: 2px;
+    min-height: 80px;
+  }
+  
+  .exposed-tile-simple {
     display: flex;
-    flex-wrap: wrap;
-    align-content: flex-start;
-  }
-
-  .tile {
-    width: 28px;
-    height: 40px;
-    border-radius: 4px;
-    flex-shrink: 0;
-    display: inline-block;
     position: relative;
   }
-
-  /* 小屏幕手牌只显示一张 */
-  .hand-tiles.vertical.double-column {
-    display: inline-block;
-    grid-template-columns: none;
-  }
-
-  .hand-tiles.vertical.double-column .tile-back {
-    width: 28px;
-    height: 38px;
-  }
-
-  /* 小屏幕显示简化副露 */
-  .exposed-tile-simple {
-    display: block;
-  }
-
+  
   .exposed-tiles-full {
     display: none;
   }
-
-  /* 数字左上角显示 */
-  .tile-num {
-    font-size: 0.55rem !important;
-    font-weight: 900;
-    line-height: 1;
-    display: block;
-    position: absolute !important;
-    top: 2px !important;
-    left: 2px !important;
-  }
-
-  .tile-man .tile-num {
-    color: #dc2626;
-    font-size: 0.75rem !important;
-  }
-
-  .tile-pin .tile-num {
-    color: #2563eb;
-    font-size: 0.75rem !important;
-  }
-
-  .tile-sou .tile-num {
-    color: #16a34a;
-    font-size: 0.75rem !important;
-  }
-
-  /* 小屏幕字牌居中显示 */
-  .tile-ji {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  .tile-ji .tile-num {
-    color: #1e293b;
-    font-size: 0.75rem !important;
-    font-weight: 900;
-    position: static !important;
-    top: auto !important;
-    left: auto !important;
-  }
-
-  /* 类型标识在右下角 */
-  .tile-man .wan,
-  .tile-pin .ping,
-  .tile-sou .sou {
-    font-size: 0.6rem !important;
-    font-weight: 900;
-    position: absolute !important;
-    bottom: 2px !important;
-    right: 2px !important;
-  }
-
-  .tile-man .wan {
-    color: #dc2626;
-  }
-
-  .tile-pin .ping {
-    color: #2563eb;
-  }
-
-  .tile-sou .sou {
-    color: #16a34a;
-  }
-
-  .drawn-tile::after {
-    bottom: -10px;
-    font-size: 0.5rem;
-  }
-
-  /* 副露区域适配 */
-  .exposed-zone {
-    margin-top: 8px;
-  }
-
-  .exposed-zone.vertical {
-    margin-top: 8px;
-  }
-
-  .exposed-tile-simple {
-    width: 38px;
-    height: 52px;
-  }
-
-  .exposed-tile-simple .tile-num {
-    font-size: 1.2rem !important;
-  }
-
-  .exposed-tile-simple .wan,
-  .exposed-tile-simple .ping,
-  .exposed-tile-simple .sou {
-    font-size: 0.7rem !important;
-    bottom: 3px !important;
-    right: 3px !important;
-  }
-
-  .exposed-label {
-    font-size: 0.55rem !important;
-    padding: 2px 4px !important;
-  }
-
-  /* 手牌数标签 */
-  .hand-count-label {
-    font-size: 0.7rem !important;
-    padding: 2px 5px !important;
-  }
-
-  /* 玩家信息框 */
-  .player-info-box {
-    padding: 8px 12px !important;
-  }
-
-  .player-info-box .name {
-    font-size: 0.9rem !important;
-  }
-
-  .player-info-box .score {
-    font-size: 0.85rem !important;
-  }
-
-  /* AI 区域字体放大 */
-  .ai-zone .player-info-box .info .name {
-    font-size: 0.65rem !important;
-  }
-
-  .ai-zone .player-info-box .info .score {
-    font-size: 0.65rem !important;
-  }
-
-  /* AI 手牌牌背尺寸 */
-  .hand-tiles .tile-back {
-    width: 30px !important;
-    height: 45px !important;
-  }
-
-  /* 768px 以下隐藏牌墙 */
+  
   .wall-preview {
-    display: none !important;
+    display: none;
   }
 }
 
 /* 超小屏幕进一步缩放 */
 @media (max-width: 480px) {
-  /* 玩家区域更紧凑 */
   .player-zone {
-    bottom: 5px !important;
-    padding: 4px 8px !important;
-    gap: 4px !important;
+    padding: 4px;
+    bottom: 4px;
+    gap: 4px;
+    background: transparent;
+    backdrop-filter: none;
+    width: 100%;
   }
 
-  .player-exposed {
-    margin-bottom: 2px !important;
-  }
-
-  .hand-zone {
-    min-height: 40px !important;
-    margin-top: 2px !important;
-  }
-
-  /* 剩余牌和弃牌区移到左上角 */
-  .center-zone {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    transform: none;
-    align-items: flex-start;
-    max-width: 160px;
-  }
-
-  .remaining-tiles {
-    padding: 4px 10px;
-    font-size: 0.75rem;
-  }
-
-  .wall-zone {
-    display: none;
-  }
-
-  .discard-zone {
-    justify-content: flex-start;
-  }
-
-  .discard-grid {
-    grid-template-columns: repeat(5, 1fr);
-    gap: 3px;
-    padding: 5px;
-    background: rgba(255,255,255,0.4);
-  }
-
-  .discard-tile {
-    width: 24px;
-    height: 28px;
-    font-size: 0.7rem;
-    position: relative;
-  }
-
-  .discard-tile .tile-num {
-    font-size: 0.7rem !important;
-    position: absolute !important;
-    top: 2px !important;
-    left: 2px !important;
-  }
-
-  .discard-tile.tile-man .wan,
-  .discard-tile.tile-pin .ping,
-  .discard-tile.tile-sou .sou {
-    font-size: 0.6rem !important;
-    position: absolute !important;
-    bottom: 2px !important;
-    right: 2px !important;
-  }
-
-  .discard-tile.tile-ji .tile-num {
-    position: static !important;
-    font-size: 0.85rem !important;
-  }
-
-  .exposed-tile-simple {
-    width: 28px;
-    height: 38px;
-  }
-
-  .exposed-tile-simple .tile-num {
-    font-size: 1rem !important;
-  }
-
-  .exposed-tile-simple .wan,
-  .exposed-tile-simple .ping,
-  .exposed-tile-simple .sou {
-    font-size: 0.65rem !important;
-  }
-
-  .exposed-label {
-    font-size: 0.5rem !important;
-  }
-
-  .status-message {
-    font-size: 0.75rem;
-    padding: 4px 10px;
-    margin-top: 6px;
-  }
-
-  .hand-zone {
-    min-height: 50px;
-    margin-top: 5px;
-  }
-
-  .hand-cards {
-    gap: 2px;
-  }
-
-  .tile {
-    width: 24px;
-    height: 32px;
-    font-size: 1rem;
-    border-radius: 4px;
-    flex-shrink: 0;
-    position: relative;
-  }
-
-  .tile-ji {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  .tile-ji .tile-num {
-    position: static !important;
-    font-size: 1rem;
-    font-weight: 900;
-  }
-
-  .tile-num {
-    font-size: 0.8rem !important;
-    font-weight: 900;
-    position: absolute !important;
-    top: 1px !important;
-    left: 1px !important;
-  }
-
-  .tile-man .tile-num {
-    font-size: 1rem !important;
-  }
-
-  .tile-pin .tile-num {
-    font-size: 1rem !important;
-  }
-
-  .tile-sou .tile-num {
-    font-size: 1rem !important;
-  }
-
-  .tile-man .wan,
-  .tile-pin .ping,
-  .tile-sou .sou {
-    font-size: 0.8rem !important;
-    position: absolute !important;
-    bottom: 1px !important;
-    right: 1px !important;
-  }
-
-  .drawn-tile-container .tile {
-    width: 22px;
-    height: 30px;
-    font-size: 1.1rem;
-  }
-
-  .btn {
-    padding: 8px 14px;
-    font-size: 0.85rem;
-  }
-
-  .actions {
-    gap: 6px;
-  }
-
-  /* 对家位置调整 */
-  .top-zone {
-    top: 50px;
-  }
-
-  .top-zone.ai-zone {
-    right: -25px;
-    left: unset;
-  }
-
-  /* AI 区域字体放大 */
-  .ai-zone .player-info-box .info .name {
-    font-size: 0.65rem !important;
-  }
-
-  .ai-zone .player-info-box .info .score {
-    font-size: 0.65rem !important;
-  }
-
-  /* 左侧 AI 适配 */
-  .left-zone {
-    top: 240px;
-    left: 5px;
-  }
-
-  /* 右侧 AI 适配 */
-  .right-zone {
-    top: 50%;
-    right: 5px;
-    transform: translateY(-50%);
-  }
-
-  /* 对家 AI 适配 */
-  .top-zone .hand-tiles .tile-back {
-    width: 30px !important;
-    height: 45px !important;
-  }
-
-  /* 手牌数标签 */
-  .hand-count-label {
-    font-size: 0.65rem !important;
-    padding: 2px 6px !important;
-  }
-
-  /* 玩家信息框 */
-  .player-info-box {
-    padding: 4px 8px !important;
-    flex-direction: row !important;
-    gap: 6px !important;
-  }
-
-  .player-info-box .avatar {
-    width: 20px !important;
-    height: 20px !important;
-    font-size: 0.8rem !important;
-  }
-
-  .player-info-box .info {
-    flex-direction: row !important;
-    align-items: center !important;
-    gap: 4px !important;
-  }
-
-  .player-info-box .top {
-    display: flex !important;
-    align-items: center !important;
-    gap: 4px !important;
-  }
-
-  .player-info-box .name {
-    font-size: 0.7rem !important;
-  }
-
-  .player-info-box .score {
-    font-size: 0.7rem !important;
-  }
-
-  .player-info-box .dealer-badge {
-    padding: 1px 4px !important;
-    font-size: 0.55rem !important;
-  }
-}
-
-/* 大屏时手牌最多显示两行 */
-@media (min-width: 769px) {
-  .hand-cards {
-    max-width: 600px;
+  .player-zone .player-info-box {
+    order: 3;
+    width: auto;
+    max-width: none;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 2px 10px;
+    margin-top: 2px;
+    flex-direction: row;
+    height: 22px;
+    min-width: unset;
+    box-shadow: none;
     gap: 8px;
   }
 
-  .tile {
-    width: 40px;
-    height: 54px;
-    font-size: 1.3rem;
+  .player-zone .player-info-box .avatar {
+    width: 14px;
+    height: 14px;
+    font-size: 0.55rem;
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
   }
 
-  /* 数字左上角显示 */
-  .tile-num {
-    font-size: 1rem;
-    font-weight: 900;
-    line-height: 1;
-    display: block;
-    position: absolute;
-    top: 4px;
-    left: 4px;
-  }
-
-  /* 万子 */
-  .tile-man .tile-num {
-    color: #dc2626;
-    font-size: 1.6rem;
-  }
-
-  .tile-man .wan {
-    position: absolute;
-    bottom: 5px;
-    right: 5px;
-    font-size: 1.4rem;
-    color: #dc2626;
-    font-weight: 900;
-  }
-
-  /* 筒子 */
-  .tile-pin .tile-num {
-    color: #2563eb;
-    font-size: 1.6rem;
-  }
-
-  .tile-pin .ping {
-    position: absolute;
-    bottom: 5px;
-    right: 5px;
-    font-size: 1.3rem;
-    color: #2563eb;
-    font-weight: 900;
-  }
-
-  /* 索子 */
-  .tile-sou .tile-num {
-    color: #16a34a;
-    font-size: 1.6rem;
-  }
-
-  .tile-sou .sou {
-    position: absolute;
-    bottom: 5px;
-    right: 5px;
-    font-size: 1.4rem;
-    color: #16a34a;
-    font-weight: 900;
-  }
-
-  /* 字牌 - 居中显示 */
-  .tile-ji {
-    display: flex;
+  .player-zone .player-info-box .info {
+    flex-direction: row;
+    gap: 8px;
     align-items: center;
+    width: auto;
+    justify-content: flex-start;
+  }
+
+  .player-zone .player-info-box .info .top {
+    gap: 4px;
+  }
+
+  .player-zone .player-info-box .name {
+    color: #fff;
+    font-size: 0.75rem;
+  }
+
+  .player-zone .player-info-box .score {
+    color: #fbbf24;
+    font-size: 0.8rem;
+    font-weight: 800;
+  }
+
+  .player-zone .player-info-box .dealer-badge {
+    padding: 0 4px;
+    font-size: 0.55rem;
+    height: 14px;
+    line-height: 14px;
+  }
+
+  .discard-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .hand-cards {
+    flex-wrap: wrap;
     justify-content: center;
+    max-width: 240px;
+    gap: 2px 2px;
   }
 
-  .tile-ji .tile-num {
-    position: static;
-    font-size: 1.2rem;
+  .hand-zone {
+    padding-bottom: 2px;
+    min-height: 72px;
   }
-}
-
-/* selected 状态 */
-.tile.selected {
-  transform: translateY(-12px);
-  box-shadow:
-    0 8px 20px rgba(59, 130, 246, 0.5),
-    inset 0 1px 0 rgba(255,255,255,0.9);
-  border-color: #3b82f6;
-}
-
-.tile.card-tile:hover {
-  transform: translateY(-8px);
-  box-shadow:
-    3px 6px 12px rgba(0,0,0,0.35),
-    inset 0 1px 0 rgba(255,255,255,0.9);
 }
 
 /* 幺九标记 */
@@ -2963,6 +2181,77 @@ const formatChiPattern = (tiles) => {
   border: 1px solid rgba(255,255,255,0.3);
   box-shadow: 1px 2px 4px rgba(0,0,0,0.3);
   position: relative;
+}
+
+/* 大屏幕适配 - 放大重点区域 */
+@media (min-width: 800px) {
+  .ai-zone {
+    gap: 12px;
+  }
+
+  .player-info-box {
+    padding: 8px 20px;
+    border-radius: 24px;
+    gap: 12px;
+  }
+
+  .player-info-box .avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 1.4rem;
+  }
+
+  .player-info-box .name {
+    font-size: 1.1rem;
+  }
+
+  .player-info-box .score {
+    font-size: 1.2rem;
+  }
+
+  .center-zone {
+    gap: 20px;
+    top: 40%; /* 上移位置，防止挡住下方两排手牌 */
+  }
+
+  .remaining-tiles {
+    padding: 10px 24px;
+    font-size: 1.2rem;
+    border-radius: 28px;
+  }
+
+  .remaining-tiles .count {
+    font-size: 1.5rem;
+  }
+
+  .wall-block {
+    width: 18px;
+    height: 24px;
+    border-radius: 4px;
+  }
+
+  .discard-grid {
+    gap: 6px;
+    padding: 16px;
+  }
+
+  .h-tile {
+    width: 46px;
+    height: 62px;
+  }
+
+  .v-tile {
+    width: 42px;
+    height: 58px;
+  }
+
+  .hand-count-label {
+    font-size: 1.1rem;
+    padding: 4px 10px;
+    bottom: -10px;
+    right: -10px;
+    border-radius: 8px;
+  }
 }
 
 .tile-back::before {
@@ -2990,16 +2279,16 @@ const formatChiPattern = (tiles) => {
 
 /* 操作栏 */
 .action-bar {
-  height: 70px;
+  height: 64px;
   background: #fff;
   border-top: 1px solid #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 16px;
+  padding: 0 12px;
   flex-shrink: 0;
+  z-index: 100;
 }
-
 .thinking {
   display: flex;
   align-items: center;
@@ -3030,14 +2319,14 @@ const formatChiPattern = (tiles) => {
 }
 
 .btn {
-  padding: 12px 22px;
+  padding: 8px 16px;
   border: none;
-  border-radius: 12px;
+  border-radius: 8px;
   font-weight: 800;
   font-size: 0.9rem;
   color: #fff;
   cursor: pointer;
-  box-shadow: 0 3px 0 rgba(0,0,0,0.2);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.2);
   transition: all 0.1s;
 }
 
@@ -3284,43 +2573,6 @@ const formatChiPattern = (tiles) => {
   gap: 8px;
 }
 
-.modern-discard-tile {
-  aspect-ratio: 3/4;
-  background: #fff;
-  border-radius: 6px;
-  border: 1px solid #e2e8f0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
-  font-weight: 800;
-  position: relative;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  transition: transform 0.2s;
-}
-
-.modern-discard-tile:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
-
-.modern-discard-tile .tile-num {
-  font-size: 1.1rem;
-}
-
-.modern-discard-tile.tile-man { color: #dc2626; border-bottom: 3px solid #dc2626; }
-.modern-discard-tile.tile-pin { color: #2563eb; border-bottom: 3px solid #2563eb; }
-.modern-discard-tile.tile-sou { color: #16a34a; border-bottom: 3px solid #16a34a; }
-.modern-discard-tile.tile-ji { color: #1e293b; border-bottom: 3px solid #94a3b8; }
-
-.modern-discard-tile .wan,
-.modern-discard-tile .ping,
-.modern-discard-tile .sou {
-  font-size: 0.6rem;
-  margin-top: -2px;
-}
-
 .discards-footer {
   display: flex;
   justify-content: flex-end;
@@ -3339,9 +2591,5 @@ const formatChiPattern = (tiles) => {
 
 @media (max-width: 640px) {
   .result-title { font-size: 1.5rem; }
-  .discards-grid-modern {
-    grid-template-columns: repeat(auto-fill, minmax(35px, 1fr));
-    gap: 6px;
-  }
 }
 </style>
