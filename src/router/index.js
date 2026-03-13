@@ -8,6 +8,7 @@ import GobangView from '../views/GobangView.vue'
 import Game24View from '../views/Game24View.vue'
 import ShowHandView from '../views/ShowHandView.vue'
 import MahjongView from '../views/MahjongView.vue'
+import Base64View from '../views/Base64View.vue'
 
 const routes = [
   {
@@ -61,6 +62,12 @@ const routes = [
         name: 'Mahjong',
         component: MahjongView,
         meta: { title: '广东麻将' }
+      },
+      {
+        path: 'base64',
+        name: 'Base64',
+        component: Base64View,
+        meta: { title: 'Base64 查看' }
       }
     ]
   }

@@ -36,6 +36,12 @@ const tools = [
     icon: 'Document'
   },
   {
+    path: '/base64',
+    title: 'Base64 查看',
+    description: '智能解析 Base64 数据，支持图片、PDF 等格式预览',
+    icon: 'DataAnalysis'
+  },
+  {
     path: '/hash',
     title: 'Hash 计算',
     description: '计算文件 MD5、SHA256 等哈希值',
