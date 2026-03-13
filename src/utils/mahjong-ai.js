@@ -311,7 +311,7 @@ function evaluateTileForDiscard(tile, hand, aggressive) {
 /**
  * AI 决定是否吃牌
  */
-export function aiDecideChii(hand, discardedTile, config = {}) {
+export function aiDecideChii(hand, discardedTile, exposedSets = [], config = {}) {
   const { chiiProbability = AI_CONFIG.CHII_PROBABILITY } = config
 
   const chiiPatterns = canChii(hand, discardedTile)
@@ -350,7 +350,8 @@ export function aiDecideChii(hand, discardedTile, config = {}) {
   }
 
   // 如果听了，肯定吃
-  if (checkAgari([...hand.filter((_, i) => !bestPattern?.tiles.includes(hand[i].index)), discardedTile]).agari) {
+  const nextExposedSets = [...exposedSets, { type: 'chi', tiles: [discardedTile, ...hand.filter(t => t.type === discardedTile.type && bestPattern?.tiles.includes(t.index))] }]
+  if (checkAgari(hand.filter(t => !(t.type === discardedTile.type && bestPattern?.tiles.includes(t.index))), nextExposedSets).agari) {
     return { chii: true, pattern: bestPattern?.tiles || chiiPatterns[0].tiles }
   }
 
@@ -360,7 +361,7 @@ export function aiDecideChii(hand, discardedTile, config = {}) {
 /**
  * AI 决定是否碰牌
  */
-export function aiDecidePon(hand, discardedTile, config = {}) {
+export function aiDecidePon(hand, discardedTile, exposedSets = [], config = {}) {
   const { ponProbability = AI_CONFIG.PON_PROBABILITY } = config
 
   if (!canPon(hand, discardedTile)) return { pon: false }
@@ -368,7 +369,7 @@ export function aiDecidePon(hand, discardedTile, config = {}) {
   // 检查是否已经有 3 张（考虑杠）
   const sameCount = hand.filter(t => t.value === discardedTile.value).length
   if (sameCount === 3) {
-    return aiDecideKan(hand, discardedTile, config)
+    return aiDecideDaiminkan(hand, discardedTile, config)
   }
 
   // 碰牌通常有利（形成刻子）
@@ -442,25 +443,25 @@ export function aiDecideAnkan(hand, config = {}) {
 /**
  * AI 决定是否荣和
  */
-export function aiDecideRon(hand, discardedTile, config = {}) {
+export function aiDecideRon(hand, discardedTile, exposedSets = [], config = {}) {
   // 能和牌一定和（广东麻将）
-  return { ron: canRon(hand, discardedTile) }
+  return { ron: canRon(hand, discardedTile, exposedSets) }
 }
 
 /**
  * AI 决定是否自摸和
  */
-export function aiDecideTsumo(hand, drawnTile, config = {}) {
+export function aiDecideTsumo(hand, drawnTile, exposedSets = [], config = {}) {
   if (!drawnTile) return { tsumo: false }
   const testHand = [...hand, drawnTile]
-  const result = checkAgari(testHand)
+  const result = checkAgari(testHand, exposedSets)
   return { tsumo: result.agari }
 }
 
 /**
  * AI 摸牌后决定打出哪张
  */
-export function aiAfterDraw(hand, drawnTile, config = {}) {
+export function aiAfterDraw(hand, drawnTile, exposedSets = [], config = {}) {
   if (!drawnTile) {
     // 没有摸到牌，随机打出一张
     return { discardIndex: Math.floor(Math.random() * hand.length) }
@@ -470,7 +471,7 @@ export function aiAfterDraw(hand, drawnTile, config = {}) {
   const fullHand = hand.length === 14 ? hand : [...hand, drawnTile]
 
   // 检查是否能和
-  const tsumoResult = aiDecideTsumo(hand, drawnTile, config)
+  const tsumoResult = aiDecideTsumo(hand, drawnTile, exposedSets, config)
   if (tsumoResult.tsumo) {
     return { tsumo: true }
   }
@@ -489,13 +490,13 @@ export function aiAfterDraw(hand, drawnTile, config = {}) {
 export function aiDecide(actionType, hand, tile, exposedSets = [], config = {}) {
   switch (actionType) {
     case 'draw':
-      return aiAfterDraw(hand, tile, config)
+      return aiAfterDraw(hand, tile, exposedSets, config)
     case 'discard':
       return { index: aiSelectDiscard(hand, config) }
     case 'chii':
-      return aiDecideChii(hand, tile, config)
+      return aiDecideChii(hand, tile, exposedSets, config)
     case 'pon':
-      return aiDecidePon(hand, tile, config)
+      return aiDecidePon(hand, tile, exposedSets, config)
     case 'daiminkan':
       return aiDecideDaiminkan(hand, tile, config)
     case 'kakan':
@@ -503,9 +504,9 @@ export function aiDecide(actionType, hand, tile, exposedSets = [], config = {}) 
     case 'ankan':
       return aiDecideAnkan(hand, config)
     case 'ron':
-      return aiDecideRon(hand, tile, config)
+      return aiDecideRon(hand, tile, exposedSets, config)
     case 'tsumo':
-      return aiDecideTsumo(hand, tile, config)
+      return aiDecideTsumo(hand, tile, exposedSets, config)
     default:
       return {}
   }

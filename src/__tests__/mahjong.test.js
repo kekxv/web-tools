@@ -82,6 +82,23 @@ describe('Mahjong Core Logic', () => {
       const result = checkAgari(hand, exposed)
       expect(result.agari).toBe(true)
     })
+
+    it('should detect Agari with Kan in Exposed Sets (带杠的副露)', () => {
+      // 模拟用户截图中的情况
+      // 副露：456索吃，345索吃，1111索杠 (10张牌)
+      const exposed = [
+        { type: 'chi', tiles: [createTile(TILE_TYPE.SOUZU, 4), createTile(TILE_TYPE.SOUZU, 5), createTile(TILE_TYPE.SOUZU, 6)] },
+        { type: 'chi', tiles: [createTile(TILE_TYPE.SOUZU, 3), createTile(TILE_TYPE.SOUZU, 4), createTile(TILE_TYPE.SOUZU, 5)] },
+        { type: 'kan', tiles: [createTile(TILE_TYPE.SOUZU, 1), createTile(TILE_TYPE.SOUZU, 1), createTile(TILE_TYPE.SOUZU, 1), createTile(TILE_TYPE.SOUZU, 1)] }
+      ]
+      // 手牌：234筒，44万 (5张)
+      const hand = [
+        createTile(TILE_TYPE.PINZU, 2), createTile(TILE_TYPE.PINZU, 3), createTile(TILE_TYPE.PINZU, 4),
+        createTile(TILE_TYPE.MANZU, 4), createTile(TILE_TYPE.MANZU, 4)
+      ]
+      const result = checkAgari(hand, exposed)
+      expect(result.agari).toBe(true)
+    })
   })
 
   describe('Player Action Checks', () => {

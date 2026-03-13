@@ -284,10 +284,10 @@ export function checkAgari(hand, exposedSets = [], options = {}) {
   // 必须先排序，保证后续逻辑正确
   const sortedHand = sortHand(validHand)
 
-  // 计算期望手牌数：14 - 3*副露组数 - 4*杠组数
-  const chiPonCount = exposedSets.filter(s => s.type === 'chi' || s.type === 'pon').length
-  const kanCount = exposedSets.filter(s => s.type === 'kan').length
-  const expectedHandSize = 14 - chiPonCount * 3 - kanCount * 4
+  // 计算期望手牌数：14 - 3*副露组数
+  // 注意：杠虽然有 4 张牌，但每组副露（吃碰杠）都只占用标准 14 张牌中的 3 张配额
+  const exposedCount = exposedSets.length
+  const expectedHandSize = 14 - exposedCount * 3
 
   if (sortedHand.length !== expectedHandSize) {
     return { agari: false }
@@ -369,9 +369,7 @@ function checkStandard(hand, exposedSets = []) {
   }
 
   // 计算需要从手牌中组成的组数
-  const chiPonCount = exposedSets.filter(s => s.type === 'chi' || s.type === 'pon').length
-  const kanCount = exposedSets.filter(s => s.type === 'kan').length
-  const exposedCount = chiPonCount + kanCount
+  const exposedCount = exposedSets.length
   const setsNeeded = 4 - exposedCount
 
   // 找出所有可能的雀头

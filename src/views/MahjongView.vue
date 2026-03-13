@@ -520,10 +520,9 @@ const aiTurn = async () => {
   // 计算正常手牌数量
   // 麻将规则：13 张手牌，摸牌后 14 张，打牌后回 13 张
   // 吃/碰：移除 2 张 + 别人 1 张组成副露，然后打 1 张 → 手牌 = 13 - 3 = 10 张（待摸）
-  // 杠：移除 3 张 + 别人 1 张组成副露，然后打 1 张 → 手牌 = 13 - 4 = 9 张（待摸）
-  const chiPonCount = ai.exposedSets.filter(s => s.type === 'chi' || s.type === 'pon').length
-  const kanCount = ai.exposedSets.filter(s => s.type === 'kan').length
-  const expectedHandSize = 13 - chiPonCount * 3 - kanCount * 4
+  // 杠：移除 3 张 + 别人 1 张组成副露，然后摸 1 张打 1 张 → 手牌 = 13 - 3 = 10 张（待摸）
+  const chiPonCount = ai.exposedSets.length
+  const expectedHandSize = 13 - chiPonCount * 3
 
   console.log(`[AI 回合] 玩家${currentPlayer.value} (${ai.name}), 手牌数：${ai.hand.length}, 预期：${expectedHandSize}, 副露：${JSON.stringify(ai.exposedSets.map(s => ({ type: s.type, tiles: s.tiles.length })))}`)
 
