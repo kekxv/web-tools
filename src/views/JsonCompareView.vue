@@ -632,11 +632,11 @@ const compareObjects = (left, right, path = '', arrayMatch = false) => {
       return
     }
 
-    // 基本类型对比
-    if (l !== r) {
+    // 基本类型对比 - 值和类型都相等才算相同
+    if (l !== r || typeof l !== typeof r) {
       diffs.push({
         path: p || 'root',
-        type: 'diff',
+        type: typeof l !== typeof r ? 'type_mismatch' : 'diff',
         left: l,
         right: r
       })
@@ -721,8 +721,8 @@ const buildDiffTree = (diffs, leftObj, rightObj) => {
             diff: { type: 'removed', left: leftItem },
             children: []
           })
-        } else if (typeof leftItem === 'object' || typeof rightItem === 'object') {
-          // 子对象/数组
+        } else if (leftItem !== null && rightItem !== null && typeof leftItem === 'object' && typeof rightItem === 'object') {
+          // 两个都是对象/数组，递归对比
           const childNode = buildTree(
             leftItem,
             rightItem,
@@ -730,17 +730,17 @@ const buildDiffTree = (diffs, leftObj, rightObj) => {
             `[${i}]`
           )
           node.children.push(childNode)
-        } else if (leftItem !== rightItem) {
-          // 值变化 - 检查 Base64
+        } else if (leftItem !== rightItem || typeof leftItem !== typeof rightItem) {
+          // 值变化 - 检查 Base64（值和类型都相等才算相同）
           const leftIsBase64 = isBase64(leftItem)
           const rightIsBase64 = isBase64(rightItem)
           node.children.push({
             key: itemPath,
             label: `[${i}]`,
             type: 'field',
-            status: 'diff',
+            status: typeof leftItem !== typeof rightItem ? 'type_mismatch' : 'diff',
             diff: {
-              type: 'diff',
+              type: typeof leftItem !== typeof rightItem ? 'type_mismatch' : 'diff',
               left: leftItem,
               right: rightItem,
               isBase64: leftIsBase64 && rightIsBase64
@@ -748,13 +748,14 @@ const buildDiffTree = (diffs, leftObj, rightObj) => {
             children: []
           })
         } else {
-          // 相同的值 - 保存值信息
+          // 相同的值 - 保存值信息，检查是否是 Base64
+          const isBase64Val = isBase64(leftItem)
           node.children.push({
             key: itemPath,
             label: `[${i}]`,
             type: 'field',
             status: 'same',
-            diff: { type: 'same', left: leftItem, right: leftItem },
+            diff: { type: 'same', left: leftItem, right: leftItem, isBase64: isBase64Val },
             children: []
           })
         }
@@ -800,21 +801,21 @@ const buildDiffTree = (diffs, leftObj, rightObj) => {
             diff: { type: 'removed', left: leftVal },
             children: []
           })
-        } else if (typeof leftVal === 'object' || typeof rightVal === 'object') {
-          // 子对象/数组
+        } else if (leftVal !== null && rightVal !== null && typeof leftVal === 'object' && typeof rightVal === 'object') {
+          // 两个都是对象/数组，递归对比
           const childNode = buildTree(leftVal, rightVal, childPath, key)
           node.children.push(childNode)
-        } else if (leftVal !== rightVal) {
-          // 值变化 - 检查 Base64
+        } else if (leftVal !== rightVal || typeof leftVal !== typeof rightVal) {
+          // 值变化或类型不同 - 检查 Base64
           const leftIsBase64 = isBase64(leftVal)
           const rightIsBase64 = isBase64(rightVal)
           node.children.push({
             key: childPath,
             label: key,
             type: 'field',
-            status: 'diff',
+            status: typeof leftVal !== typeof rightVal ? 'type_mismatch' : 'diff',
             diff: {
-              type: 'diff',
+              type: typeof leftVal !== typeof rightVal ? 'type_mismatch' : 'diff',
               left: leftVal,
               right: rightVal,
               isBase64: leftIsBase64 && rightIsBase64
@@ -822,13 +823,14 @@ const buildDiffTree = (diffs, leftObj, rightObj) => {
             children: []
           })
         } else {
-          // 相同的值 - 保存值信息
+          // 相同的值 - 保存值信息，检查是否是 Base64
+          const isBase64Val = isBase64(leftVal)
           node.children.push({
             key: childPath,
             label: key,
             type: 'field',
             status: 'same',
-            diff: { type: 'same', left: leftVal, right: leftVal },
+            diff: { type: 'same', left: leftVal, right: leftVal, isBase64: isBase64Val },
             children: []
           })
         }

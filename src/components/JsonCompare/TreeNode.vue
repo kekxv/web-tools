@@ -43,6 +43,13 @@
             <span class="value-right">{{ formatValue(node.diff.right) }}</span>
           </template>
 
+          <!-- 类型不匹配 -->
+          <template v-else-if="node.diff?.type === 'type_mismatch'">
+            <span class="value-type-mismatch">{{ formatValue(node.diff.left) }}</span>
+            <span class="diff-arrow"> ↔ </span>
+            <span class="value-type-mismatch">{{ formatValue(node.diff.right) }}</span>
+          </template>
+
           <!-- 新增值 -->
           <template v-else-if="node.diff?.type === 'added'">
             <span class="value-added">{{ formatValue(node.diff.right) }}</span>
@@ -295,7 +302,7 @@ const formatBase64Short = (value) => {
 
 /* 值样式 */
 .value-same {
-  color: #67c23a;
+  color: #303133;
 }
 
 .value-left {
@@ -312,6 +319,11 @@ const formatBase64Short = (value) => {
 
 .value-removed {
   color: #f56c6c;
+}
+
+.value-type-mismatch {
+  color: #e6a23c;
+  font-style: italic;
 }
 
 .value-base64 {
