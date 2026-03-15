@@ -76,6 +76,12 @@ const tools = [
     title: '广东麻将',
     description: '经典广东麻将，1 人对战 3 个 AI',
     icon: 'Grid'
+  },
+  {
+    path: '/math-ten',
+    title: '凑十破十',
+    description: '小学数学练习游戏，学习凑十法和破十法',
+    icon: 'Odometer'
   }
 ]
 </script>

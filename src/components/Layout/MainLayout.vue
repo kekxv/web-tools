@@ -54,6 +54,10 @@
             <el-icon><Grid /></el-icon>
             <template #title>广东麻将</template>
           </el-menu-item>
+          <el-menu-item index="/math-ten">
+            <el-icon><Odometer /></el-icon>
+            <template #title>凑十破十</template>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       <!-- 遮罩层 -->
@@ -116,6 +120,10 @@
           <el-menu-item index="/mahjong">
             <el-icon><Grid /></el-icon>
             <template #title>广东麻将</template>
+          </el-menu-item>
+          <el-menu-item index="/math-ten">
+            <el-icon><Odometer /></el-icon>
+            <template #title>凑十破十</template>
           </el-menu-item>
         </el-menu>
       </el-aside>
@@ -196,7 +204,8 @@ const currentTitle = computed(() => {
     '/gobang': '五子棋',
     '/game24': '24 点',
     '/showhand': '梭哈',
-    '/mahjong': '广东麻将'
+    '/mahjong': '广东麻将',
+    '/math-ten': '凑十破十'
   }
   return routeMap[route.path] || 'Web Tools'
 })

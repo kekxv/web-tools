@@ -10,6 +10,7 @@ import ShowHandView from '../views/ShowHandView.vue'
 import MahjongView from '../views/MahjongView.vue'
 import Base64View from '../views/Base64View.vue'
 import JsonCompareView from '../views/JsonCompareView.vue'
+import MathTenView from '../views/MathTenView.vue'
 
 const routes = [
   {
@@ -75,6 +76,12 @@ const routes = [
         name: 'Base64',
         component: Base64View,
         meta: { title: 'Base64 查看' }
+      },
+      {
+        path: 'math-ten',
+        name: 'MathTen',
+        component: MathTenView,
+        meta: { title: '凑十破十' }
       }
     ]
   }
