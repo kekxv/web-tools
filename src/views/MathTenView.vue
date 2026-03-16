@@ -274,19 +274,19 @@
         </div>
 
         <!-- 答案显示 -->
-        <div v-if="!isStepComplete" class="answer-display" :class="{ hasValue: inputValue, wrong: showWrong }">
+        <div v-if="showSteps && !isStepComplete" class="answer-display" :class="{ hasValue: inputValue, wrong: showWrong }">
           <span class="answer-text">{{ inputValue || '?' }}</span>
         </div>
 
         <!-- 数字键盘 -->
-        <div v-if="!isStepComplete" class="keypad">
+        <div v-if="showSteps && !isStepComplete" class="keypad">
           <button v-for="n in [7,8,9,4,5,6,1,2,3]" :key="n" @click="inputDigit(n)">{{ n }}</button>
           <button class="key-clear" @click="clearInput">C</button>
           <button @click="inputDigit(0)">0</button>
           <button class="key-del" @click="deleteDigit">⌫</button>
         </div>
 
-        <div v-if="!isStepComplete" class="skip-btn">
+        <div v-if="showSteps && !isStepComplete" class="skip-btn">
           <el-button text type="info" @click="skipQuestion">跳过此题</el-button>
         </div>
 
