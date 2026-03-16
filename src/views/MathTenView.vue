@@ -262,10 +262,13 @@
                   {{ currentQuestion.num1 }} + {{ currentQuestion.splitNum }} + {{ currentQuestion.remainNum }} = <b>{{ currentQuestion.answer }}</b>
                 </template>
                 <template v-else>
-                  {{ currentQuestion.teenNum }} - {{ currentQuestion.subtractor }} = {{ currentQuestion.ones }} + {{ currentQuestion.tenMinus }} = <b>{{ currentQuestion.answer }}</b>
+                  {{ currentQuestion.teenNum }} - {{ currentQuestion.subtractor }} = 10 + {{ currentQuestion.ones }} - {{ currentQuestion.subtractor }} = <b>{{ currentQuestion.answer }}</b>
                 </template>
               </div>
-              <div class="complete-hint">✅ 回答正确！</div>
+              <div class="complete-hint">
+                <span>✅ 回答正确！</span>
+                <button class="next-btn" @click="goNextQuestion">下一题</button>
+              </div>
             </div>
           </div>
         </div>
@@ -307,7 +310,7 @@ const gameStarted = ref(false)
 const gameOver = ref(false)
 const gameWon = ref(false)
 const modes = ref({ makeTen: true, breakTen: true })
-const targetScore = 20 // 降低目标分数
+const targetScore = 50 // 通关分数
 const score = ref(10)
 const combo = ref(0)
 const step = ref(0)
@@ -327,7 +330,7 @@ const isStepComplete = computed(() => {
   // 在completeQuestion中step会+1，所以完成时step = getMaxStep() + 1
   return step.value >= getMaxStep() + 1
 })
-const progressPercent = computed(() => ((score.value - 10) / (targetScore - 10)) * 100)
+const progressPercent = computed(() => (score.value / targetScore) * 100)
 
 const currentQuestion = ref({ type: 'makeTen', num1: 6, num2: 7, splitNum: 4, remainNum: 3, answer: 13, teenNum: 13, subtractor: 6, ones: 3, tenMinus: 4 })
 
@@ -355,7 +358,7 @@ const startTimer = () => {
 
 const startGame = () => {
   gameStarted.value = true
-  score.value = 10; combo.value = 0; step.value = 0
+  score.value = 0; combo.value = 0; step.value = 0
   nextQuestion()
 }
 
@@ -454,22 +457,22 @@ const completeQuestion = () => {
   step.value++
 
   // 加分
-  score.value += 2
+  score.value += 5
   combo.value++
   if (combo.value === 3) { score.value += 1 }
   else if (combo.value === 5) { score.value += 2 }
   else if (combo.value >= 10) { score.value += 3 }
 
+  // 检查是否通关
   if (score.value >= targetScore) {
     gameOver.value = true
     gameWon.value = true
-    return
   }
+  // 否则不自动跳转，等用户点击按钮
+}
 
-  // 1.5秒后进入下一题
-  setTimeout(() => {
-    nextQuestion()
-  }, 1500)
+const goNextQuestion = () => {
+  nextQuestion()
 }
 
 const skipQuestion = () => { combo.value = 0; nextQuestion() }
@@ -719,19 +722,26 @@ onUnmounted(() => clearInterval(timerInterval))
 }
 
 .branch-node.active {
-  background: linear-gradient(135deg, #fff5e6 0%, #ffe8cc 100%);
+  background: linear-gradient(135deg, #fff9e6 0%, #ffdd99 100%);
   color: #e67e22;
-  border: 2px solid #f5a623;
-  box-shadow: 0 4px 12px rgba(245, 166, 35, 0.2);
+  border: 3px solid #f39c12;
+  box-shadow: 0 0 20px rgba(243, 156, 18, 0.4);
   min-width: 140px;
+  animation: pulseGlow 1s infinite alternate;
 }
 
-.branch-node.active.shake { animation: shake 0.3s; }
+@keyframes pulseGlow {
+  from { box-shadow: 0 0 15px rgba(243, 156, 18, 0.3); }
+  to { box-shadow: 0 0 25px rgba(243, 156, 18, 0.6); }
+}
+
+.branch-node.active.shake { animation: shake 0.3s, pulseGlow 1s infinite alternate; }
 
 .branch-node b {
-  color: #e67e22;
-  border-bottom: 2px solid #f5a623;
-  padding: 0 3px;
+  color: #d63031;
+  border-bottom: 3px solid #e74c3c;
+  padding: 0 4px;
+  font-size: 1.2em;
 }
 
 .node-answer {
@@ -808,10 +818,30 @@ onUnmounted(() => clearInterval(timerInterval))
 }
 
 .complete-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
   font-size: 18px;
   font-weight: 600;
   color: #27ae60;
   animation: popIn 0.4s ease;
+}
+
+.next-btn {
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.next-btn:active {
+  transform: scale(0.95);
 }
 
 @keyframes popIn {
@@ -899,32 +929,39 @@ onUnmounted(() => clearInterval(timerInterval))
 
 /* 响应式 - 小屏幕优化 */
 @media (max-width: 400px) {
-  .math-ten-view { padding-top: 20px; padding: 6px; }
-  .card-container { padding: 10px; border-radius: 16px; }
-  .question-box { font-size: 20px; height: 40px; padding: 0 12px; }
+  .math-ten-view {
+    padding-top: 30px;
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-bottom: 10px;
+  }
+  .card-container { padding-top: 30px; margin-top: 5rem; }
+  .card-container { padding: 12px; border-radius: 16px; }
+  .question-box { font-size: 22px; height: 44px; padding: 0 14px; }
 
-  .tree-diagram { padding: 4px 2px; }
-  .tree-root { padding: 5px 8px; font-size: 12px; min-width: 100px; }
-  .tree-branch { gap: 6px; }
-  .branch-symbol { font-size: 12px; }
-  .branch-node { padding: 4px 5px; font-size: 10px; min-width: 70px; min-height: 28px; }
-  .branch-node.done, .branch-node.active { min-width: 80px; }
-  .branch-node .node-answer { font-size: 9px; padding: 1px 5px; }
+  .tree-diagram { padding: 5px 3px; }
+  .tree-root { padding: 6px 10px; font-size: 13px; min-width: 100px; }
+  .tree-branch { gap: 8px; }
+  .branch-symbol { font-size: 14px; }
+  .branch-node { padding: 5px 7px; font-size: 11px; min-width: 80px; min-height: 32px; }
+  .branch-node.done, .branch-node.active { min-width: 90px; }
+  .branch-node .node-answer { font-size: 10px; padding: 1px 6px; }
 
-  .breakdown-display { padding: 5px 6px; margin-top: 6px; }
-  .breakdown-label { font-size: 10px; }
-  .breakdown-hint { font-size: 11px; padding: 5px 8px; }
+  .breakdown-display { padding: 6px 8px; margin-top: 6px; }
+  .breakdown-label { font-size: 11px; }
+  .breakdown-hint { font-size: 12px; padding: 6px 10px; }
 
-  .complete-formula { padding: 10px 16px; font-size: 16px; }
-  .complete-formula b { font-size: 18px; }
-  .complete-hint { font-size: 14px; }
+  .complete-formula { padding: 12px 18px; font-size: 18px; }
+  .complete-formula b { font-size: 20px; }
+  .complete-hint { font-size: 15px; }
 
-  .answer-display { font-size: 32px; margin-bottom: 10px; }
+  .answer-display { font-size: 36px; margin-bottom: 12px; }
 
   /* 更大的按键，便于点击 */
-  .keypad { gap: 4px; margin-bottom: 6px; }
-  .keypad button { height: 48px; font-size: 20px; border-radius: 10px; }
+  .keypad { gap: 6px; margin-bottom: 8px; }
+  .keypad button { height: 52px; font-size: 22px; border-radius: 12px; }
 
-  .skip-btn { margin-top: 4px; }
+  .skip-btn { margin-top: 6px; }
+  .top-bar { font-size: 13px; margin-bottom: 4px; }
 }
 </style>
