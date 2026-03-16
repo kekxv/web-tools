@@ -62,7 +62,7 @@
             <div class="step-badge">第 {{ step + 1 }} 步</div>
 
             <!-- 凑十法二叉树 -->
-            <div v-if="currentQuestion.type === 'makeTen'" class="tree-diagram">
+            <div v-if="currentQuestion.type === 'makeTen' && step < getMaxStep()" class="tree-diagram">
               <!-- 根节点：原题 -->
               <div class="tree-root">
                 <span>{{ currentQuestion.num1 }} + {{ currentQuestion.num2 }} = ?</span>
@@ -119,8 +119,8 @@
                 </div>
               </div>
 
-              <!-- step 2: 居中分支 -->
-              <div class="tree-branch" v-if="step >= 2">
+              <!-- step 2: 居中分支（回答中） -->
+              <div class="tree-branch" v-if="step === 2">
                 <div class="branch-center">
                   <div class="branch-symbol">╱</div>
                   <div class="branch-node" :class="{ active: step === 2, shake: step === 2 && showWrong }">
@@ -128,10 +128,21 @@
                   </div>
                 </div>
               </div>
+
+              <!-- step 2完成后：显示绿色然后隐藏 -->
+              <div class="tree-branch" v-if="step >= 3" style="animation: none;">
+                <div class="branch-center">
+                  <div class="branch-symbol">╱</div>
+                  <div class="branch-node done">
+                    <span class="node-label">10 + {{ currentQuestion.remainNum }} = <b>{{ currentQuestion.answer }}</b></span>
+                    <span class="node-answer">{{ currentQuestion.answer }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- 破十法二叉树 -->
-            <div v-else class="tree-diagram">
+            <div v-else-if="currentQuestion.type === 'breakTen' && step < getMaxStep()" class="tree-diagram">
               <!-- 根节点：原题 -->
               <div class="tree-root">
                 <span>{{ currentQuestion.teenNum }} - {{ currentQuestion.subtractor }} = ?</span>
@@ -188,8 +199,8 @@
                 </div>
               </div>
 
-              <!-- step 2: 居中分支 -->
-              <div class="tree-branch" v-if="step >= 2">
+              <!-- step 2: 居中分支（回答中） -->
+              <div class="tree-branch" v-if="step === 2">
                 <div class="branch-center">
                   <div class="branch-symbol">╱</div>
                   <div class="branch-node" :class="{ active: step === 2, shake: step === 2 && showWrong }">
@@ -197,10 +208,21 @@
                   </div>
                 </div>
               </div>
+
+              <!-- step 2完成后：显示绿色 -->
+              <div class="tree-branch" v-if="step >= getMaxStep() + 1" style="animation: none;">
+                <div class="branch-center">
+                  <div class="branch-symbol">╱</div>
+                  <div class="branch-node done">
+                    <span class="node-label">{{ currentQuestion.ones }} + {{ currentQuestion.tenMinus }} = <b>{{ currentQuestion.answer }}</b></span>
+                    <span class="node-answer">{{ currentQuestion.answer }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- 底部提示区域 -->
-            <div class="breakdown-display">
+            <div v-if="step < getMaxStep()" class="breakdown-display">
               <span class="breakdown-label">当前步骤：</span>
               <template v-if="currentQuestion.type === 'makeTen'">
                 <div class="breakdown-hint">
@@ -232,24 +254,36 @@
                 </div>
               </template>
             </div>
+
+            <!-- 完成后显示完整等式 -->
+            <div v-if="isStepComplete" class="complete-display">
+              <div class="complete-formula">
+                <template v-if="currentQuestion.type === 'makeTen'">
+                  {{ currentQuestion.num1 }} + {{ currentQuestion.splitNum }} + {{ currentQuestion.remainNum }} = <b>{{ currentQuestion.answer }}</b>
+                </template>
+                <template v-else>
+                  {{ currentQuestion.teenNum }} - {{ currentQuestion.subtractor }} = {{ currentQuestion.ones }} + {{ currentQuestion.tenMinus }} = <b>{{ currentQuestion.answer }}</b>
+                </template>
+              </div>
+              <div class="complete-hint">✅ 回答正确！</div>
+            </div>
           </div>
         </div>
 
         <!-- 答案显示 -->
-        <div class="answer-display" :class="{ hasValue: inputValue, correct: showCorrect, wrong: showWrong }">
+        <div v-if="!isStepComplete" class="answer-display" :class="{ hasValue: inputValue, wrong: showWrong }">
           <span class="answer-text">{{ inputValue || '?' }}</span>
-          <span v-if="showCorrect" class="correct-emoji">✨</span>
         </div>
 
         <!-- 数字键盘 -->
-        <div class="keypad">
+        <div v-if="!isStepComplete" class="keypad">
           <button v-for="n in [7,8,9,4,5,6,1,2,3]" :key="n" @click="inputDigit(n)">{{ n }}</button>
           <button class="key-clear" @click="clearInput">C</button>
           <button @click="inputDigit(0)">0</button>
           <button class="key-del" @click="deleteDigit">⌫</button>
         </div>
 
-        <div class="skip-btn">
+        <div v-if="!isStepComplete" class="skip-btn">
           <el-button text type="info" @click="skipQuestion">跳过此题</el-button>
         </div>
 
@@ -279,14 +313,20 @@ const combo = ref(0)
 const step = ref(0)
 const inputValue = ref('')
 const showWrong = ref(false)
-const showCorrect = ref(false)
 const showSteps = ref(false)
 const showCelebrate = ref(false)
+const showComplete = ref(false)
 const celebrateMsg = ref('')
 const timer = ref(15)
 let timerInterval = null
 
 const timerPercent = computed(() => (Math.max(0, timer.value) / 15) * 100)
+
+// 当前步骤是否已完成（用于控制输入框显示）
+const isStepComplete = computed(() => {
+  // 在completeQuestion中step会+1，所以完成时step = getMaxStep() + 1
+  return step.value >= getMaxStep() + 1
+})
 const progressPercent = computed(() => ((score.value - 10) / (targetScore - 10)) * 100)
 
 const currentQuestion = ref({ type: 'makeTen', num1: 6, num2: 7, splitNum: 4, remainNum: 3, answer: 13, teenNum: 13, subtractor: 6, ones: 3, tenMinus: 4 })
@@ -333,7 +373,7 @@ const nextQuestion = () => {
 
 const inputDigit = (d) => {
   // 步骤4最终确认时也可以输入答案
-  if (showCorrect.value || !showSteps.value) return
+  if (!showSteps.value) return
 
   if (inputValue.value.length < 2) {
     inputValue.value += d
@@ -363,8 +403,8 @@ const getExpectedAnswer = () => {
 }
 
 const getMaxStep = () => {
-  // 凑十法: 4步 (0,1,2,3)，破十法: 3步 (0,1,2)
-  return currentQuestion.value.type === 'makeTen' ? 3 : 2
+  // 统一为4步: 0,1,2,3
+  return 3
 }
 
 const triggerCelebrate = (msg) => {
@@ -380,18 +420,17 @@ const checkAnswer = () => {
   if (answer < expected && inputValue.value.length === 1 && expected >= 10) return
 
   if (answer === expected) {
-    showCorrect.value = true
+    // 正确答案后延迟
     setTimeout(() => {
-      showCorrect.value = false
       if (step.value < getMaxStep()) {
         step.value++
         inputValue.value = ''
         startTimer()
-        triggerCelebrate('对了！')
+        // 不显示"对了"的提示
       } else {
         completeQuestion()
       }
-    }, 300)
+    }, 600)
   } else if (answer > expected || inputValue.value.length >= String(expected).length) {
     score.value = Math.max(0, score.value - 1)
     combo.value = 0
@@ -408,19 +447,29 @@ const checkAnswer = () => {
 }
 
 const completeQuestion = () => {
+  // 停止计时器
+  clearInterval(timerInterval)
+
+  // 显示完成状态（触发绿色节点显示）
+  step.value++
+
+  // 加分
   score.value += 2
   combo.value++
-  if (combo.value === 3) { score.value += 1; triggerCelebrate('3连击！+1') }
-  else if (combo.value === 5) { score.value += 2; triggerCelebrate('5连击！+2') }
-  else if (combo.value >= 10) { score.value += 3; triggerCelebrate('太棒了！+3') }
-  else { triggerCelebrate('正确！') }
+  if (combo.value === 3) { score.value += 1 }
+  else if (combo.value === 5) { score.value += 2 }
+  else if (combo.value >= 10) { score.value += 3 }
 
   if (score.value >= targetScore) {
     gameOver.value = true
     gameWon.value = true
-  } else {
-    nextQuestion()
+    return
   }
+
+  // 1.5秒后进入下一题
+  setTimeout(() => {
+    nextQuestion()
+  }, 1500)
 }
 
 const skipQuestion = () => { combo.value = 0; nextQuestion() }
@@ -455,8 +504,8 @@ onUnmounted(() => clearInterval(timerInterval))
   width: 100%;
   max-width: 360px;
   background: #fff;
-  border-radius: 24px;
-  padding: 20px;
+  border-radius: 20px;
+  padding: 16px;
   box-shadow: 0 10px 40px rgba(252, 182, 159, 0.3);
   position: relative;
   overflow: hidden;
@@ -533,17 +582,17 @@ onUnmounted(() => clearInterval(timerInterval))
 }
 
 /* 题目区域 */
-.question-wrap { display: flex; flex-direction: column; align-items: center; margin-bottom: 16px; }
+.question-wrap { display: flex; flex-direction: column; align-items: center; margin-bottom: 12px; }
 
 .question-box {
-  height: 72px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #fff5e6 0%, #ffe8cc 100%);
-  border-radius: 14px;
-  padding: 0 24px;
-  font-size: 36px;
+  border-radius: 12px;
+  padding: 0 20px;
+  font-size: 28px;
   font-weight: 700;
   color: #2c3e50;
   white-space: nowrap;
@@ -557,7 +606,7 @@ onUnmounted(() => clearInterval(timerInterval))
   opacity: 0.7;
 }
 
-.step-area { text-align: center; margin-top: 12px; animation: slideUp 0.4s ease; }
+.step-area { text-align: center; margin-top: 8px; animation: slideUp 0.4s ease; }
 @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 .step-badge {
   display: inline-block;
@@ -603,8 +652,8 @@ onUnmounted(() => clearInterval(timerInterval))
 }
 
 @keyframes branchSlideIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: scale(0.8) translateY(-10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .branch-left,
@@ -640,6 +689,12 @@ onUnmounted(() => clearInterval(timerInterval))
   min-width: 120px;
   min-height: 40px;
   justify-content: center;
+  animation: nodeFadeIn 0.4s ease;
+}
+
+@keyframes nodeFadeIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .branch-node.done {
@@ -730,6 +785,35 @@ onUnmounted(() => clearInterval(timerInterval))
   font-weight: 700;
 }
 
+/* 完成显示 */
+.complete-display {
+  text-align: center;
+  animation: slideUpFade 0.5s ease;
+}
+
+.complete-formula {
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #d5f5e3 0%, #abebc6 100%);
+  border-radius: 14px;
+  border: 3px solid #27ae60;
+  font-size: 24px;
+  font-weight: 700;
+  color: #1e8449;
+  margin-bottom: 12px;
+}
+
+.complete-formula b {
+  color: #e74c3c;
+  font-size: 28px;
+}
+
+.complete-hint {
+  font-size: 18px;
+  font-weight: 600;
+  color: #27ae60;
+  animation: popIn 0.4s ease;
+}
+
 @keyframes popIn {
   0% { transform: scale(0.5); opacity: 0; }
   50% { transform: scale(1.2); }
@@ -739,39 +823,20 @@ onUnmounted(() => clearInterval(timerInterval))
 /* 答案显示 */
 .answer-display {
   text-align: center;
-  font-size: 48px;
+  font-size: 40px;
   font-weight: 700;
   color: #bdc3c7;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   transition: all 0.2s;
 }
 .answer-display.hasValue { color: #2c3e50; }
-.answer-display.correct {
-  color: #27ae60;
-  animation: correctBounce 0.4s ease;
-}
 .answer-display.wrong { animation: wrongShake 0.3s ease; }
-.correct-emoji {
-  display: inline-block;
-  margin-left: 8px;
-  animation: emojiPop 0.5s ease;
-}
-@keyframes correctBounce {
-  0%, 100% { transform: scale(1); }
-  30% { transform: scale(1.2); }
-  60% { transform: scale(0.95); }
-}
 @keyframes wrongShake {
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(-8px); }
   75% { transform: translateX(8px); }
 }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
-@keyframes emojiPop {
-  0% { transform: scale(0) rotate(-30deg); opacity: 0; }
-  50% { transform: scale(1.3) rotate(10deg); opacity: 1; }
-  100% { transform: scale(1) rotate(0); opacity: 1; }
-}
 
 /* 数字键盘 */
 .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
@@ -832,22 +897,34 @@ onUnmounted(() => clearInterval(timerInterval))
 .msg-icon { font-size: 24px; }
 @keyframes popIn { 0% { transform: scale(0) rotate(-10deg); } 100% { transform: scale(1) rotate(0); } }
 
-/* 响应式 */
+/* 响应式 - 小屏幕优化 */
 @media (max-width: 400px) {
-  .math-ten-view { padding-top: 50px; padding: 12px; padding-top: 50px; }
-  .card-container { padding: 16px; }
-  .question-box { font-size: 32px; height: 64px; padding: 0 20px; }
-  .tree-diagram { padding: 8px 4px; }
-  .tree-root { padding: 8px 12px; font-size: 16px; min-width: 140px; }
-  .tree-branch { gap: 12px; }
-  .branch-symbol { font-size: 16px; }
-  .branch-node { padding: 6px 8px; font-size: 13px; min-width: 100px; min-height: 36px; }
-  .branch-node.done, .branch-node.active { min-width: 110px; }
-  .breakdown-display { padding: 8px 12px; }
-  .breakdown-label { font-size: 12px; }
-  .breakdown-hint { font-size: 14px; padding: 8px 12px; }
-  .answer-display { font-size: 42px; margin-bottom: 16px; }
-  .keypad button { height: 46px; font-size: 20px; }
-  .keypad { gap: 6px; }
+  .math-ten-view { padding-top: 20px; padding: 6px; }
+  .card-container { padding: 10px; border-radius: 16px; }
+  .question-box { font-size: 20px; height: 40px; padding: 0 12px; }
+
+  .tree-diagram { padding: 4px 2px; }
+  .tree-root { padding: 5px 8px; font-size: 12px; min-width: 100px; }
+  .tree-branch { gap: 6px; }
+  .branch-symbol { font-size: 12px; }
+  .branch-node { padding: 4px 5px; font-size: 10px; min-width: 70px; min-height: 28px; }
+  .branch-node.done, .branch-node.active { min-width: 80px; }
+  .branch-node .node-answer { font-size: 9px; padding: 1px 5px; }
+
+  .breakdown-display { padding: 5px 6px; margin-top: 6px; }
+  .breakdown-label { font-size: 10px; }
+  .breakdown-hint { font-size: 11px; padding: 5px 8px; }
+
+  .complete-formula { padding: 10px 16px; font-size: 16px; }
+  .complete-formula b { font-size: 18px; }
+  .complete-hint { font-size: 14px; }
+
+  .answer-display { font-size: 32px; margin-bottom: 10px; }
+
+  /* 更大的按键，便于点击 */
+  .keypad { gap: 4px; margin-bottom: 6px; }
+  .keypad button { height: 48px; font-size: 20px; border-radius: 10px; }
+
+  .skip-btn { margin-top: 4px; }
 }
 </style>
