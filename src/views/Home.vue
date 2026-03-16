@@ -82,6 +82,12 @@ const tools = [
     title: '凑十破十',
     description: '小学数学练习游戏，学习凑十法和破十法',
     icon: 'Odometer'
+  },
+  {
+    path: '/multiplication',
+    title: '小小乘法表',
+    description: '乘法口诀练习，挑战 35 分通关',
+    icon: 'Coin'
   }
 ]
 </script>

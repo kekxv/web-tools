@@ -11,6 +11,7 @@ import MahjongView from '../views/MahjongView.vue'
 import Base64View from '../views/Base64View.vue'
 import JsonCompareView from '../views/JsonCompareView.vue'
 import MathTenView from '../views/MathTenView.vue'
+import MultiplicationView from '../views/MultiplicationView.vue'
 
 const routes = [
   {
@@ -82,6 +83,12 @@ const routes = [
         name: 'MathTen',
         component: MathTenView,
         meta: { title: '凑十破十' }
+      },
+      {
+        path: 'multiplication',
+        name: 'Multiplication',
+        component: MultiplicationView,
+        meta: { title: '小小乘法表' }
       }
     ]
   }

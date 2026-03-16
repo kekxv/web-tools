@@ -18,6 +18,36 @@
             <el-icon><House /></el-icon>
             <template #title>首页</template>
           </el-menu-item>
+          <el-sub-menu index="games">
+            <template #title>
+              <el-icon><Van /></el-icon>
+              <span>休闲一下</span>
+            </template>
+            <el-menu-item index="/gobang">
+              <el-icon><Grid /></el-icon>
+              <span>五子棋</span>
+            </el-menu-item>
+            <el-menu-item index="/game24">
+              <el-icon><Odometer /></el-icon>
+              <span>24 点</span>
+            </el-menu-item>
+            <el-menu-item index="/showhand">
+              <el-icon><Van /></el-icon>
+              <span>梭哈</span>
+            </el-menu-item>
+            <el-menu-item index="/mahjong">
+              <el-icon><Grid /></el-icon>
+              <span>广东麻将</span>
+            </el-menu-item>
+            <el-menu-item index="/math-ten">
+              <el-icon><Odometer /></el-icon>
+              <span>凑十破十</span>
+            </el-menu-item>
+            <el-menu-item index="/multiplication">
+              <el-icon><Coin /></el-icon>
+              <span>小小乘法表</span>
+            </el-menu-item>
+          </el-sub-menu>
           <el-menu-item index="/diff">
             <el-icon><Files /></el-icon>
             <template #title>Diff 工具</template>
@@ -37,26 +67,6 @@
           <el-menu-item index="/hash">
             <el-icon><Key /></el-icon>
             <template #title>Hash 计算</template>
-          </el-menu-item>
-          <el-menu-item index="/gobang">
-            <el-icon><Grid /></el-icon>
-            <template #title>五子棋</template>
-          </el-menu-item>
-          <el-menu-item index="/game24">
-            <el-icon><Odometer /></el-icon>
-            <template #title>24 点</template>
-          </el-menu-item>
-          <el-menu-item index="/showhand">
-            <el-icon><Van /></el-icon>
-            <template #title>梭哈</template>
-          </el-menu-item>
-          <el-menu-item index="/mahjong">
-            <el-icon><Grid /></el-icon>
-            <template #title>广东麻将</template>
-          </el-menu-item>
-          <el-menu-item index="/math-ten">
-            <el-icon><Odometer /></el-icon>
-            <template #title>凑十破十</template>
           </el-menu-item>
         </el-menu>
       </el-aside>
@@ -85,6 +95,36 @@
             <el-icon><House /></el-icon>
             <template #title>首页</template>
           </el-menu-item>
+          <el-sub-menu index="games">
+            <template #title>
+              <el-icon><Van /></el-icon>
+              <span>休闲一下</span>
+            </template>
+            <el-menu-item index="/gobang">
+              <el-icon><Grid /></el-icon>
+              <span>五子棋</span>
+            </el-menu-item>
+            <el-menu-item index="/game24">
+              <el-icon><Odometer /></el-icon>
+              <span>24 点</span>
+            </el-menu-item>
+            <el-menu-item index="/showhand">
+              <el-icon><Van /></el-icon>
+              <span>梭哈</span>
+            </el-menu-item>
+            <el-menu-item index="/mahjong">
+              <el-icon><Grid /></el-icon>
+              <span>广东麻将</span>
+            </el-menu-item>
+            <el-menu-item index="/math-ten">
+              <el-icon><Odometer /></el-icon>
+              <span>凑十破十</span>
+            </el-menu-item>
+            <el-menu-item index="/multiplication">
+              <el-icon><Coin /></el-icon>
+              <span>小小乘法表</span>
+            </el-menu-item>
+          </el-sub-menu>
           <el-menu-item index="/diff">
             <el-icon><Files /></el-icon>
             <template #title>Diff 工具</template>
@@ -104,26 +144,6 @@
           <el-menu-item index="/hash">
             <el-icon><Key /></el-icon>
             <template #title>Hash 计算</template>
-          </el-menu-item>
-          <el-menu-item index="/gobang">
-            <el-icon><Grid /></el-icon>
-            <template #title>五子棋</template>
-          </el-menu-item>
-          <el-menu-item index="/game24">
-            <el-icon><Odometer /></el-icon>
-            <template #title>24 点</template>
-          </el-menu-item>
-          <el-menu-item index="/showhand">
-            <el-icon><Van /></el-icon>
-            <template #title>梭哈</template>
-          </el-menu-item>
-          <el-menu-item index="/mahjong">
-            <el-icon><Grid /></el-icon>
-            <template #title>广东麻将</template>
-          </el-menu-item>
-          <el-menu-item index="/math-ten">
-            <el-icon><Odometer /></el-icon>
-            <template #title>凑十破十</template>
           </el-menu-item>
         </el-menu>
       </el-aside>
@@ -150,6 +170,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { House, Files, Document, DataAnalysis, Key, Grid, Odometer, Van, Coin } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const isCollapse = ref(false)
@@ -205,7 +226,8 @@ const currentTitle = computed(() => {
     '/game24': '24 点',
     '/showhand': '梭哈',
     '/mahjong': '广东麻将',
-    '/math-ten': '凑十破十'
+    '/math-ten': '凑十破十',
+    '/multiplication': '小小乘法表'
   }
   return routeMap[route.path] || 'Web Tools'
 })
