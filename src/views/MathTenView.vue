@@ -57,18 +57,179 @@
             </template>
           </div>
 
-          <!-- 步骤区域 -->
+          <!-- 分支图步骤区域 -->
           <div class="step-area" v-if="showSteps">
             <div class="step-badge">第 {{ step + 1 }} 步</div>
-            <div class="step-question" :class="{ shake: showWrong }">
+
+            <!-- 凑十法二叉树 -->
+            <div v-if="currentQuestion.type === 'makeTen'" class="tree-diagram">
+              <!-- 根节点：原题 -->
+              <div class="tree-root">
+                <span>{{ currentQuestion.num1 }} + {{ currentQuestion.num2 }} = ?</span>
+              </div>
+
+              <!-- step 0: 第一层分支 -->
+              <div class="tree-branch" v-if="step === 0">
+                <div class="branch-left">
+                  <div class="branch-symbol">╱</div>
+                  <div class="branch-node" :class="{ active: true, shake: showWrong }">
+                    <span class="node-label">{{ currentQuestion.num1 }} + <b>?</b> = 10</span>
+                  </div>
+                </div>
+                <div class="branch-right">
+                  <div class="branch-symbol">╲</div>
+                  <div class="branch-node pending">
+                    <span class="node-label">{{ currentQuestion.num2 }} - ? = ?</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- step 1: 第一层分支（显示答案）+ 第二层 -->
+              <div class="tree-branch" v-if="step >= 1 && step < 2">
+                <div class="branch-left">
+                  <div class="branch-symbol">╱</div>
+                  <div class="branch-node done">
+                    <span class="node-label">{{ currentQuestion.num1 }} + <b>{{ currentQuestion.splitNum }}</b> = 10</span>
+                    <span class="node-answer">{{ currentQuestion.splitNum }}</span>
+                  </div>
+                </div>
+                <div class="branch-right">
+                  <div class="branch-symbol">╲</div>
+                  <div class="branch-node" :class="{ active: step === 1, shake: step === 1 && showWrong }">
+                    <span class="node-label">{{ currentQuestion.num2 }} - {{ currentQuestion.splitNum }} = <b>?</b></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- step 2: 第二层分支（第一层全为 done） -->
+              <div class="tree-branch" v-if="step >= 2">
+                <div class="branch-left">
+                  <div class="branch-symbol">╱</div>
+                  <div class="branch-node done">
+                    <span class="node-label">{{ currentQuestion.num1 }} + <b>{{ currentQuestion.splitNum }}</b> = 10</span>
+                    <span class="node-answer">{{ currentQuestion.splitNum }}</span>
+                  </div>
+                </div>
+                <div class="branch-right">
+                  <div class="branch-symbol">╲</div>
+                  <div class="branch-node done">
+                    <span class="node-label">{{ currentQuestion.num2 }} - {{ currentQuestion.splitNum }} = <b>{{ currentQuestion.remainNum }}</b></span>
+                    <span class="node-answer">{{ currentQuestion.remainNum }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- step 2: 居中分支 -->
+              <div class="tree-branch" v-if="step >= 2">
+                <div class="branch-center">
+                  <div class="branch-symbol">╱</div>
+                  <div class="branch-node" :class="{ active: step === 2, shake: step === 2 && showWrong }">
+                    <span class="node-label">10 + {{ currentQuestion.remainNum }} = <b>?</b></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 破十法二叉树 -->
+            <div v-else class="tree-diagram">
+              <!-- 根节点：原题 -->
+              <div class="tree-root">
+                <span>{{ currentQuestion.teenNum }} - {{ currentQuestion.subtractor }} = ?</span>
+              </div>
+
+              <!-- step 0: 第一层分支 -->
+              <div class="tree-branch" v-if="step === 0">
+                <div class="branch-left">
+                  <div class="branch-symbol">╱</div>
+                  <div class="branch-node" :class="{ active: true, shake: showWrong }">
+                    <span class="node-label">{{ currentQuestion.teenNum }} = 10 + <b>?</b></span>
+                  </div>
+                </div>
+                <div class="branch-right">
+                  <div class="branch-symbol">╲</div>
+                  <div class="branch-node pending">
+                    <span class="node-label">10 - {{ currentQuestion.subtractor }} = ?</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- step 1: 第一层 + 第二层 -->
+              <div class="tree-branch" v-if="step >= 1 && step < 2">
+                <div class="branch-left">
+                  <div class="branch-symbol">╱</div>
+                  <div class="branch-node done">
+                    <span class="node-label">{{ currentQuestion.teenNum }} = 10 + <b>{{ currentQuestion.ones }}</b></span>
+                    <span class="node-answer">{{ currentQuestion.ones }}</span>
+                  </div>
+                </div>
+                <div class="branch-right">
+                  <div class="branch-symbol">╲</div>
+                  <div class="branch-node" :class="{ active: step === 1, shake: step === 1 && showWrong }">
+                    <span class="node-label">10 - {{ currentQuestion.subtractor }} = <b>?</b></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- step 2: 第一层全为 done -->
+              <div class="tree-branch" v-if="step >= 2">
+                <div class="branch-left">
+                  <div class="branch-symbol">╱</div>
+                  <div class="branch-node done">
+                    <span class="node-label">{{ currentQuestion.teenNum }} = 10 + <b>{{ currentQuestion.ones }}</b></span>
+                    <span class="node-answer">{{ currentQuestion.ones }}</span>
+                  </div>
+                </div>
+                <div class="branch-right">
+                  <div class="branch-symbol">╲</div>
+                  <div class="branch-node done">
+                    <span class="node-label">10 - {{ currentQuestion.subtractor }} = <b>{{ currentQuestion.tenMinus }}</b></span>
+                    <span class="node-answer">{{ currentQuestion.tenMinus }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- step 2: 居中分支 -->
+              <div class="tree-branch" v-if="step >= 2">
+                <div class="branch-center">
+                  <div class="branch-symbol">╱</div>
+                  <div class="branch-node" :class="{ active: step === 2, shake: step === 2 && showWrong }">
+                    <span class="node-label">{{ currentQuestion.ones }} + {{ currentQuestion.tenMinus }} = <b>?</b></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 底部提示区域 -->
+            <div class="breakdown-display">
+              <span class="breakdown-label">当前步骤：</span>
               <template v-if="currentQuestion.type === 'makeTen'">
-                <span v-if="step === 0">{{ currentQuestion.num1 }} + <b>?</b> = 10</span>
-                <span v-else-if="step === 1">{{ currentQuestion.num2 }} - {{ currentQuestion.splitNum }} = <b>?</b></span>
-                <span v-else>10 + {{ currentQuestion.remainNum }} = <b>?</b></span>
+                <div class="breakdown-hint">
+                  <template v-if="step === 0">
+                    <span>先把 <b>{{ currentQuestion.num1 }}</b> 凑成 10</span>
+                  </template>
+                  <template v-else-if="step === 1">
+                    <span>计算 <b>{{ currentQuestion.num2 }} - {{ currentQuestion.splitNum }}</b></span>
+                  </template>
+                  <template v-else-if="step === 2">
+                    <span>计算 <b>10 + {{ currentQuestion.remainNum }}</b></span>
+                  </template>
+                  <template v-else>
+                    <span>最终答案：<b>{{ currentQuestion.num1 }} + {{ currentQuestion.num2 }}</b></span>
+                  </template>
+                </div>
               </template>
               <template v-else>
-                <span v-if="step === 0">10 - {{ currentQuestion.subtractor }} = <b>?</b></span>
-                <span v-else>{{ currentQuestion.ones }} + {{ currentQuestion.tenMinus }} = <b>?</b></span>
+                <div class="breakdown-hint">
+                  <template v-if="step === 0">
+                    <span>把 <b>{{ currentQuestion.teenNum }}</b> 拆成 10 + ?</span>
+                  </template>
+                  <template v-else-if="step === 1">
+                    <span>计算 <b>10 - {{ currentQuestion.subtractor }}</b></span>
+                  </template>
+                  <template v-else-if="step === 2">
+                    <span>计算 <b>{{ currentQuestion.ones }} + {{ currentQuestion.tenMinus }}</b></span>
+                  </template>
+                </div>
               </template>
             </div>
           </div>
@@ -171,7 +332,9 @@ const nextQuestion = () => {
 }
 
 const inputDigit = (d) => {
+  // 步骤4最终确认时也可以输入答案
   if (showCorrect.value || !showSteps.value) return
+
   if (inputValue.value.length < 2) {
     inputValue.value += d
     checkAnswer()
@@ -183,18 +346,25 @@ const clearInput = () => { inputValue.value = '' }
 
 const getExpectedAnswer = () => {
   const q = currentQuestion.value
+  // 凑十法: 4步 (step 0-3)
   if (q.type === 'makeTen') {
-    if (step.value === 0) return q.splitNum
-    if (step.value === 1) return q.remainNum
-    return q.answer
-  } else {
-    if (step.value === 0) return q.tenMinus
-    return q.answer
+    if (step.value === 0) return q.splitNum      // num1 + ? = 10 → 答案: splitNum
+    if (step.value === 1) return q.remainNum     // num2 - splitNum = ? → 答案: remainNum
+    if (step.value === 2) return q.answer        // 10 + remainNum = ? → 答案: answer
+    return q.answer                               // step 3: 确认步骤，不作答
   }
+  // 破十法: 3步 (step 0-2)
+  if (q.type === 'breakTen') {
+    if (step.value === 0) return q.ones           // teenNum = 10 + ? → 答案: ones
+    if (step.value === 1) return q.tenMinus       // 10 - subtractor = ? → 答案: tenMinus
+    return q.answer                               // ones + tenMinus = ? → 答案: answer
+  }
+  return 0
 }
 
 const getMaxStep = () => {
-  return currentQuestion.value.type === 'makeTen' ? 2 : 1
+  // 凑十法: 4步 (0,1,2,3)，破十法: 3步 (0,1,2)
+  return currentQuestion.value.type === 'makeTen' ? 3 : 2
 }
 
 const triggerCelebrate = (msg) => {
@@ -219,19 +389,7 @@ const checkAnswer = () => {
         startTimer()
         triggerCelebrate('对了！')
       } else {
-        score.value += 2
-        combo.value++
-        if (combo.value === 3) { score.value += 1; triggerCelebrate('3连击！+1') }
-        else if (combo.value === 5) { score.value += 2; triggerCelebrate('5连击！+2') }
-        else if (combo.value >= 10) { score.value += 3; triggerCelebrate('太棒了！+3') }
-        else { triggerCelebrate('正确！') }
-
-        if (score.value >= targetScore) {
-          gameOver.value = true
-          gameWon.value = true
-        } else {
-          nextQuestion()
-        }
+        completeQuestion()
       }
     }, 300)
   } else if (answer > expected || inputValue.value.length >= String(expected).length) {
@@ -246,6 +404,22 @@ const checkAnswer = () => {
         gameWon.value = false
       }
     }, 300)
+  }
+}
+
+const completeQuestion = () => {
+  score.value += 2
+  combo.value++
+  if (combo.value === 3) { score.value += 1; triggerCelebrate('3连击！+1') }
+  else if (combo.value === 5) { score.value += 2; triggerCelebrate('5连击！+2') }
+  else if (combo.value >= 10) { score.value += 3; triggerCelebrate('太棒了！+3') }
+  else { triggerCelebrate('正确！') }
+
+  if (score.value >= targetScore) {
+    gameOver.value = true
+    gameWon.value = true
+  } else {
+    nextQuestion()
   }
 }
 
@@ -375,9 +549,13 @@ onUnmounted(() => clearInterval(timerInterval))
   white-space: nowrap;
   transform: scale(1);
   transform-origin: center center;
-  transition: transform 0.4s ease;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 1;
 }
-.question-box.shrink { transform: scale(0.7); }
+.question-box.shrink {
+  transform: scale(0.8);
+  opacity: 0.7;
+}
 
 .step-area { text-align: center; margin-top: 12px; animation: slideUp 0.4s ease; }
 @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
@@ -391,10 +569,172 @@ onUnmounted(() => clearInterval(timerInterval))
   border-radius: 16px;
   margin-bottom: 10px;
 }
-.step-question { font-size: 32px; font-weight: 600; color: #2c3e50; }
-.step-question.shake { animation: shake 0.3s; }
-.step-question b { color: #f5a623; border-bottom: 3px solid #f5a623; padding: 0 6px; }
-@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+/* 二叉树样式 */
+.tree-diagram {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: linear-gradient(180deg, #f8f9fa 0%, #fff 100%);
+  border-radius: 16px;
+  border: 2px solid #e9ecef;
+}
+
+.tree-root {
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #d63031;
+  border: 2px solid #f39c12;
+  text-align: center;
+  min-width: 160px;
+}
+
+.tree-branch {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  width: 100%;
+  animation: branchSlideIn 0.4s ease;
+}
+
+@keyframes branchSlideIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.branch-left,
+.branch-right,
+.branch-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.branch-center { max-width: 180px; }
+
+.branch-symbol {
+  font-size: 20px;
+  color: #636e72;
+  font-weight: bold;
+  line-height: 1.2;
+}
+
+.branch-node {
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.3s ease;
+  width: 100%;
+  text-align: center;
+  min-width: 120px;
+  min-height: 40px;
+  justify-content: center;
+}
+
+.branch-node.done {
+  background: linear-gradient(135deg, #d5f5e3 0%, #abebc6 100%);
+  color: #1e8449;
+  border: 2px solid #27ae60;
+  min-width: 140px;
+}
+
+.branch-node.done .node-answer {
+  background: #27ae60;
+  color: #fff;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+.branch-node.pending {
+  background: linear-gradient(135deg, #f1f2f6 0%, #dfe4ea 100%);
+  color: #a4b0be;
+  border: 2px solid #ced6e0;
+}
+
+.branch-node.active {
+  background: linear-gradient(135deg, #fff5e6 0%, #ffe8cc 100%);
+  color: #e67e22;
+  border: 2px solid #f5a623;
+  box-shadow: 0 4px 12px rgba(245, 166, 35, 0.2);
+  min-width: 140px;
+}
+
+.branch-node.active.shake { animation: shake 0.3s; }
+
+.branch-node b {
+  color: #e67e22;
+  border-bottom: 2px solid #f5a623;
+  padding: 0 3px;
+}
+
+.node-answer {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* 底部完整拆分显示 */
+.breakdown-display {
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #e8f4fd 0%, #d6eaf8 100%);
+  border-radius: 12px;
+  border: 2px solid #3498db;
+  text-align: center;
+  animation: slideUpFade 0.4s ease;
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.breakdown-label {
+  font-size: 13px;
+  color: #2980b9;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.breakdown-formula {
+  font-size: 20px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.breakdown-hint {
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #fff5e6 0%, #ffe8cc 100%);
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #e67e22;
+  text-align: center;
+  animation: slideUpFade 0.4s ease;
+}
+
+.breakdown-hint b {
+  color: #d63031;
+  font-weight: 700;
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
 
 /* 答案显示 */
 .answer-display {
@@ -426,6 +766,7 @@ onUnmounted(() => clearInterval(timerInterval))
   25% { transform: translateX(-8px); }
   75% { transform: translateX(8px); }
 }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
 @keyframes emojiPop {
   0% { transform: scale(0) rotate(-30deg); opacity: 0; }
   50% { transform: scale(1.3) rotate(10deg); opacity: 1; }
@@ -496,7 +837,15 @@ onUnmounted(() => clearInterval(timerInterval))
   .math-ten-view { padding-top: 50px; padding: 12px; padding-top: 50px; }
   .card-container { padding: 16px; }
   .question-box { font-size: 32px; height: 64px; padding: 0 20px; }
-  .step-question { font-size: 28px; }
+  .tree-diagram { padding: 8px 4px; }
+  .tree-root { padding: 8px 12px; font-size: 16px; min-width: 140px; }
+  .tree-branch { gap: 12px; }
+  .branch-symbol { font-size: 16px; }
+  .branch-node { padding: 6px 8px; font-size: 13px; min-width: 100px; min-height: 36px; }
+  .branch-node.done, .branch-node.active { min-width: 110px; }
+  .breakdown-display { padding: 8px 12px; }
+  .breakdown-label { font-size: 12px; }
+  .breakdown-hint { font-size: 14px; padding: 8px 12px; }
   .answer-display { font-size: 42px; margin-bottom: 16px; }
   .keypad button { height: 46px; font-size: 20px; }
   .keypad { gap: 6px; }
