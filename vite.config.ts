@@ -7,7 +7,18 @@ export default defineConfig({
   base: './',
   build: {
     outDir: 'dist',
-    assetsDir: 'assets'
+    assetsDir: 'assets',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // 大型库单独分包
+          'element-plus': ['element-plus'],
+          'prettier': ['prettier'],
+          // 其他小型库打一起
+          'vendor': ['vue', 'vue-router', 'crypto-js', 'diff', 'highlight.js', 'js-beautify']
+        }
+      }
+    }
   },
   test: {
     globals: true,

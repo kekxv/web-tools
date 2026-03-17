@@ -1,93 +1,80 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
-import MainLayout from '../components/Layout/MainLayout.vue'
-import Home from '../views/Home.vue'
-import DiffView from '../views/DiffView.vue'
-import FormatterView from '../views/FormatterView.vue'
-import HashView from '../views/HashView.vue'
-import GobangView from '../views/GobangView.vue'
-import Game24View from '../views/Game24View.vue'
-import ShowHandView from '../views/ShowHandView.vue'
-import MahjongView from '../views/MahjongView.vue'
-import Base64View from '../views/Base64View.vue'
-import JsonCompareView from '../views/JsonCompareView.vue'
-import MathTenView from '../views/MathTenView.vue'
-import MultiplicationView from '../views/MultiplicationView.vue'
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    component: MainLayout,
+    component: () => import('../components/Layout/MainLayout.vue'),
     children: [
       {
         path: '',
         name: 'Home',
-        component: Home,
+        component: () => import('../views/Home.vue'),
         meta: { title: '首页' }
       },
       {
         path: 'diff',
         name: 'Diff',
-        component: DiffView,
+        component: () => import('../views/DiffView.vue'),
         meta: { title: 'Diff 工具' }
       },
       {
         path: 'formatter',
         name: 'Formatter',
-        component: FormatterView,
+        component: () => import('../views/FormatterView.vue'),
         meta: { title: '代码格式化' }
       },
       {
         path: 'json-compare',
         name: 'JsonCompare',
-        component: JsonCompareView,
+        component: () => import('../views/JsonCompareView.vue'),
         meta: { title: 'JSON/XML 对比' }
       },
       {
         path: 'hash',
         name: 'Hash',
-        component: HashView,
+        component: () => import('../views/HashView.vue'),
         meta: { title: 'Hash 计算' }
       },
       {
         path: 'gobang',
         name: 'Gobang',
-        component: GobangView,
+        component: () => import('../views/GobangView.vue'),
         meta: { title: '五子棋' }
       },
       {
         path: 'game24',
         name: 'Game24',
-        component: Game24View,
+        component: () => import('../views/Game24View.vue'),
         meta: { title: '24 点' }
       },
       {
         path: 'showhand',
         name: 'ShowHand',
-        component: ShowHandView,
+        component: () => import('../views/ShowHandView.vue'),
         meta: { title: '梭哈' }
       },
       {
         path: 'mahjong',
         name: 'Mahjong',
-        component: MahjongView,
+        component: () => import('../views/MahjongView.vue'),
         meta: { title: '广东麻将' }
       },
       {
         path: 'base64',
         name: 'Base64',
-        component: Base64View,
+        component: () => import('../views/Base64View.vue'),
         meta: { title: 'Base64 查看' }
       },
       {
         path: 'math-ten',
         name: 'MathTen',
-        component: MathTenView,
+        component: () => import('../views/MathTenView.vue'),
         meta: { title: '凑十破十' }
       },
       {
         path: 'multiplication',
         name: 'Multiplication',
-        component: MultiplicationView,
+        component: () => import('../views/MultiplicationView.vue'),
         meta: { title: '小小乘法表' }
       }
     ]
