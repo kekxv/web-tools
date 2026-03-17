@@ -10,12 +10,11 @@ export default defineConfig({
     assetsDir: 'assets',
     rollupOptions: {
       output: {
-        manualChunks: {
-          // 大型库单独分包
-          'element-plus': ['element-plus'],
-          'prettier': ['prettier'],
-          // 其他小型库打一起
-          'vendor': ['vue', 'vue-router', 'crypto-js', 'diff', 'highlight.js', 'js-beautify']
+        manualChunks(id) {
+          // prettier 单独分包（格式化页面才需要，体积大且无循环依赖）
+          if (id.includes('prettier')) {
+            return 'prettier'
+          }
         }
       }
     }
