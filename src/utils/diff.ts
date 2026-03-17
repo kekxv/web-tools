@@ -1,14 +1,23 @@
 import { createTwoFilesPatch } from 'diff'
 
+export interface PatchChange {
+  type: 'hunk' | 'add' | 'remove' | 'context'
+  content: string
+  oldLine?: number
+  oldCount?: number
+  newLine?: number
+  newCount?: number
+}
+
 /**
  * 生成统一格式的 patch
- * @param {string} oldStr - 原始文本
- * @param {string} newStr - 新文本
- * @param {string} oldFileName - 原始文件名
- * @param {string} newFileName - 新文件名
- * @returns {string} patch 内容
  */
-export function generatePatch(oldStr, newStr, oldFileName = 'old', newFileName = 'new') {
+export function generatePatch(
+  oldStr: string,
+  newStr: string,
+  oldFileName: string = 'old',
+  newFileName: string = 'new'
+): string {
   const patch = createTwoFilesPatch(
     oldFileName,
     newFileName,
@@ -21,12 +30,10 @@ export function generatePatch(oldStr, newStr, oldFileName = 'old', newFileName =
 
 /**
  * 解析 patch 内容，返回变更信息
- * @param {string} patchContent - patch 内容
- * @returns {Array} 变更行数组
  */
-export function parsePatch(patchContent) {
+export function parsePatch(patchContent: string): PatchChange[] {
   const lines = patchContent.split('\n')
-  const changes = []
+  const changes: PatchChange[] = []
 
   for (const line of lines) {
     if (line.startsWith('@@')) {
@@ -56,10 +63,8 @@ export function parsePatch(patchContent) {
 
 /**
  * 下载 patch 文件
- * @param {string} content - patch 内容
- * @param {string} filename - 文件名
  */
-export function downloadPatch(content, filename = 'changes.patch') {
+export function downloadPatch(content: string, filename: string = 'changes.patch'): void {
   const blob = new Blob([content], { type: 'text/plain' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')

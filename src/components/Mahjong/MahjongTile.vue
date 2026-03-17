@@ -27,17 +27,19 @@
   </div>
 </template>
 
-<script setup>
-const props = defineProps({
-  tile: { type: Object, default: null },
-  size: { type: String, default: 'normal' }, // normal, small, mini
-  isBack: { type: Boolean, default: false },
-  selected: { type: Boolean, default: false },
-  isDrawn: { type: Boolean, default: false },
-  sideways: { type: Boolean, default: false } // 用于侧边家横向排列
-})
+<script setup lang="ts">
+import type { Tile } from '@/utils/mahjong'
 
-const getDisplayNumber = (tile) => {
+const props = defineProps<{
+  tile?: Tile | null
+  size?: 'normal' | 'small' | 'mini'
+  isBack?: boolean
+  selected?: boolean
+  isDrawn?: boolean
+  sideways?: boolean
+}>()
+
+const getDisplayNumber = (tile: Tile): string | number => {
   if (tile.color === 'ji') return ''
   return tile.index
 }

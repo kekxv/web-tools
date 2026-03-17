@@ -1,4 +1,4 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
 import MainLayout from '../components/Layout/MainLayout.vue'
 import Home from '../views/Home.vue'
 import DiffView from '../views/DiffView.vue'
@@ -13,7 +13,7 @@ import JsonCompareView from '../views/JsonCompareView.vue'
 import MathTenView from '../views/MathTenView.vue'
 import MultiplicationView from '../views/MultiplicationView.vue'
 
-const routes = [
+const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: MainLayout,

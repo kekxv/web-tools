@@ -8,10 +8,15 @@ import * as parserYaml from 'prettier/plugins/yaml'
 import * as parserEstree from 'prettier/plugins/estree'
 import { js as jsBeautify, css as cssBeautify, html as htmlBeautify } from 'js-beautify'
 
+export interface FormatterInfo {
+  name: string
+  parser: string
+}
+
 /**
  * 支持的语言格式
  */
-export const FORMATTERS = {
+export const FORMATTERS: Record<string, FormatterInfo> = {
   json: { name: 'JSON', parser: 'json' },
   javascript: { name: 'JavaScript', parser: 'javascript' },
   typescript: { name: 'TypeScript', parser: 'typescript' },
@@ -48,7 +53,7 @@ export const FORMATTERS = {
 }
 
 // Prettier 支持的 parser 映射
-const PRETTIER_PARSERS = {
+const PRETTIER_PARSERS: Record<string, string> = {
   json: 'json',
   javascript: 'babel',
   typescript: 'typescript',
@@ -79,13 +84,13 @@ const BEAUTIFY_OPTIONS = {
   indent_char: ' ',
   preserve_newlines: true,
   max_preserve_newlines: 2,
-  brace_style: 'expand'
+  brace_style: 'expand' as const
 }
 
 /**
  * 使用 Prettier 格式化代码
  */
-async function formatWithPrettier(code, parser) {
+async function formatWithPrettier(code: string, parser: string): Promise<string> {
   const prettierParser = PRETTIER_PARSERS[parser]
 
   if (!prettierParser) {
@@ -108,14 +113,14 @@ async function formatWithPrettier(code, parser) {
     })
     return formatted
   } catch (error) {
-    throw new Error(`Prettier 格式化失败：${error.message}`)
+    throw new Error(`Prettier 格式化失败：${(error as Error).message}`)
   }
 }
 
 /**
  * 使用 js-beautify 格式化 HTML
  */
-function formatHTML(code) {
+function formatHTML(code: string): string {
   return htmlBeautify(code, {
     indent_size: 2,
     indent_inner_html: true,
@@ -128,7 +133,7 @@ function formatHTML(code) {
 /**
  * 使用 js-beautify 格式化 CSS
  */
-function formatCSS(code) {
+function formatCSS(code: string): string {
   return cssBeautify(code, {
     indent_size: 2,
     preserve_newlines: true,
@@ -139,7 +144,7 @@ function formatCSS(code) {
 /**
  * 使用 js-beautify 格式化 JavaScript
  */
-function formatJavaScript(code) {
+function formatJavaScript(code: string): string {
   return jsBeautify(code, {
     ...BEAUTIFY_OPTIONS,
     e4x: true
@@ -149,7 +154,7 @@ function formatJavaScript(code) {
 /**
  * 格式化 XML
  */
-function formatXML(code) {
+function formatXML(code: string): string {
   const tab = '  '
   let formatted = ''
   let indent = 0
@@ -186,7 +191,7 @@ function formatXML(code) {
 /**
  * 格式化 Diff/Patch
  */
-function formatDiff(code) {
+function formatDiff(code: string): string {
   const lines = code.split('\n')
   return lines.map(line => {
     if (line.startsWith('diff --git')) {
@@ -208,7 +213,7 @@ function formatDiff(code) {
 /**
  * 格式化 SQL
  */
-function formatSQL(code) {
+function formatSQL(code: string): string {
   const keywords = [
     'SELECT', 'FROM', 'WHERE', 'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER',
     'ON', 'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT', 'OFFSET', 'UNION',
@@ -235,10 +240,10 @@ function formatSQL(code) {
 /**
  * 格式化 Python
  */
-function formatPython(code) {
+function formatPython(code: string): string {
   const lines = code.split('\n')
   let indent = 0
-  const result = []
+  const result: string[] = []
 
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i].trim()
@@ -263,11 +268,8 @@ function formatPython(code) {
 
 /**
  * 格式化代码（主函数）
- * @param {string} code - 原始代码
- * @param {string} parser - 解析器类型
- * @returns {Promise<string>} 格式化后的代码
  */
-export async function formatCode(code, parser) {
+export async function formatCode(code: string, parser: string): Promise<string> {
   try {
     // 使用 Prettier 格式化
     if (PRETTIER_PARSERS[parser]) {
@@ -313,23 +315,21 @@ export async function formatCode(code, parser) {
         return code.trim()
     }
   } catch (error) {
-    throw new Error(`格式化失败：${error.message}`)
+    throw new Error(`格式化失败：${(error as Error).message}`)
   }
 }
 
 /**
  * 检测代码类型
- * @param {string} code - 代码内容
- * @returns {string} 解析器类型
  */
-export function detectLanguage(code) {
+export function detectLanguage(code: string): string {
   const trimmed = code.trim()
   const firstLine = trimmed.split('\n')[0].toLowerCase()
 
   // Diff/Patch 检测
   if (trimmed.includes('diff --git') ||
       (trimmed.includes('--- ') && trimmed.includes('+++ ')) ||
-      trimmed.match(/^index [a-f0-9]+\.\.[a-f0-9]+/m)) {
+      trimmed.match(/^index [a-f0-9]+\.[a-f0-9]+/m)) {
     return 'diff'
   }
 

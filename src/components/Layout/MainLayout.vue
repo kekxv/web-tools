@@ -167,7 +167,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { House, Files, Document, DataAnalysis, Key, Grid, Odometer, Van, Coin } from '@element-plus/icons-vue'

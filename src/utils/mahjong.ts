@@ -8,7 +8,9 @@ export const TILE_TYPE = {
   PINZU: 'pinzu',    // 筒子
   SOUZU: 'souzu',    // 索子/条子
   JIHAI: 'jihai'     // 字牌
-}
+} as const
+
+export type TileType = typeof TILE_TYPE[keyof typeof TILE_TYPE]
 
 // 风牌
 export const WINDS = {
@@ -16,14 +18,18 @@ export const WINDS = {
   SOUTH: 'south',    // 南
   WEST: 'west',      // 西
   NORTH: 'north'     // 北
-}
+} as const
+
+export type Wind = typeof WINDS[keyof typeof WINDS]
 
 // 三元牌
 export const DRAGONS = {
   WHITE: 'white',    // 白/中
   GREEN: 'green',    // 发
   RED: 'red'         // 中/红中
-}
+} as const
+
+export type Dragon = typeof DRAGONS[keyof typeof DRAGONS]
 
 // 所有牌值
 export const TILE_VALUE = {
@@ -37,10 +43,12 @@ export const TILE_VALUE = {
   EAST: 31, SOUTH: 32, WEST: 33, NORTH: 34,
   // 三元牌 35-37
   WHITE: 35, GREEN: 36, RED: 37
-}
+} as const
+
+export type TileValue = typeof TILE_VALUE[keyof typeof TILE_VALUE]
 
 // 牌面显示
-export const TILE_DISPLAY = {
+export const TILE_DISPLAY: Record<string, string> = {
   MAN1: '1', MAN2: '2', MAN3: '3', MAN4: '4', MAN5: '5', MAN6: '6', MAN7: '7', MAN8: '8', MAN9: '9',
   PIN1: '1', PIN2: '2', PIN3: '3', PIN4: '4', PIN5: '5', PIN6: '6', PIN7: '7', PIN8: '8', PIN9: '9',
   SOU1: '1', SOU2: '2', SOU3: '3', SOU4: '4', SOU5: '5', SOU6: '6', SOU7: '7', SOU8: '8', SOU9: '9',
@@ -49,7 +57,7 @@ export const TILE_DISPLAY = {
 }
 
 // 牌的颜色分类（用于 UI 显示）
-export const TILE_COLOR = {
+export const TILE_COLOR: Record<string, string> = {
   MAN1: 'man', MAN2: 'man', MAN3: 'man', MAN4: 'man', MAN5: 'man', MAN6: 'man', MAN7: 'man', MAN8: 'man', MAN9: 'man',
   PIN1: 'pin', PIN2: 'pin', PIN3: 'pin', PIN4: 'pin', PIN5: 'pin', PIN6: 'pin', PIN7: 'pin', PIN8: 'pin', PIN9: 'pin',
   SOU1: 'sou', SOU2: 'sou', SOU3: 'sou', SOU4: 'sou', SOU5: 'sou', SOU6: 'sou', SOU7: 'sou', SOU8: 'sou', SOU9: 'sou',
@@ -98,7 +106,14 @@ export const FAN_TYPES = {
  * 麻将牌类
  */
 export class Tile {
-  constructor(value, type, index, display, color) {
+  value: number
+  type: TileType
+  index: number
+  display: string
+  color: string
+  id: string
+
+  constructor(value: number, type: TileType, index: number, display: string, color: string) {
     this.value = value
     this.type = type
     this.index = index
@@ -107,14 +122,14 @@ export class Tile {
     this.id = `${type}-${index}`
   }
 
-  clone() {
+  clone(): Tile {
     return new Tile(this.value, this.type, this.index, this.display, this.color)
   }
 
   /**
    * 是否为幺九牌
    */
-  isYaojiu() {
+  isYaojiu(): boolean {
     if (this.type === TILE_TYPE.JIHAI) return true
     return this.index === 1 || this.index === 9
   }
@@ -122,65 +137,115 @@ export class Tile {
   /**
    * 是否为字牌
    */
-  isZihai() {
+  isZihai(): boolean {
     return this.type === TILE_TYPE.JIHAI
   }
 
   /**
    * 是否为风牌
    */
-  isFeng() {
-    return [TILE_VALUE.EAST, TILE_VALUE.SOUTH, TILE_VALUE.WEST, TILE_VALUE.NORTH].includes(this.value)
+  isFeng(): boolean {
+    return [TILE_VALUE.EAST, TILE_VALUE.SOUTH, TILE_VALUE.WEST, TILE_VALUE.NORTH].includes(this.value as 31 | 32 | 33 | 34)
   }
 
   /**
    * 是否为三元牌
    */
-  isDragon() {
-    return [TILE_VALUE.WHITE, TILE_VALUE.GREEN, TILE_VALUE.RED].includes(this.value)
+  isDragon(): boolean {
+    return [TILE_VALUE.WHITE, TILE_VALUE.GREEN, TILE_VALUE.RED].includes(this.value as 35 | 36 | 37)
   }
+}
+
+export interface ExposedSet {
+  type: 'chi' | 'pon' | 'kan'
+  tiles: Tile[]
+}
+
+export interface AgariResult {
+  agari: boolean
+  type?: string
+  fan?: number
+  isZimo?: boolean
+  isDealer?: boolean
+  details?: AgariDetails
+}
+
+export interface AgariDetails {
+  sets: ExposedSet[]
+  yan: Tile[] | null
+  isMenzen: boolean
+  isQingyise: boolean
+  isHunyise: boolean
+  isPengpeng: boolean
+  hasYaojiu: boolean
+}
+
+export interface ChiiPattern {
+  type: string
+  label: string
+  tiles: number[]
+  allTiles: number[]
+}
+
+export interface KakanResult {
+  can: boolean
+  setIndex?: number
+}
+
+export interface ScoreResult {
+  base: number
+  perPlayer?: number
+  total: number
+}
+
+export interface CheckAgariOptions {
+  isZimo?: boolean
+  isDealer?: boolean
+  wind?: string
+  isGangzimo?: boolean
+  isHaidi?: boolean
 }
 
 /**
  * 创建完整的牌堆（每种牌 4 张，共 144 张）
  */
-export function createDeck() {
-  const deck = []
+export function createDeck(): Tile[] {
+  const deck: Tile[] = []
 
   // 万子
   for (let i = 1; i <= 9; i++) {
     for (let j = 0; j < 4; j++) {
-      deck.push(new Tile(TILE_VALUE[`MAN${i}`], TILE_TYPE.MANZU, i, TILE_DISPLAY[`MAN${i}`], TILE_COLOR[`MAN${i}`]))
+      deck.push(new Tile(TILE_VALUE[`MAN${i}` as keyof typeof TILE_VALUE], TILE_TYPE.MANZU, i, TILE_DISPLAY[`MAN${i}`], TILE_COLOR[`MAN${i}`]))
     }
   }
 
   // 筒子
   for (let i = 1; i <= 9; i++) {
     for (let j = 0; j < 4; j++) {
-      deck.push(new Tile(TILE_VALUE[`PIN${i}`], TILE_TYPE.PINZU, i, TILE_DISPLAY[`PIN${i}`], TILE_COLOR[`PIN${i}`]))
+      deck.push(new Tile(TILE_VALUE[`PIN${i}` as keyof typeof TILE_VALUE], TILE_TYPE.PINZU, i, TILE_DISPLAY[`PIN${i}`], TILE_COLOR[`PIN${i}`]))
     }
   }
 
   // 索子
   for (let i = 1; i <= 9; i++) {
     for (let j = 0; j < 4; j++) {
-      deck.push(new Tile(TILE_VALUE[`SOU${i}`], TILE_TYPE.SOUZU, i, TILE_DISPLAY[`SOU${i}`], TILE_COLOR[`SOU${i}`]))
+      deck.push(new Tile(TILE_VALUE[`SOU${i}` as keyof typeof TILE_VALUE], TILE_TYPE.SOUZU, i, TILE_DISPLAY[`SOU${i}`], TILE_COLOR[`SOU${i}`]))
     }
   }
 
   // 风牌
-  const winds = ['EAST', 'SOUTH', 'WEST', 'NORTH']
+  const winds = ['EAST', 'SOUTH', 'WEST', 'NORTH'] as const
   for (const w of winds) {
     for (let j = 0; j < 4; j++) {
-      deck.push(new Tile(TILE_VALUE[w], TILE_TYPE.JIHAI, TILE_VALUE[w], TILE_DISPLAY[w], TILE_COLOR[w]))
+      deck.push(new Tile(TILE_VALUE[w], TILE_TYPE.JIHAI, TILE_VALUE[w] as number, TILE_DISPLAY[w], TILE_COLOR[w]))
     }
   }
 
   // 三元牌
-  const dragons = ['WHITE', 'GREEN', 'RED']
+  const dragons = ['WHITE', 'GREEN', 'RED'] as const
   for (const d of dragons) {
     for (let j = 0; j < 4; j++) {
-      deck.push(new Tile(TILE_VALUE[d], TILE_TYPE.JIHAI, TILE_VALUE[d], TILE_DISPLAY[d], TILE_COLOR[d]))
+      deck.push(new Tile(TILE_VALUE[d], TILE_TYPE.JIHAI, TILE_VALUE[d] as number, TILE_DISPLAY[d], TILE_COLOR[d]))
     }
   }
 
@@ -190,7 +255,7 @@ export function createDeck() {
 /**
  * 洗牌
  */
-export function shuffleDeck(deck) {
+export function shuffleDeck(deck: Tile[]): Tile[] {
   const shuffled = [...deck]
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
@@ -203,31 +268,35 @@ export function shuffleDeck(deck) {
  * 牌组类
  */
 export class MahjongDeck {
+  tiles: Tile[]
+  wall: Tile[]
+  deadCount: number
+
   constructor() {
     this.tiles = shuffleDeck(createDeck())
-    this.wall = []  // 牌墙
-    this.deadCount = 0  // 王牌数量（广东麻将一般不设王牌）
+    this.wall = []
+    this.deadCount = 0
   }
 
   /**
    * 摸牌
    */
-  draw() {
+  draw(): Tile | null {
     if (this.tiles.length === 0) return null
-    return this.tiles.pop()
+    return this.tiles.pop()!
   }
 
   /**
    * 剩余牌数
    */
-  remaining() {
+  remaining(): number {
     return this.tiles.length
   }
 
   /**
    * 是否流局
    */
-  isExhausted() {
+  isExhausted(): boolean {
     return this.tiles.length <= 0
   }
 }
@@ -235,7 +304,7 @@ export class MahjongDeck {
 /**
  * 检查是否为顺子（吃出来的）
  */
-export function isShuntsu(tiles) {
+export function isShuntsu(tiles: Tile[]): boolean {
   if (tiles.length !== 3) return false
   if (tiles[0].type !== tiles[1].type || tiles[1].type !== tiles[2].type) return false
   if (tiles[0].type === TILE_TYPE.JIHAI) return false
@@ -247,7 +316,7 @@ export function isShuntsu(tiles) {
 /**
  * 检查是否为刻子（碰出来的）
  */
-export function isKotsu(tiles) {
+export function isKotsu(tiles: Tile[]): boolean {
   if (tiles.length !== 3) return false
   return tiles[0].value === tiles[1].value && tiles[1].value === tiles[2].value
 }
@@ -255,7 +324,7 @@ export function isKotsu(tiles) {
 /**
  * 检查是否为杠子
  */
-export function isKantsu(tiles) {
+export function isKantsu(tiles: Tile[]): boolean {
   if (tiles.length !== 4) return false
   return tiles.every(t => t.value === tiles[0].value)
 }
@@ -263,7 +332,7 @@ export function isKantsu(tiles) {
 /**
  * 检查是否为眼（雀头）
  */
-export function isYan(tiles) {
+export function isYan(tiles: Tile[]): boolean {
   if (tiles.length !== 2) return false
   return tiles[0].value === tiles[1].value
 }
@@ -272,9 +341,9 @@ export function isYan(tiles) {
  * 检查和牌（广东麻将）
  * 返回是否和牌以及番数信息
  */
-export function checkAgari(hand, exposedSets = [], options = {}) {
+export function checkAgari(hand: Tile[], exposedSets: ExposedSet[] = [], options: CheckAgariOptions = {}): AgariResult {
   if (!hand) return { agari: false }
-  
+
   // 过滤掉可能存在的 null 牌，防止崩溃
   const validHand = hand.filter(t => t != null)
   if (validHand.length === 0) return { agari: false }
@@ -285,7 +354,6 @@ export function checkAgari(hand, exposedSets = [], options = {}) {
   const sortedHand = sortHand(validHand)
 
   // 计算期望手牌数：14 - 3*副露组数
-  // 注意：杠虽然有 4 张牌，但每组副露（吃碰杠）都只占用标准 14 张牌中的 3 张配额
   const exposedCount = exposedSets.length
   const expectedHandSize = 14 - exposedCount * 3
 
@@ -325,7 +393,7 @@ export function checkAgari(hand, exposedSets = [], options = {}) {
 /**
  * 检查十三幺
  */
-function checkShisanyao(hand) {
+function checkShisanyao(hand: Tile[]): boolean {
   if (!hand || hand.length === 0) return false
 
   const yaojiuValues = [
@@ -336,7 +404,7 @@ function checkShisanyao(hand) {
     TILE_VALUE.WHITE, TILE_VALUE.GREEN, TILE_VALUE.RED
   ]
 
-  const counts = {}
+  const counts: Record<number, number> = {}
   for (const tile of hand) {
     if (!tile) continue
     counts[tile.value] = (counts[tile.value] || 0) + 1
@@ -354,11 +422,16 @@ function checkShisanyao(hand) {
   return pairCount === 1 && singleCount === 12
 }
 
+interface StandardResult {
+  type: string
+  details: AgariDetails
+}
+
 /**
  * 检查标准牌型（4 组 + 1 眼）
  */
-function checkStandard(hand, exposedSets = []) {
-  const details = {
+function checkStandard(hand: Tile[], exposedSets: ExposedSet[] = []): StandardResult | null {
+  const details: AgariDetails = {
     sets: [],
     yan: null,
     isMenzen: exposedSets.length === 0,
@@ -373,7 +446,7 @@ function checkStandard(hand, exposedSets = []) {
   const setsNeeded = 4 - exposedCount
 
   // 找出所有可能的雀头
-  const possibleYans = []
+  const possibleYans: { value: number; tiles: Tile[]; indices: number[] }[] = []
   for (let i = 0; i < hand.length - 1; i++) {
     if (hand[i].value === hand[i + 1].value) {
       // 避免重复检查相同牌值的对子
@@ -436,7 +509,7 @@ function checkStandard(hand, exposedSets = []) {
 /**
  * 递归检查剩余牌能否完全组成面子
  */
-function canFormOnlySets(hand, currentSets, setsNeeded) {
+function canFormOnlySets(hand: Tile[], currentSets: ExposedSet[], setsNeeded: number): ExposedSet[] | null {
   if (hand.length === 0) {
     return currentSets.length === setsNeeded ? currentSets : null
   }
@@ -448,7 +521,7 @@ function canFormOnlySets(hand, currentSets, setsNeeded) {
   const sameCount = hand.filter(t => t.value === t1.value).length
   if (sameCount >= 3) {
     const newHand = [...hand]
-    const removed = []
+    const removed: Tile[] = []
     for (let i = 0; i < 3; i++) {
       const idx = newHand.findIndex(t => t.value === t1.value)
       removed.push(newHand.splice(idx, 1)[0])
@@ -466,7 +539,7 @@ function canFormOnlySets(hand, currentSets, setsNeeded) {
       const newHand = [...hand]
       // 注意删除顺序，从大到小，避免索引偏移影响
       const indices = [0, t2Idx, t3Idx].sort((a, b) => b - a)
-      const removed = []
+      const removed: Tile[] = []
       for (const idx of indices) {
         removed.unshift(newHand.splice(idx, 1)[0])
       }
@@ -482,9 +555,9 @@ function canFormOnlySets(hand, currentSets, setsNeeded) {
 /**
  * 计算番数（广东麻将）
  */
-export function calculateFan(details, exposedSets, options) {
+export function calculateFan(details: StandardResult, exposedSets: ExposedSet[], options: CheckAgariOptions): number {
   let fan = 0
-  const { isZimo = false, isDealer = false, wind = 'east' } = options
+  const { isZimo = false } = options
 
   // 鸡平胡基础
   if (details.type === '鸡平胡') {
@@ -530,18 +603,23 @@ export function calculateFan(details, exposedSets, options) {
   return fan
 }
 
+interface FanTypeResult {
+  name: string
+  fan: number
+}
+
 /**
  * 检查特殊番型
  */
-function checkFanTypes(details, exposedSets, options) {
-  const fanTypes = []
+function checkFanTypes(_details: StandardResult, exposedSets: ExposedSet[], options: CheckAgariOptions): FanTypeResult[] {
+  const fanTypes: FanTypeResult[] = []
 
   // 大三元
-  const dragons = [TILE_VALUE.WHITE, TILE_VALUE.GREEN, TILE_VALUE.RED]
+  const dragons = [TILE_VALUE.WHITE, TILE_VALUE.GREEN, TILE_VALUE.RED] as const
   let dragonKotsu = 0
   for (const set of exposedSets) {
     if (set.type === 'pon' || set.type === 'kan') {
-      if (dragons.includes(set.tiles[0].value)) {
+      if ((dragons as readonly number[]).includes(set.tiles[0].value)) {
         dragonKotsu++
       }
     }
@@ -553,11 +631,11 @@ function checkFanTypes(details, exposedSets, options) {
   }
 
   // 大四喜、小四喜
-  const winds = [TILE_VALUE.EAST, TILE_VALUE.SOUTH, TILE_VALUE.WEST, TILE_VALUE.NORTH]
+  const winds = [TILE_VALUE.EAST, TILE_VALUE.SOUTH, TILE_VALUE.WEST, TILE_VALUE.NORTH] as const
   let windKotsu = 0
   for (const set of exposedSets) {
     if (set.type === 'pon' || set.type === 'kan') {
-      if (winds.includes(set.tiles[0].value)) {
+      if ((winds as readonly number[]).includes(set.tiles[0].value)) {
         windKotsu++
       }
     }
@@ -584,14 +662,13 @@ function checkFanTypes(details, exposedSets, options) {
 /**
  * 检查是否能吃
  */
-export function canChii(hand, discardedTile) {
+export function canChii(hand: Tile[], discardedTile: Tile): ChiiPattern[] {
   // 字牌不能吃
   if (discardedTile.type === TILE_TYPE.JIHAI) return []
 
-  const chiiPatterns = []
+  const chiiPatterns: ChiiPattern[] = []
 
   // 检查能否组成顺子：(x-1,x,x+1), (x,x+1,x+2), (x-2,x-1,x)
-  // 分别对应：夹吃（中间）、边吃（低位）、边吃（高位）
   const patterns = [
     { needs: [discardedTile.index - 1, discardedTile.index + 1], type: 'mid', label: '夹吃' },
     { needs: [discardedTile.index + 1, discardedTile.index + 2], type: 'low', label: '边吃' },
@@ -611,8 +688,8 @@ export function canChii(hand, discardedTile) {
       chiiPatterns.push({
         type: pattern.type,
         label: pattern.label,
-        tiles: pattern.needs,  // 需要从手牌中拿出的牌
-        allTiles: allTiles     // 完整的顺子（用于显示）
+        tiles: pattern.needs,
+        allTiles
       })
     }
   }
@@ -623,7 +700,7 @@ export function canChii(hand, discardedTile) {
 /**
  * 检查是否能碰
  */
-export function canPon(hand, discardedTile) {
+export function canPon(hand: Tile[], discardedTile: Tile): boolean {
   const count = hand.filter(t => t.value === discardedTile.value).length
   return count >= 2
 }
@@ -631,7 +708,7 @@ export function canPon(hand, discardedTile) {
 /**
  * 检查是否能大明杠
  */
-export function canDaiminkan(hand, discardedTile) {
+export function canDaiminkan(hand: Tile[], discardedTile: Tile): boolean {
   const count = hand.filter(t => t.value === discardedTile.value).length
   return count === 3
 }
@@ -639,7 +716,7 @@ export function canDaiminkan(hand, discardedTile) {
 /**
  * 检查是否能加杠
  */
-export function canKakan(exposedSets, drawnTile) {
+export function canKakan(exposedSets: ExposedSet[], drawnTile: Tile): KakanResult {
   for (const set of exposedSets) {
     if (set.type === 'pon' && set.tiles.length === 3) {
       if (set.tiles[0].value === drawnTile.value) {
@@ -653,9 +730,9 @@ export function canKakan(exposedSets, drawnTile) {
 /**
  * 检查是否能暗杠
  */
-export function canAnkan(hand) {
-  const ankanTiles = []
-  const counts = {}
+export function canAnkan(hand: Tile[]): Tile[] {
+  const ankanTiles: Tile[] = []
+  const counts: Record<number, number> = {}
 
   for (const tile of hand) {
     counts[tile.value] = (counts[tile.value] || 0) + 1
@@ -676,7 +753,7 @@ export function canAnkan(hand) {
 /**
  * 检查是否能和（荣和）
  */
-export function canRon(hand, discardedTile, exposedSets = []) {
+export function canRon(hand: Tile[], discardedTile: Tile, exposedSets: ExposedSet[] = []): boolean {
   const testHand = [...hand, discardedTile]
   return checkAgari(testHand, exposedSets).agari
 }
@@ -685,9 +762,9 @@ export function canRon(hand, discardedTile, exposedSets = []) {
  * 计算得分（广东麻将）
  * 番数对应分数
  */
-export function calculateScore(fan, isDealer = false, isZimo = false) {
+export function calculateScore(fan: number, isDealer: boolean = false, isZimo: boolean = false): ScoreResult {
   // 广东麻将常见番数对应的分数
-  const scoreTable = {
+  const scoreTable: Record<number, { base: number }> = {
     0: { base: 0 },
     1: { base: isDealer ? 2 : 1 },
     2: { base: isDealer ? 4 : 2 },
@@ -737,20 +814,20 @@ export function calculateScore(fan, isDealer = false, isZimo = false) {
 /**
  * 获取宝牌指示牌对应的宝牌（广东麻将一般不用，但有些变体使用）
  */
-export function getDoraFromIndicator(indicator) {
+export function getDoraFromIndicator(indicator: Tile | null): number | null {
   if (!indicator) return null
 
   if (indicator.type === TILE_TYPE.JIHAI) {
     // 字牌顺序：东→南→西→北→东，白→发→中→白
-    const feng = [TILE_VALUE.EAST, TILE_VALUE.SOUTH, TILE_VALUE.WEST, TILE_VALUE.NORTH]
-    const dragons = [TILE_VALUE.WHITE, TILE_VALUE.GREEN, TILE_VALUE.RED]
+    const feng = [TILE_VALUE.EAST, TILE_VALUE.SOUTH, TILE_VALUE.WEST, TILE_VALUE.NORTH] as const
+    const dragons = [TILE_VALUE.WHITE, TILE_VALUE.GREEN, TILE_VALUE.RED] as const
 
-    if (feng.includes(indicator.value)) {
-      const idx = feng.indexOf(indicator.value)
+    if ((feng as readonly number[]).includes(indicator.value)) {
+      const idx = (feng as readonly number[]).indexOf(indicator.value)
       return feng[(idx + 1) % 4]
     }
-    if (dragons.includes(indicator.value)) {
-      const idx = dragons.indexOf(indicator.value)
+    if ((dragons as readonly number[]).includes(indicator.value)) {
+      const idx = (dragons as readonly number[]).indexOf(indicator.value)
       return dragons[(idx + 1) % 3]
     }
   } else {
@@ -767,7 +844,7 @@ export function getDoraFromIndicator(indicator) {
 /**
  * 牌的 JSON 序列化
  */
-export function tileToJSON(tile) {
+export function tileToJSON(tile: Tile): Record<string, unknown> {
   return {
     value: tile.value,
     type: tile.type,
@@ -780,14 +857,20 @@ export function tileToJSON(tile) {
 /**
  * 从 JSON 创建牌
  */
-export function tileFromJSON(json) {
-  return new Tile(json.value, json.type, json.index, json.display, json.color)
+export function tileFromJSON(json: Record<string, unknown>): Tile {
+  return new Tile(
+    json.value as number,
+    json.type as TileType,
+    json.index as number,
+    json.display as string,
+    json.color as string
+  )
 }
 
 /**
  * 手牌排序（方便查看）
  */
-export function sortHand(hand) {
+export function sortHand(hand: Tile[]): Tile[] {
   const typeOrder = [TILE_TYPE.MANZU, TILE_TYPE.PINZU, TILE_TYPE.SOUZU, TILE_TYPE.JIHAI]
 
   return [...hand].sort((a, b) => {

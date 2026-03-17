@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   checkAgari, Tile, TILE_TYPE, TILE_VALUE,
   canChii, canPon, canDaiminkan, canAnkan, canKakan,
-  sortHand
+  sortHand, calculateScore
 } from '../utils/mahjong'
 
 // 增强版辅助函数，支持全花色
@@ -165,7 +165,6 @@ describe('Mahjong Core Logic', () => {
 
   describe('Scoring Logic', () => {
     it('should calculate base score for different fan counts', () => {
-      const { calculateScore } = require('../utils/mahjong')
       // 广东麻将逻辑：1番 (非庄家) -> base 1, 3番 (非庄家) -> base 4
       expect(calculateScore(1, false).base).toBe(1)
       expect(calculateScore(3, false).base).toBe(4)

@@ -337,7 +337,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from 'vue'
 import {
   RefreshRight, Van, Monitor, User, Trophy, CircleClose, WarningFilled

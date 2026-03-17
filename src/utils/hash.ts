@@ -1,9 +1,14 @@
 import CryptoJS from 'crypto-js'
 
+export interface HashAlgorithm {
+  name: string
+  bits: number
+}
+
 /**
  * 支持的哈希算法
  */
-export const HASH_ALGORITHMS = {
+export const HASH_ALGORITHMS: Record<string, HashAlgorithm> = {
   MD5: { name: 'MD5', bits: 128 },
   SHA1: { name: 'SHA-1', bits: 160 },
   SHA256: { name: 'SHA-256', bits: 256 },
@@ -14,13 +19,9 @@ export const HASH_ALGORITHMS = {
 
 /**
  * 计算字符串的哈希值
- * @param {string} content - 内容
- * @param {string} algorithm - 算法名称
- * @param {boolean} asBase64 - 是否输出 Base64 格式
- * @returns {string} 哈希值
  */
-export function hashString(content, algorithm, asBase64 = false) {
-  let result
+export function hashString(content: string, algorithm: string, asBase64: boolean = false): string {
+  let result: CryptoJS.lib.WordArray
 
   switch (algorithm.toUpperCase()) {
     case 'MD5':
@@ -49,18 +50,11 @@ export function hashString(content, algorithm, asBase64 = false) {
 }
 
 /**
- * 计算文件的哈希值
- * @param {File} file - 文件对象
- * @param {string} algorithm - 算法名称
- * @param {boolean} asBase64 - 是否输出 Base64 格式
- * @returns {Promise<string>} 哈希值
- */
-/**
  * 将 ArrayBuffer 转换为 CryptoJS 的 WordArray
  */
-function arrayBufferToWordArray(buffer) {
+function arrayBufferToWordArray(buffer: ArrayBuffer): CryptoJS.lib.WordArray {
   const bytes = new Uint8Array(buffer)
-  const words = []
+  const words: number[] = []
   for (let i = 0; i < bytes.length; i += 4) {
     words.push(
       (bytes[i] << 24) |
@@ -74,22 +68,18 @@ function arrayBufferToWordArray(buffer) {
 
 /**
  * 计算文件的哈希值
- * @param {File} file - 文件对象
- * @param {string} algorithm - 算法名称
- * @param {boolean} asBase64 - 是否输出 Base64 格式
- * @returns {Promise<string>} 哈希值
  */
-export async function hashFile(file, algorithm, asBase64 = false) {
+export async function hashFile(file: File, algorithm: string, asBase64: boolean = false): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
 
     reader.onload = (event) => {
       try {
-        const arrayBuffer = event.target.result
+        const arrayBuffer = event.target?.result as ArrayBuffer
         // 将 ArrayBuffer 转换为 CryptoJS 的 WordArray
         const wordArray = arrayBufferToWordArray(arrayBuffer)
 
-        let result
+        let result: CryptoJS.lib.WordArray
         switch (algorithm.toUpperCase()) {
           case 'MD5':
             result = CryptoJS.MD5(wordArray)

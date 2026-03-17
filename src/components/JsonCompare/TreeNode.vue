@@ -116,30 +116,37 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue'
 import { ArrowDown, CaretRight } from '@element-plus/icons-vue'
 
-const props = defineProps({
-  node: {
-    type: Object,
-    required: true
-  },
-  collapseSame: {
-    type: Boolean,
-    default: false
-  },
-  showDiffOnly: {
-    type: Boolean,
-    default: false
-  },
-  base64Threshold: {
-    type: Number,
-    default: 100
-  }
-})
+interface TreeNodeDiff {
+  type: string
+  left?: unknown
+  right?: unknown
+  isBase64?: boolean
+}
 
-const emit = defineEmits(['view-base64', 'view-web'])
+interface TreeNode {
+  key: string
+  label: string
+  type: 'object' | 'array' | 'value'
+  status: 'same' | 'diff' | 'added' | 'removed'
+  children?: TreeNode[]
+  diff?: TreeNodeDiff
+}
+
+const props = defineProps<{
+  node: TreeNode
+  collapseSame?: boolean
+  showDiffOnly?: boolean
+  base64Threshold?: number
+}>()
+
+const emit = defineEmits<{
+  'view-base64': [event: { left: string; right: string; type: string }]
+  'view-web': [event: { url: string }]
+}>()
 
 const expanded = ref(true)
 
@@ -159,7 +166,7 @@ const shouldExpand = computed(() => {
 })
 
 // 检查节点或其子节点是否有差异
-const hasDiffChild = (node) => {
+const hasDiffChild = (node: TreeNode): boolean => {
   if (node.status !== 'same') return true
   if (node.children) {
     for (const child of node.children) {
@@ -183,14 +190,14 @@ const toggleExpand = () => {
   expanded.value = !expanded.value
 }
 
-const getValue = () => {
+const getValue = (): unknown => {
   if (props.node.diff) {
     return props.node.diff.right !== undefined ? props.node.diff.right : props.node.diff.left
   }
   return ''
 }
 
-const formatValue = (value) => {
+const formatValue = (value: unknown): string => {
   if (value === null) return 'null'
   if (value === undefined) return 'undefined'
   if (typeof value === 'string') {
@@ -210,8 +217,8 @@ const handleViewBase64 = () => {
   if (props.node.diff) {
     // 传递左右两个值，以便弹窗中判断是否相同
     emit('view-base64', {
-      left: props.node.diff.left || '',
-      right: props.node.diff.right || '',
+      left: String(props.node.diff.left || ''),
+      right: String(props.node.diff.right || ''),
       type: props.node.diff.type
     })
   }
@@ -221,15 +228,15 @@ const handleViewBase64 = () => {
 const handleViewSameBase64 = () => {
   if (props.node.diff) {
     emit('view-base64', {
-      left: props.node.diff.left || '',
-      right: props.node.diff.right || '',
+      left: String(props.node.diff.left || ''),
+      right: String(props.node.diff.right || ''),
       type: 'same'
     })
   }
 }
 
 // 格式化 Base64 短显示
-const formatBase64Short = (value) => {
+const formatBase64Short = (value: unknown): string => {
   if (!value) return '<Base64...>'
   const cleaned = String(value).replace(/^data:[^;]+;base64,/i, '').replace(/\s/g, '')
   if (cleaned.length > 20) {
