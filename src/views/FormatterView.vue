@@ -24,13 +24,8 @@
         </div>
 
         <div class="tool-group">
-          <div class="output-format">
-            <span class="format-label">输出格式:</span>
-            <el-radio-group v-model="outputAs" size="default">
-              <el-radio-button value="code">代码</el-radio-button>
-              <el-radio-button value="highlight">高亮</el-radio-button>
-            </el-radio-group>
-          </div>
+          <el-checkbox v-model="parseEscape" size="default">解析转义</el-checkbox>
+          <el-checkbox v-model="detectBase64Image" size="default">Base64 图片检测</el-checkbox>
         </div>
 
         <div class="tool-group">
@@ -49,7 +44,7 @@
         </div>
       </div>
 
-      <!-- 错误提示 - 移到上方 -->
+      <!-- 错误提示 -->
       <el-alert
         v-if="errorMsg"
         title="格式化失败"
@@ -76,26 +71,8 @@
           ></textarea>
         </div>
 
-        <!-- 输出面板 - 代码模式 -->
-        <div class="editor-panel" v-show="outputAs === 'code'">
-          <div class="panel-header">
-            <el-icon><DocumentChecked /></el-icon>
-            <span>格式化结果</span>
-            <el-button size="small" @click="copyResult" :disabled="!outputCode">
-              <el-icon><DocumentCopy /></el-icon>
-              复制
-            </el-button>
-          </div>
-          <textarea
-            v-model="outputCode"
-            class="code-editor output"
-            readonly
-            placeholder="格式化结果将显示在这里..."
-          ></textarea>
-        </div>
-
         <!-- 输出面板 - 高亮模式 -->
-        <div class="editor-panel highlight-panel" v-show="outputAs === 'highlight'">
+        <div class="editor-panel highlight-panel">
           <div class="panel-header">
             <el-icon><View /></el-icon>
             <span>格式化结果（语法高亮）</span>
@@ -103,6 +80,23 @@
               <el-icon><DocumentCopy /></el-icon>
               复制
             </el-button>
+          </div>
+          <!-- Base64 图片缩略图 - 支持多个 -->
+          <div v-if="base64Images.length > 0" class="base64-preview">
+            <div class="preview-label">
+              <el-icon><Picture /></el-icon>
+              <span>检测到 {{ base64Images.length }} 个 Base64 图片</span>
+            </div>
+            <div class="thumbnail-list">
+              <img
+                v-for="(img, idx) in base64Images"
+                :key="idx"
+                :src="img"
+                :alt="'Base64 预览 ' + (idx + 1)"
+                class="thumbnail"
+                @click="openImageDialog(idx)"
+              />
+            </div>
           </div>
           <div class="code-highlight-wrapper">
             <div class="code-highlight" ref="highlightContainer">
@@ -112,6 +106,31 @@
         </div>
       </div>
     </div>
+
+    <!-- Base64 图片查看对话框 -->
+    <el-dialog v-model="showImageDialog" title="Base64 图片预览" class="image-preview-dialog" width="80%">
+      <div class="image-viewer">
+        <img :src="currentImage" alt="Base64 大图" />
+      </div>
+      <div class="image-info" v-if="currentImageIndex >= 0">
+        <span>图片 {{ currentImageIndex + 1 }} / {{ base64Images.length }}</span>
+      </div>
+      <template #footer>
+        <el-button @click="copyCurrentBase64Image" size="default">
+          <el-icon><DocumentCopy /></el-icon>
+          复制 Base64
+        </el-button>
+        <el-button @click="prevImage" :disabled="currentImageIndex <= 0" size="default">
+          <el-icon><ArrowLeft /></el-icon>
+          上一个
+        </el-button>
+        <el-button @click="nextImage" :disabled="currentImageIndex >= base64Images.length - 1" size="default">
+          下一个
+          <el-icon><ArrowRight /></el-icon>
+        </el-button>
+        <el-button type="primary" @click="showImageDialog = false" size="default">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -215,11 +234,25 @@ hljs.registerLanguage('protobuf', protobuf)
 
 const formatters = FORMATTERS
 const selectedFormat = ref('json')
-const outputAs = ref('highlight')
 const inputCode = ref('')
 const outputCode = ref('')
 const errorMsg = ref('')
 const highlightContainer = ref(null)
+
+// 新增状态
+const parseEscape = ref(false)
+const detectBase64Image = ref(false)
+const base64Images = ref<string[]>([])
+const showImageDialog = ref(false)
+const currentImageIndex = ref(-1)
+
+// 当前查看的图片
+const currentImage = computed(() => {
+  if (currentImageIndex.value >= 0 && currentImageIndex.value < base64Images.value.length) {
+    return base64Images.value[currentImageIndex.value]
+  }
+  return ''
+})
 
 const highlightedCode = computed(() => {
   if (!outputCode.value) return ''
@@ -299,6 +332,179 @@ function getHighlightLanguage(format) {
   return map[format] || 'plaintext'
 }
 
+/**
+ * 解析转义字符
+ */
+function unescapeText(text: string): string {
+  let result = text
+
+  try {
+    // 1. URL 解码
+    if (text.match(/%[0-9A-Fa-f]{2}/)) {
+      result = decodeURIComponent(result)
+    }
+
+    // 2. HTML 实体解码
+    const htmlEntities: Record<string, string> = {
+      '&lt;': '<',
+      '&gt;': '>',
+      '&amp;': '&',
+      '&quot;': '"',
+      '&#39;': "'",
+      '&apos;': "'",
+      '&nbsp;': ' ',
+      '&#160;': ' ',
+      '&lt;': '<',
+      '&gt;': '>',
+      '&frasl;': '/',
+      '&bsol;': '\\',
+      '&sol;': '/',
+      '&comma;': ',',
+      '&period;': '.',
+      '&colon;': ':',
+      '&semicolon;': ';',
+      '&excl;': '!',
+      '&quest;': '?',
+      '&num;': '#',
+      '&dollar;': '$',
+      '&percnt;': '%',
+      '&ast;': '*',
+      '&at;': '@',
+      '&plus;': '+',
+      '&equals;': '=',
+      '&lpar;': '(',
+      '&rpar;': ')',
+      '&lbrack;': '[',
+      '&rbrack;': ']',
+      '&lcub;': '{',
+      '&rcub;': '}',
+      '&lsqb;': '[',
+      '&rsqb;': ']',
+      '&ldquo;': '"',
+      '&rdquo;': '"',
+      '&lsquo;': "'",
+      '&rsquo;': "'",
+      '&hellip;': '…',
+      '&mdash;': '—',
+      '&ndash;': '–',
+      '&copy;': '©',
+      '&reg;': '®',
+      '&trade;': '™',
+      '&yen;': '¥',
+      '&euro;': '€',
+      '&pound;': '£',
+      '&cent;': '¢',
+    }
+
+    Object.entries(htmlEntities).forEach(([entity, char]) => {
+      const regex = new RegExp(entity.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')
+      result = result.replace(regex, char)
+    })
+
+    // 3. Unicode 转义 (\uXXXX)
+    result = result.replace(/\\u([0-9A-Fa-f]{4})/g, (_, hex) => {
+      return String.fromCharCode(parseInt(hex, 16))
+    })
+
+    // 4. JSON 字符串转义
+    const jsonEscapes: Record<string, string> = {
+      '\\\\n': '\n',
+      '\\\\r': '\r',
+      '\\\\t': '\t',
+      '\\\\b': '\b',
+      '\\\\f': '\f',
+      '\\\\v': '\v',
+      '\\\\0': '\0',
+    }
+
+    Object.entries(jsonEscapes).forEach(([escape, char]) => {
+      const regex = new RegExp(escape.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')
+      result = result.replace(regex, char)
+    })
+
+    // 5. 十六进制转义 (\xXX)
+    result = result.replace(/\\x([0-9A-Fa-f]{2})/g, (_, hex) => {
+      return String.fromCharCode(parseInt(hex, 16))
+    })
+  } catch {
+    // 解码失败，返回原文本
+    return text
+  }
+
+  return result
+}
+
+/**
+ * 从文本中提取 Base64 图片（支持多个）
+ */
+function extractBase64Images(text: string): string[] {
+  const images: string[] = []
+
+  // 匹配 data:image 格式的 Base64 - 支持 jpg 和 jpeg
+  const dataUrlPattern = /data:image\/(png|jpeg|jpg|gif|svg\+xml|webp|bmp|ico);?base64[,\s]*([A-Za-z0-9+/=\s]+)/gi
+
+  let match
+  while ((match = dataUrlPattern.exec(text)) !== null) {
+    const format = match[1]
+    const base64Data = match[2].replace(/\s+/g, '')
+    // 规范化格式：jpg → jpeg
+    const normalizedFormat = format === 'jpg' ? 'jpeg' : format
+    const dataUrl = `data:image/${normalizedFormat};base64,${base64Data}`
+
+    if (base64Data.length > 0 && !images.includes(dataUrl)) {
+      images.push(dataUrl)
+    }
+  }
+
+  // 如果没有找到 data:image 格式，尝试查找纯 Base64（单独一行的情况）
+  if (images.length === 0) {
+    const lines = text.split('\n')
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      // 检查是否是较长的 Base64 字符串（至少 64 字符）
+      if (trimmed.length >= 64 && /^[A-Za-z0-9+/]+=*$/.test(trimmed)) {
+        try {
+          // 尝试判断是否是图片
+          const takeLength = Math.min(12, trimmed.length)
+          const base64Start = trimmed.slice(0, takeLength)
+          const decodedStart = atob(base64Start)
+
+          // PNG: 89 50 4E 47
+          if (decodedStart.charCodeAt(0) === 0x89 && decodedStart.slice(1, 4) === 'PNG') {
+            const dataUrl = 'data:image/png;base64,' + trimmed
+            if (!images.includes(dataUrl)) images.push(dataUrl)
+          }
+          // JPEG: FF D8 FF
+          else if (decodedStart.charCodeAt(0) === 0xFF && decodedStart.charCodeAt(1) === 0xD8) {
+            const dataUrl = 'data:image/jpeg;base64,' + trimmed
+            if (!images.includes(dataUrl)) images.push(dataUrl)
+          }
+          // GIF: 47 49 46 38
+          else if (decodedStart.startsWith('GIF8')) {
+            const dataUrl = 'data:image/gif;base64,' + trimmed
+            if (!images.includes(dataUrl)) images.push(dataUrl)
+          }
+          // BMP: 42 4D
+          else if (decodedStart.startsWith('BM')) {
+            const dataUrl = 'data:image/bmp;base64,' + trimmed
+            if (!images.includes(dataUrl)) images.push(dataUrl)
+          }
+          // WEBP: 52 49 46 46 ... 57 45 42 50
+          else if (decodedStart.startsWith('RIFF') && decodedStart.slice(8, 12) === 'WEBP') {
+            const dataUrl = 'data:image/webp;base64,' + trimmed
+            if (!images.includes(dataUrl)) images.push(dataUrl)
+          }
+        } catch {
+          // 解码失败，跳过
+        }
+      }
+    }
+  }
+
+  return images
+}
+
 const onFormatChange = () => {
   errorMsg.value = ''
 }
@@ -315,11 +521,45 @@ const handleFormat = async () => {
 
   errorMsg.value = ''
   outputCode.value = ''
+  base64Images.value = []
+
+  let codeToFormat = inputCode.value
+
+  // 如果勾选了解析转义，先解码
+  if (parseEscape.value) {
+    codeToFormat = unescapeText(codeToFormat)
+  }
 
   try {
-    outputCode.value = await formatCode(inputCode.value, selectedFormat.value)
+    outputCode.value = await formatCode(codeToFormat, selectedFormat.value)
+
+    // 如果勾选了 Base64 图片检测，检查并显示预览
+    if (detectBase64Image.value) {
+      const extracted = extractBase64Images(outputCode.value)
+      if (extracted.length > 0) {
+        base64Images.value = extracted
+        ElMessage.success(`检测到 ${extracted.length} 个 Base64 图片，点击缩略图可查看大图`)
+      }
+    }
   } catch (err) {
     errorMsg.value = err.message
+  }
+}
+
+const openImageDialog = (idx: number) => {
+  currentImageIndex.value = idx
+  showImageDialog.value = true
+}
+
+const prevImage = () => {
+  if (currentImageIndex.value > 0) {
+    currentImageIndex.value--
+  }
+}
+
+const nextImage = () => {
+  if (currentImageIndex.value < base64Images.value.length - 1) {
+    currentImageIndex.value++
   }
 }
 
@@ -334,10 +574,23 @@ const copyResult = async () => {
   }
 }
 
+const copyCurrentBase64Image = async () => {
+  if (currentImage.value) {
+    try {
+      await navigator.clipboard.writeText(currentImage.value)
+      ElMessage.success('Base64 已复制到剪贴板')
+    } catch {
+      ElMessage.error('复制失败')
+    }
+  }
+}
+
 const clearAll = () => {
   inputCode.value = ''
   outputCode.value = ''
   errorMsg.value = ''
+  base64Images.value = []
+  currentImageIndex.value = -1
 }
 </script>
 
@@ -487,6 +740,79 @@ const clearAll = () => {
   white-space: pre;
 }
 
+/* Base64 图片预览 */
+.base64-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #f0f9ff;
+  border-bottom: 1px solid #e0e0e0;
+  flex-wrap: wrap;
+}
+
+.preview-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #1976d2;
+  font-weight: 500;
+}
+
+.preview-label .el-icon {
+  color: #1976d2;
+}
+
+.thumbnail-list {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.thumbnail {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #fff;
+}
+
+.thumbnail:hover {
+  border-color: #1976d2;
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 图片预览对话框 */
+.image-preview-dialog .image-viewer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-height: 70vh;
+  overflow: auto;
+  background: #f5f5f5;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.image-viewer img {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+}
+
+.image-preview-dialog .image-info {
+  text-align: center;
+  padding: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
 .error-alert {
   margin-bottom: 20px;
   border: 1px solid #f56c6c;
@@ -575,16 +901,20 @@ const clearAll = () => {
     font-size: 13px;
   }
 
-  .btn-group {
-    width: 100%;
-    justify-content: stretch;
+  .base64-preview {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
-  .btn-group .el-button {
-    flex: 1;
-    min-width: 80px;
-    padding: 10px 8px;
-    font-size: 13px;
+  .thumbnail-list {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .thumbnail {
+    width: 40px;
+    height: 40px;
   }
 }
 </style>

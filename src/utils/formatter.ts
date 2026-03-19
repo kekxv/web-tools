@@ -165,6 +165,7 @@ function formatXML(code: string): string {
     const char = code[i]
 
     if (char === '<') {
+      // 检查是否是结束标签
       if (code[i + 1] === '/') {
         indent--
         formatted += '\n' + tab.repeat(indent)
@@ -172,7 +173,39 @@ function formatXML(code: string): string {
         formatted += char
         continue
       } else {
-        formatted += '\n' + tab.repeat(indent)
+        // 检查是否是自闭合标签或单行标签
+        const closeIndex = code.indexOf('>', i)
+        if (closeIndex !== -1) {
+          const tagContent = code.slice(i, closeIndex + 1)
+
+          // 自闭合标签 <tag/> 保持单行
+          if (tagContent.endsWith('/>')) {
+            formatted += '\n' + tab.repeat(indent)
+          } else {
+            // 检查是否有对应的结束标签
+            const tagNameMatch = tagContent.match(/^<([a-zA-Z][\w:-]*)/)
+            if (tagNameMatch) {
+              const tagName = tagNameMatch[1]
+              const closeTagPattern = `</${tagName}>`
+              const nextCloseTagIndex = code.indexOf(closeTagPattern, closeIndex)
+
+              // 如果是短内容且没有嵌套元素，保持单行
+              if (nextCloseTagIndex !== -1) {
+                const innerContent = code.slice(closeIndex + 1, nextCloseTagIndex)
+                // 检查内部是否包含子元素（< 字符）且长度较短
+                if (!innerContent.includes('<') && innerContent.length < 80) {
+                  // 单行标签，添加缩进但不换行
+                  formatted += '\n' + tab.repeat(indent) + tagContent + innerContent + `</${tagName}>`
+                  i = nextCloseTagIndex + closeTagPattern.length - 1
+                  continue
+                }
+              }
+            }
+            formatted += '\n' + tab.repeat(indent)
+          }
+        } else {
+          formatted += '\n' + tab.repeat(indent)
+        }
       }
 
       if (code.slice(i, i + 2) === '/>') {
