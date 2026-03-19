@@ -9,6 +9,7 @@
         <div class="toolbar">
           <div class="toolbar-left">
             <el-radio-group v-model="inputMode" size="default">
+              <el-radio-button value="auto">自动</el-radio-button>
               <el-radio-button value="json">JSON</el-radio-button>
               <el-radio-button value="xml">XML</el-radio-button>
             </el-radio-group>
@@ -280,7 +281,7 @@ import { ElMessage } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
 import TreeNode from '../components/JsonCompare/TreeNode.vue'
 
-const inputMode = ref('json')
+const inputMode = ref('auto')
 const leftInput = ref('')
 const rightInput = ref('')
 const leftParsed = ref(null)
@@ -294,7 +295,7 @@ const options = ref({
   collapseSame: false
 })
 
-const base64Threshold = ref(100)
+const base64Threshold = ref(25)
 
 const hasResult = ref(false)
 const diffTree = ref(null)
@@ -351,6 +352,34 @@ const parseJSON = (str) => {
   }
 }
 
+// 自动检测输入格式（JSON 或 XML）
+const autoDetectFormat = (str) => {
+  if (!str || typeof str !== 'string') return 'json'
+
+  const trimmed = str.trim()
+
+  // XML 检测：以 <?xml 或 < 开头，或者包含明显的 XML 结构
+  if (trimmed.startsWith('<?xml') || trimmed.startsWith('<')) {
+    // 进一步验证：尝试解析为 XML
+    try {
+      const parser = new DOMParser()
+      const xmlDoc = parser.parseFromString(trimmed, 'text/xml')
+      const parserError = xmlDoc.getElementsByTagName('parsererror')
+      if (parserError.length === 0 && xmlDoc.documentElement) {
+        return 'xml'
+      }
+    } catch {}
+  }
+
+  // 检查是否看起来像 XML（包含标签）
+  if (/<[a-zA-Z][\s\S]*>/.test(trimmed)) {
+    return 'xml'
+  }
+
+  // 默认尝试 JSON
+  return 'json'
+}
+
 // 解析 XML 为对象
 const parseXML = (str) => {
   if (!str) return null
@@ -386,7 +415,7 @@ const parseXML = (str) => {
 const xmlToObject = (node) => {
   if (!node) return null
 
-  // 文本节点
+  // 文本节点 - 保留原始值，不解码
   if (node.nodeType === 3) {
     const text = node.textContent.trim()
     return text || null
@@ -396,7 +425,7 @@ const xmlToObject = (node) => {
   if (node.nodeType === 1) {
     const result = {}
 
-    // 处理属性
+    // 处理属性 - 保留原始值
     if (node.attributes && node.attributes.length > 0) {
       result['@attributes'] = {}
       for (let attr of node.attributes) {
@@ -431,12 +460,12 @@ const xmlToObject = (node) => {
       }
     }
 
-    // 如果只有文本内容，直接返回文本
+    // 如果只有文本内容，直接返回文本 - 保留原始值
     if (hasText && Object.keys(result).length === 0) {
       return textValue
     }
 
-    // 如果只有文本和属性，添加 #text 字段
+    // 如果只有文本和属性，添加 #text 字段 - 保留原始值
     if (hasText) {
       result['#text'] = textValue
     }
@@ -447,6 +476,19 @@ const xmlToObject = (node) => {
   return null
 }
 
+// 解码 XML 中的值（支持 URL 编码）
+const decodeXmlValue = (value) => {
+  if (typeof value !== 'string') return value
+  // 检查是否是 URL 编码的字符串
+  if (/%[0-9A-Fa-f]{2}/.test(value)) {
+    try {
+      const decoded = decodeURIComponent(value)
+      return decoded
+    } catch {}
+  }
+  return value
+}
+
 // 解析左侧输入
 const parseLeft = () => {
   leftError.value = ''
@@ -454,10 +496,15 @@ const parseLeft = () => {
 
   if (!leftInput.value) return
 
-  if (inputMode.value === 'json') {
+  // 自动检测格式
+  const mode = inputMode.value === 'auto' ? autoDetectFormat(leftInput.value) : inputMode.value
+
+  if (mode === 'json') {
     const parsed = parseJSON(leftInput.value)
     if (parsed !== null) {
       leftParsed.value = options.value.sortKeys ? serializeAndSort(parsed) : parsed
+      // 保存原始 JSON 用于检查是否需要解码
+      leftRawJson = parsed
     } else {
       leftError.value = 'JSON 格式错误'
     }
@@ -478,10 +525,15 @@ const parseRight = () => {
 
   if (!rightInput.value) return
 
-  if (inputMode.value === 'json') {
+  // 自动检测格式
+  const mode = inputMode.value === 'auto' ? autoDetectFormat(rightInput.value) : inputMode.value
+
+  if (mode === 'json') {
     const parsed = parseJSON(rightInput.value)
     if (parsed !== null) {
       rightParsed.value = options.value.sortKeys ? serializeAndSort(parsed) : parsed
+      // 保存原始 JSON 用于检查是否需要解码
+      rightRawJson = parsed
     } else {
       rightError.value = 'JSON 格式错误'
     }
@@ -858,14 +910,31 @@ const compare = () => {
     return
   }
 
+  // 检查是否两边都是 JSON 且都包含 URL 编码的值
+  let leftObj = leftParsed.value
+  let rightObj = rightParsed.value
+
+  if (leftRawJson && rightRawJson) {
+    const leftEncoded = hasUrlEncodedValues(leftRawJson)
+    const rightEncoded = hasUrlEncodedValues(rightRawJson)
+    const shouldDecode = leftEncoded && rightEncoded
+
+    if (shouldDecode) {
+      // 两边都编码，解码后比较
+      leftObj = options.value.sortKeys ? serializeAndSort(decodeJsonValues(leftRawJson)) : decodeJsonValues(leftRawJson)
+      rightObj = options.value.sortKeys ? serializeAndSort(decodeJsonValues(rightRawJson)) : decodeJsonValues(rightRawJson)
+    }
+    // 否则使用原始值进行比较（不解码）
+  }
+
   const diffs = compareObjects(
-    leftParsed.value,
-    rightParsed.value,
+    leftObj,
+    rightObj,
     '',
     options.value.arrayMatch
   )
 
-  diffTree.value = buildDiffTree(diffs, leftParsed.value, rightParsed.value)
+  diffTree.value = buildDiffTree(diffs, leftObj, rightObj)
   diffCount.value = diffs.length
   hasResult.value = true
 }
@@ -900,16 +969,19 @@ const clearAll = () => {
 
 // 格式化输入
 const formatInputs = () => {
-  if (inputMode.value === 'json') {
+  // 自动检测时使用检测到的格式
+  const leftMode = inputMode.value === 'auto' ? autoDetectFormat(leftInput.value) : inputMode.value
+  const rightMode = inputMode.value === 'auto' ? autoDetectFormat(rightInput.value) : inputMode.value
+
+  if (leftMode === 'json') {
     if (leftParsed.value) {
       leftInput.value = JSON.stringify(leftParsed.value, null, 2)
     }
+  }
+  if (rightMode === 'json') {
     if (rightParsed.value) {
       rightInput.value = JSON.stringify(rightParsed.value, null, 2)
     }
-  } else {
-    // XML 格式化比较简单，暂时不做复杂处理
-    ElMessage.info('XML 格式化暂不支持')
   }
 }
 
@@ -1129,7 +1201,8 @@ const loadTestData = (command) => {
   const data = testDataMap[command]
   if (!data) return
 
-  inputMode.value = command.startsWith('xml') ? 'xml' : 'json'
+  // 设置模式：xml 测试数据使用 xml 模式，其他使用 auto 模式
+  inputMode.value = command.startsWith('xml') ? 'xml' : 'auto'
   leftInput.value = data.left
   rightInput.value = data.right
 
@@ -1171,7 +1244,9 @@ const loadTestData = (command) => {
 const isBase64 = (str) => {
   if (typeof str !== 'string') return false
   const cleaned = str.replace(/\s/g, '')
-  return /^[A-Za-z0-9+/]+=*$/.test(cleaned) && cleaned.length > base64Threshold.value
+  // 移除 data: 前缀后再检测
+  const pureBase64 = cleaned.replace(/^data:[^;]+;base64,/i, '')
+  return /^[A-Za-z0-9+/]+=*$/.test(pureBase64) && pureBase64.length > base64Threshold.value
 }
 
 // 检测 Base64 类型
@@ -1191,23 +1266,80 @@ const detectBase64Type = (base64Str) => {
     if (mime === 'text/plain') return 'text'
   }
 
-  // 通过魔数检测
+  // 通过魔数检测（检测 Base64 编码后的前 5 字符）
   try {
-    const decoded = atob(cleaned.substring(0, 100))
-    if (decoded.startsWith('%PNG') || decoded.startsWith('GIF8') || decoded.startsWith('\xFF\xD8')) {
+    const pureBase64 = cleaned.replace(/^data:[^;]+;base64,/i, '')
+    const base64Prefix = pureBase64.substring(0, 5)
+    const base64Prefix4 = pureBase64.substring(0, 4)
+    const decoded = atob(pureBase64.substring(0, 100))
+
+    // 图片格式魔数检测
+    if (base64Prefix === 'iVBOR' ||  // PNG: 89 50 4E 47
+        base64Prefix4 === '/9j/' ||  // JPEG: FF D8 FF
+        base64Prefix4 === 'R0lG' ||  // GIF: 47 49 46 38
+        base64Prefix4 === 'UklG' ||  // WebP: 52 49 46 46
+        base64Prefix4.startsWith('Qk') ||  // BMP: 42 4D (BM)
+        decoded.startsWith('\x89PNG') ||
+        decoded.startsWith('\xFF\xD8\xFF') ||
+        decoded.startsWith('GIF8') ||
+        decoded.startsWith('BM')) {
       return 'image'
     }
-    if (decoded.startsWith('%PDF')) {
+
+    // PDF 检测
+    if (base64Prefix === 'JVBER' ||  // PDF: 25 50 44 46
+        decoded.startsWith('%PDF')) {
       return 'pdf'
     }
+
+    // ZIP 检测
+    if (base64Prefix4 === 'UEsD' ||  // ZIP: 50 4B 03 04
+        decoded.startsWith('PK\x03\x04')) {
+      return 'zip'
+    }
+
+    // MP4 检测
+    if (base64Prefix4 === 'AAAA' ||  // MP4: 66 74 79 70 (ftyp)
+        decoded.includes('ftyp')) {
+      return 'video'
+    }
+
+    // MP3 检测
+    if (base64Prefix4 === 'SUQz' ||  // MP3: 49 44 33
+        decoded.startsWith('ID3')) {
+      return 'audio'
+    }
+
+    // JSON 检测
     if (decoded.startsWith('{') || decoded.startsWith('[')) {
       try {
         JSON.parse(decoded)
         return 'json'
       } catch {}
     }
+
+    // XML 检测（支持 URL 编码等）
     if (decoded.startsWith('<?xml') || decoded.startsWith('<')) {
       return 'xml'
+    }
+    // 检测 URL 编码的 XML
+    try {
+      const urlDecoded = decodeURIComponent(decoded)
+      if (urlDecoded !== decoded && (urlDecoded.startsWith('<?xml') || urlDecoded.startsWith('<'))) {
+        return 'xml'
+      }
+    } catch {}
+    // 检测 HTML 实体编码的 XML
+    if (decoded.includes('&lt;') || decoded.includes('&gt;') || decoded.includes('&amp;')) {
+      const htmlDecoded = decoded
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .replace(/&apos;/g, "'")
+        .replace(/&quot;/g, '"')
+      if (htmlDecoded.startsWith('<?xml') || htmlDecoded.startsWith('<')) {
+        return 'xml'
+      }
     }
   } catch {}
 
@@ -1224,6 +1356,94 @@ const formatBase64Preview = (str, maxLength = 500) => {
   return cleaned
 }
 
+// 解码 Base64 内容（支持 URL 编码、HTML 实体编码等二次编码）
+const decodeBase64Content = (base64Str) => {
+  let decoded = atob(base64Str)
+  // 尝试 URL 解码
+  try {
+    const urlDecoded = decodeURIComponent(decoded)
+    if (urlDecoded !== decoded) {
+      decoded = urlDecoded
+    }
+  } catch {}
+  // 尝试 HTML 实体解码
+  if (decoded.includes('&lt;') || decoded.includes('&gt;') || decoded.includes('&amp;')) {
+    decoded = decoded
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&apos;/g, "'")
+      .replace(/&quot;/g, '"')
+  }
+  return decoded
+}
+
+// 递归解码 JSON 中的 URL 编码值
+const decodeJsonValues = (obj) => {
+  if (typeof obj === 'string') {
+    // 检查是否是 URL 编码的字符串
+    if (/%[0-9A-Fa-f]{2}/.test(obj)) {
+      try {
+        return decodeURIComponent(obj)
+      } catch {}
+    }
+    return obj
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(item => decodeJsonValues(item))
+  }
+  if (obj !== null && typeof obj === 'object') {
+    const decoded = {}
+    for (const key of Object.keys(obj)) {
+      decoded[key] = decodeJsonValues(obj[key])
+    }
+    return decoded
+  }
+  return obj
+}
+
+// 检查 JSON 对象是否包含 URL 编码的值
+const hasUrlEncodedValues = (obj) => {
+  if (typeof obj === 'string') {
+    return /%[0-9A-Fa-f]{2}/.test(obj)
+  }
+  if (Array.isArray(obj)) {
+    return obj.some(item => hasUrlEncodedValues(item))
+  }
+  if (obj !== null && typeof obj === 'object') {
+    return Object.values(obj).some(value => hasUrlEncodedValues(value))
+  }
+  return false
+}
+
+// 递归解码 JSON 中的 URL 编码值（仅当两边都是 URL 编码时）
+const decodeJsonValuesIfBothEncoded = (obj, shouldDecode) => {
+  if (!shouldDecode) return obj
+  if (typeof obj === 'string') {
+    if (/%[0-9A-Fa-f]{2}/.test(obj)) {
+      try {
+        return decodeURIComponent(obj)
+      } catch {}
+    }
+    return obj
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(item => decodeJsonValuesIfBothEncoded(item, shouldDecode))
+  }
+  if (obj !== null && typeof obj === 'object') {
+    const decoded = {}
+    for (const key of Object.keys(obj)) {
+      decoded[key] = decodeJsonValuesIfBothEncoded(obj[key], shouldDecode)
+    }
+    return decoded
+  }
+  return obj
+}
+
+// 存储原始 JSON 数据用于比较
+let leftRawJson = null
+let rightRawJson = null
+
 // 处理左右 Base64 数据
 const processBase64Data = (base64Str, side) => {
   const type = detectBase64Type(base64Str)
@@ -1232,14 +1452,18 @@ const processBase64Data = (base64Str, side) => {
 
   if (side === 'left') {
     base64DataType.value.leftType = type
+    leftRawJson = null
     if (type === 'image' || type === 'pdf') {
       leftDataUrl.value = dataUrl
     } else if (type === 'json') {
       try {
         const json = JSON.parse(atob(pureBase64))
-        leftJsonContent.value = JSON.stringify(json, null, 2)
+        leftRawJson = json
+        // 暂时不解码，在 handleViewBase64 中根据两侧情况决定是否解码
+        const decodedJson = decodeJsonValues(json)
+        leftJsonContent.value = JSON.stringify(decodedJson, null, 2)
       } catch {
-        leftJsonContent.value = atob(pureBase64)
+        leftJsonContent.value = decodeBase64Content(pureBase64)
       }
     } else if (type === 'xml') {
       leftXmlContent.value = atob(pureBase64)
@@ -1250,14 +1474,18 @@ const processBase64Data = (base64Str, side) => {
     }
   } else {
     base64DataType.value.rightType = type
+    rightRawJson = null
     if (type === 'image' || type === 'pdf') {
       rightDataUrl.value = dataUrl
     } else if (type === 'json') {
       try {
         const json = JSON.parse(atob(pureBase64))
-        rightJsonContent.value = JSON.stringify(json, null, 2)
+        rightRawJson = json
+        // 暂时不解码，在 handleViewBase64 中根据两侧情况决定是否解码
+        const decodedJson = decodeJsonValues(json)
+        rightJsonContent.value = JSON.stringify(decodedJson, null, 2)
       } catch {
-        rightJsonContent.value = atob(pureBase64)
+        rightJsonContent.value = decodeBase64Content(pureBase64)
       }
     } else if (type === 'xml') {
       rightXmlContent.value = atob(pureBase64)
@@ -1281,6 +1509,23 @@ const handleViewBase64 = (data) => {
   }
   if (data.right) {
     processBase64Data(data.right, 'right')
+  }
+
+  // 检查两侧是否都是 JSON 且都包含 URL 编码的值
+  if (leftRawJson && rightRawJson) {
+    const leftEncoded = hasUrlEncodedValues(leftRawJson)
+    const rightEncoded = hasUrlEncodedValues(rightRawJson)
+    const shouldDecode = leftEncoded && rightEncoded
+
+    if (!shouldDecode) {
+      // 如果只有一侧编码，保留原始值用于比较
+      if (leftRawJson) {
+        leftJsonContent.value = JSON.stringify(leftRawJson, null, 2)
+      }
+      if (rightRawJson) {
+        rightJsonContent.value = JSON.stringify(rightRawJson, null, 2)
+      }
+    }
   }
 }
 
