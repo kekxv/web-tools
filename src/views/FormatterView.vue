@@ -354,8 +354,6 @@ function unescapeText(text: string): string {
       '&apos;': "'",
       '&nbsp;': ' ',
       '&#160;': ' ',
-      '&lt;': '<',
-      '&gt;': '>',
       '&frasl;': '/',
       '&bsol;': '\\',
       '&sol;': '/',
