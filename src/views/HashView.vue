@@ -108,7 +108,7 @@
             {{ algorithms[selectedAlgorithm].name }} - Base64:
           </div>
           <div class="hash-result">
-            <code>{{ hashResultBase64 }}</code>
+            <code>{{ selectedAlgorithm.toLowerCase() }}-{{ hashResultBase64 }}</code>
           </div>
         </div>
       </div>

@@ -68,6 +68,10 @@
             <el-icon><Key /></el-icon>
             <template #title>Hash 计算</template>
           </el-menu-item>
+          <el-menu-item index="/totp">
+            <el-icon><Key /></el-icon>
+            <template #title>TOTP 验证码</template>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       <!-- 遮罩层 -->
@@ -144,6 +148,10 @@
           <el-menu-item index="/hash">
             <el-icon><Key /></el-icon>
             <template #title>Hash 计算</template>
+          </el-menu-item>
+          <el-menu-item index="/totp">
+            <el-icon><Key /></el-icon>
+            <template #title>TOTP 验证码</template>
           </el-menu-item>
         </el-menu>
       </el-aside>
@@ -222,6 +230,7 @@ const currentTitle = computed(() => {
     '/json-compare': 'JSON/XML 对比',
     '/base64': 'Base64 查看',
     '/hash': 'Hash 计算',
+    '/totp': 'TOTP 验证码',
     '/gobang': '五子棋',
     '/game24': '24 点',
     '/showhand': '梭哈',

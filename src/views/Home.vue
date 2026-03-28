@@ -54,6 +54,12 @@ const tools = [
     icon: 'Key'
   },
   {
+    path: '/totp',
+    title: 'TOTP 验证码',
+    description: '生成和管理 TOTP 两步验证码',
+    icon: 'Key'
+  },
+  {
     path: '/gobang',
     title: '五子棋',
     description: '简单有趣的五子棋小游戏',

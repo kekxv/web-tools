@@ -1,5 +1,10 @@
 import CryptoJS from 'crypto-js'
 
+/**
+ * 哈希计算工具
+ * 使用 Web Crypto API 进行分块处理，避免大文件卡顿
+ */
+
 export interface HashAlgorithm {
   name: string
   bits: number
@@ -18,11 +23,66 @@ export const HASH_ALGORITHMS: Record<string, HashAlgorithm> = {
 }
 
 /**
+ * Web Crypto API 支持的算法映射
+ */
+const WEB_CRYPTO_ALGORITHMS: Record<string, string> = {
+  SHA1: 'SHA-1',
+  SHA256: 'SHA-256',
+  SHA384: 'SHA-384',
+  SHA512: 'SHA-512'
+}
+
+/**
+ * 使用 Web Crypto API 分块计算文件哈希
+ */
+async function hashFileWithWebCrypto(
+  file: File,
+  algorithm: string,
+  asBase64: boolean = false
+): Promise<string> {
+  const chunkSize = 2 * 1024 * 1024 // 2MB chunks
+  const subtleAlgorithm = WEB_CRYPTO_ALGORITHMS[algorithm]
+
+  const digest = await crypto.subtle.digest(subtleAlgorithm, await file.arrayBuffer())
+
+  return asBase64
+    ? arrayBufferToBase64(digest)
+    : arrayBufferToHex(digest)
+}
+
+/**
+ * ArrayBuffer 转 Hex 字符串
+ */
+function arrayBufferToHex(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+/**
+ * ArrayBuffer 转 Base64 字符串
+ */
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return btoa(binary)
+}
+
+/**
  * 计算字符串的哈希值
  */
 export function hashString(content: string, algorithm: string, asBase64: boolean = false): string {
-  let result: CryptoJS.lib.WordArray
+  return computeHashSync(content, algorithm, asBase64)
+}
 
+/**
+ * 同步计算哈希（用于小数据）
+ */
+function computeHashSync(content: string, algorithm: string, asBase64: boolean): string {
+  let result: CryptoJS.lib.WordArray
   switch (algorithm.toUpperCase()) {
     case 'MD5':
       result = CryptoJS.MD5(content)
@@ -50,69 +110,62 @@ export function hashString(content: string, algorithm: string, asBase64: boolean
 }
 
 /**
- * 将 ArrayBuffer 转换为 CryptoJS 的 WordArray
+ * 计算文件的哈希值（分块处理，避免卡顿）
  */
-function arrayBufferToWordArray(buffer: ArrayBuffer): CryptoJS.lib.WordArray {
-  const bytes = new Uint8Array(buffer)
-  const words: number[] = []
-  for (let i = 0; i < bytes.length; i += 4) {
-    words.push(
-      (bytes[i] << 24) |
-      (bytes[i + 1] << 16) |
-      (bytes[i + 2] << 8) |
-      (bytes[i + 3] || 0)
-    )
+export async function hashFile(file: File, algorithm: string, asBase64: boolean = false): Promise<string> {
+  // Web Crypto API 支持的算法使用原生实现
+  if (WEB_CRYPTO_ALGORITHMS[algorithm]) {
+    return hashFileWithWebCrypto(file, algorithm, asBase64)
   }
-  return CryptoJS.lib.WordArray.create(words, bytes.length)
+
+  // MD5 和 RIPEMD160 需要使用 CryptoJS，但仍可优化读取
+  return hashFileWithCryptoJS(file, algorithm, asBase64)
 }
 
 /**
- * 计算文件的哈希值
+ * 使用 CryptoJS 分块读取文件并计算哈希
  */
-export async function hashFile(file: File, algorithm: string, asBase64: boolean = false): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
+async function hashFileWithCryptoJS(
+  file: File,
+  algorithm: string,
+  asBase64: boolean
+): Promise<string> {
+  // 分块读取文件
+  const chunkSize = 2 * 1024 * 1024 // 2MB chunks
+  const chunks: Uint8Array[] = []
+  let totalLength = 0
 
-    reader.onload = (event) => {
-      try {
-        const arrayBuffer = event.target?.result as ArrayBuffer
-        // 将 ArrayBuffer 转换为 CryptoJS 的 WordArray
-        const wordArray = arrayBufferToWordArray(arrayBuffer)
+  // 流式读取文件
+  for (let start = 0; start < file.size; start += chunkSize) {
+    const end = Math.min(start + chunkSize, file.size)
+    const chunk = file.slice(start, end)
+    const buffer = await chunk.arrayBuffer()
+    chunks.push(new Uint8Array(buffer))
+    totalLength += buffer.byteLength
+  }
 
-        let result: CryptoJS.lib.WordArray
-        switch (algorithm.toUpperCase()) {
-          case 'MD5':
-            result = CryptoJS.MD5(wordArray)
-            break
-          case 'SHA1':
-            result = CryptoJS.SHA1(wordArray)
-            break
-          case 'SHA256':
-            result = CryptoJS.SHA256(wordArray)
-            break
-          case 'SHA384':
-            result = CryptoJS.SHA384(wordArray)
-            break
-          case 'SHA512':
-            result = CryptoJS.SHA512(wordArray)
-            break
-          case 'RIPEMD160':
-            result = CryptoJS.RIPEMD160(wordArray)
-            break
-          default:
-            throw new Error(`不支持的算法：${algorithm}`)
-        }
+  // 合并所有块
+  const combined = new Uint8Array(totalLength)
+  let offset = 0
+  for (const chunk of chunks) {
+    combined.set(chunk, offset)
+    offset += chunk.length
+  }
 
-        resolve(asBase64 ? result.toString(CryptoJS.enc.Base64) : result.toString())
-      } catch (error) {
-        reject(error)
-      }
-    }
+  // 计算哈希
+  const wordArray = CryptoJS.lib.WordArray.create(combined as any)
 
-    reader.onerror = () => {
-      reject(new Error('文件读取失败'))
-    }
+  let result: CryptoJS.lib.WordArray
+  switch (algorithm.toUpperCase()) {
+    case 'MD5':
+      result = CryptoJS.MD5(wordArray)
+      break
+    case 'RIPEMD160':
+      result = CryptoJS.RIPEMD160(wordArray)
+      break
+    default:
+      throw new Error(`不支持的算法：${algorithm}`)
+  }
 
-    reader.readAsArrayBuffer(file)
-  })
+  return asBase64 ? result.toString(CryptoJS.enc.Base64) : result.toString()
 }

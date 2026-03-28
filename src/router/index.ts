@@ -36,6 +36,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Hash 计算' }
       },
       {
+        path: 'totp',
+        name: 'Totp',
+        component: () => import('../views/TotpView.vue'),
+        meta: { title: 'TOTP 验证码' }
+      },
+      {
         path: 'gobang',
         name: 'Gobang',
         component: () => import('../views/GobangView.vue'),
