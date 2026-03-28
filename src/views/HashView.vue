@@ -199,7 +199,8 @@ const copyHexResult = async () => {
 const copyBase64Result = async () => {
   if (hashResultBase64.value) {
     try {
-      await navigator.clipboard.writeText(hashResultBase64.value)
+      const prefixedResult = `${selectedAlgorithm.value.toLowerCase()}-${hashResultBase64.value}`
+      await navigator.clipboard.writeText(prefixedResult)
       ElMessage.success('Base64 已复制到剪贴板')
     } catch {
       ElMessage.error('复制失败')
