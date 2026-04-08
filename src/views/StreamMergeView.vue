@@ -137,7 +137,7 @@ function deepMerge(target: any, source: any): any {
         continue
       }
 
-      // delta 对象特殊处理：content 拼接，其他覆盖
+      // delta 对象特殊处理：content 和 reasoning_content 拼接，其他覆盖
       if (key === 'delta' && typeof result[key] === 'object' && typeof source[key] === 'object') {
         const targetDelta = result[key]
         const sourceDelta = source[key]
@@ -147,6 +147,14 @@ function deepMerge(target: any, source: any): any {
         // content 拼接
         if (targetDelta.content !== undefined && sourceDelta.content !== undefined) {
           result[key].content = targetDelta.content + sourceDelta.content
+        }
+        // reasoning_content 拼接
+        if (targetDelta.reasoning_content !== undefined && sourceDelta.reasoning_content !== undefined) {
+          result[key].reasoning_content = targetDelta.reasoning_content + sourceDelta.reasoning_content
+        }
+        // reasoning 拼接
+        if (targetDelta.reasoning !== undefined && sourceDelta.reasoning !== undefined) {
+          result[key].reasoning = targetDelta.reasoning + sourceDelta.reasoning
         }
         continue
       }
