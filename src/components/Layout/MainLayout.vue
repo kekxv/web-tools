@@ -72,6 +72,10 @@
             <el-icon><Key /></el-icon>
             <template #title>TOTP 验证码</template>
           </el-menu-item>
+          <el-menu-item index="/stream-merge">
+            <el-icon><Document /></el-icon>
+            <template #title>LLM 流式整理</template>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       <!-- 遮罩层 -->
@@ -153,6 +157,10 @@
             <el-icon><Key /></el-icon>
             <template #title>TOTP 验证码</template>
           </el-menu-item>
+          <el-menu-item index="/stream-merge">
+            <el-icon><Document /></el-icon>
+            <template #title>LLM 流式整理</template>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 
@@ -231,6 +239,7 @@ const currentTitle = computed(() => {
     '/base64': 'Base64 查看',
     '/hash': 'Hash 计算',
     '/totp': 'TOTP 验证码',
+    '/stream-merge': 'LLM 流式整理',
     '/gobang': '五子棋',
     '/game24': '24 点',
     '/showhand': '梭哈',

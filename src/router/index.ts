@@ -82,6 +82,12 @@ const routes: RouteRecordRaw[] = [
         name: 'Multiplication',
         component: () => import('../views/MultiplicationView.vue'),
         meta: { title: '小小乘法表' }
+      },
+      {
+        path: 'stream-merge',
+        name: 'StreamMerge',
+        component: () => import('../views/StreamMergeView.vue'),
+        meta: { title: 'LLM 流式整理' }
       }
     ]
   }

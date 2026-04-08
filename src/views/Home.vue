@@ -94,6 +94,12 @@ const tools = [
     title: '小小乘法表',
     description: '乘法口诀练习，挑战 35 分通关',
     icon: 'Coin'
+  },
+  {
+    path: '/stream-merge',
+    title: 'LLM 流式整理',
+    description: '将 LLM API 流式输出合并为单个数据',
+    icon: 'Document'
   }
 ]
 </script>
