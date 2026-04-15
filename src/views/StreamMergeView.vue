@@ -84,6 +84,7 @@ import { ElMessage } from 'element-plus'
 import hljs from 'highlight.js/lib/core'
 import json from 'highlight.js/lib/languages/json'
 import 'highlight.js/styles/atom-one-light.css'
+import { parseSSEData, mergeStreamObjects } from '../utils/stream-merge'
 
 hljs.registerLanguage('json', json)
 
@@ -110,135 +111,6 @@ const highlightedOutput = computed(() => {
     return div.innerHTML
   }
 })
-
-/**
- * 深度合并两个流式对象
- * 规则：
- * - 顶层固定字段（id, model, object, created, system_fingerprint）：保留第一个值
- * - choices 数组：按 index 合并元素
- * - delta.content：拼接
- * - 其他字段：后者覆盖前者（如 finish_reason）
- */
-function deepMerge(target: any, source: any): any {
-  if (source === null || source === undefined) return target
-  if (target === null || target === undefined) return source
-
-  // 都是对象
-  if (typeof target === 'object' && typeof source === 'object' &&
-      !Array.isArray(target) && !Array.isArray(source)) {
-    const result = { ...target }
-
-    // 固定字段列表（这些字段在流式响应中不变，保留第一个值）
-    const fixedFields = ['id', 'model', 'object', 'created', 'system_fingerprint']
-
-    for (const key of Object.keys(source)) {
-      // 固定字段：如果 target 已有，忽略 source 的值
-      if (fixedFields.includes(key) && result[key] !== undefined) {
-        continue
-      }
-
-      // delta 对象特殊处理：content 和 reasoning_content 拼接，其他覆盖
-      if (key === 'delta' && typeof result[key] === 'object' && typeof source[key] === 'object') {
-        const targetDelta = result[key]
-        const sourceDelta = source[key]
-
-        result[key] = { ...targetDelta, ...sourceDelta }
-
-        // content 拼接
-        if (targetDelta.content !== undefined && sourceDelta.content !== undefined) {
-          result[key].content = targetDelta.content + sourceDelta.content
-        }
-        // reasoning_content 拼接
-        if (targetDelta.reasoning_content !== undefined && sourceDelta.reasoning_content !== undefined) {
-          result[key].reasoning_content = targetDelta.reasoning_content + sourceDelta.reasoning_content
-        }
-        // reasoning 拼接
-        if (targetDelta.reasoning !== undefined && sourceDelta.reasoning !== undefined) {
-          result[key].reasoning = targetDelta.reasoning + sourceDelta.reasoning
-        }
-        continue
-      }
-
-      result[key] = deepMerge(result[key], source[key])
-    }
-    return result
-  }
-
-  // 都是数组
-  if (Array.isArray(target) && Array.isArray(source)) {
-    // 检查数组元素是否是带 index 的对象（choices 数组）
-    if (target.length > 0 && typeof target[0] === 'object' && 'index' in target[0]) {
-      const result = [...target]
-
-      for (const srcItem of source) {
-        if (typeof srcItem === 'object' && 'index' in srcItem) {
-          const idx = srcItem.index
-          const existingIdx = result.findIndex(r => typeof r === 'object' && r.index === idx)
-
-          if (existingIdx >= 0) {
-            // 合并同 index 的元素
-            result[existingIdx] = deepMerge(result[existingIdx], srcItem)
-          } else {
-            result.push(srcItem)
-          }
-        }
-      }
-      return result
-    }
-
-    // 其他数组：后者覆盖
-    return source.length > 0 ? source : target
-  }
-
-  // 其他情况：后者覆盖前者
-  return source
-}
-
-/**
- * 解析 SSE 数据，提取所有 JSON 对象
- */
-function parseSSEData(text: string): any[] {
-  const objects: any[] = []
-  const lines = text.split('\n')
-
-  for (const line of lines) {
-    const trimmed = line.trim()
-    if (!trimmed) continue
-
-    // 处理 data: 前缀
-    let jsonStr = trimmed
-    if (trimmed.startsWith('data:')) {
-      jsonStr = trimmed.slice(5).trim()
-    }
-
-    // 跳过 [DONE]
-    if (jsonStr === '[DONE]') continue
-
-    try {
-      const obj = JSON.parse(jsonStr)
-      objects.push(obj)
-    } catch {
-      // 尝试处理多行 JSON 或无效行
-    }
-  }
-
-  return objects
-}
-
-/**
- * 合并所有流式对象
- */
-function mergeStreamObjects(objects: any[]): any {
-  if (objects.length === 0) return null
-
-  let result: any = null
-
-  for (const obj of objects) {
-    result = deepMerge(result, obj)
-  }
-
-  return result
-}
 
 /**
  * 处理合并
