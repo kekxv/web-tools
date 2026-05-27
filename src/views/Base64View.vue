@@ -336,13 +336,16 @@ const cleanBase64 = (input) => {
     .replace(/"/g, '')
     // 移除单引号
     .replace(/'/g, '')
-    // 移除换行符（包括 \r\n 和 \n）
+    // 移除真正的换行符（回车 + 换行）
     .replace(/\r?\n/g, '')
-    // 移除回车符
     .replace(/\r/g, '')
     // 移除制表符
     .replace(/\t/g, '')
-    // 移除多余空格（但保留 base64 内部可能的空格）
+    // 移除字面量转义字符 \n \r \t
+    .replace(/\\n/gi, '')
+    .replace(/\\r/gi, '')
+    .replace(/\\t/gi, '')
+    // 移除首尾空白
     .replace(/^\s+|\s+$/g, '')
 
   return cleaned
@@ -425,7 +428,7 @@ const handleInput = () => {
       mime: null,
       fileExt: null
     }
-    content.value = cleaned
+    cleanedBase64.value = cleaned
   }
 }
 
