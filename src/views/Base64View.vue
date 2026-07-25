@@ -180,7 +180,7 @@
             </el-tabs>
           </div>
           <div v-if="htmlTab === 'preview'" class="html-preview-frame">
-            <iframe :srcdoc="textContent" class="html-frame" title="HTML Preview"></iframe>
+            <iframe :srcdoc="textContent" class="html-frame" title="HTML Preview" sandbox=""></iframe>
           </div>
           <pre v-else class="html-source">{{ textContent }}</pre>
           <div class="preview-actions">
@@ -257,6 +257,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import DOMPurify from 'dompurify'
 
 const base64Input = ref('')
 const cleanedBase64 = ref('')
@@ -348,6 +349,15 @@ const cleanBase64 = (input) => {
     // 移除首尾空白
     .replace(/^\s+|\s+$/g, '')
 
+  // 如果是 data URI，验证基本格式
+  if (cleaned.toLowerCase().startsWith('data:')) {
+    // 检查是否有 base64, 标记
+    if (!/;base64,/i.test(cleaned)) {
+      // 可能是纯文本或其他格式，不做强制验证
+      return cleaned
+    }
+  }
+
   return cleaned
 }
 
@@ -373,19 +383,37 @@ const detectMimeType = (base64Str) => {
     'JVBERi': 'application/pdf',           // PDF
     'iVBORw0KGgo': 'image/png',           // PNG
     '/9j/': 'image/jpeg',                   // JPEG
-    'R0lGODdh': 'image/gif',                // GIF (GIF89a)
-    'R0lGODlh': 'image/gif',                // GIF (GIF89a)
+    'R0lGODlh': 'image/gif',              // GIF89a
+    'R0lGODdh': 'image/gif',              // GIF87a
     'Qk': 'image/bmp',                      // BMP
-    'UklGR': 'image/webp',                  // WebP
+    'UklGR': 'image/webp',                  // WebP (RIFF)
+    'AAABAA': 'image/x-icon',              // ICO
+    'AAkAAQ': 'image/x-icon',              // ICO (另一个变体)
     'PHN2Z': 'image/svg+xml',               // SVG (<svg)
+    'PHNjcmlw': 'image/svg+xml',            // SVG (可能是<script>，但前缀匹配)
     'PD94bW': 'text/xml',                   // XML (<?xml)
+    'PD9YSU': 'text/xml',                   // XML (大写变体)
     'ew': 'application/json',               // JSON ({)
     'Ww': 'application/json',               // JSON ([)
     'PCFET0': 'text/html',                  // HTML (<!DOC)
+    'PCFkb2': 'text/html',                  // HTML (<!doc 小写)
     'PGh0bW': 'text/html',                  // HTML (<html)
+    'PEJPRF': 'text/html',                  // HTML (<body)
     'PGgx': 'text/html',                    // HTML (<h1)
-    'VXpu': 'video/mp4',                    // MP4
-    'UklGRi': 'audio/wav'                   // WAV (RIFF)
+    'VXpu': 'video/mp4',                    // MP4 (ftyp)
+    'AAAAIGZ0eXBpc2': 'video/mp4',          // MP4 (isom)
+    'R0lGOD': 'image/gif',                  // GIF (通用)
+    'UklGRi': 'audio/wav',                  // WAV (RIFF)
+    'SUQz': 'audio/mpeg',                   // MP3 (ID3标签)
+    'T2dnUw': 'audio/ogg',                  // OGG
+    'ZkxhQw': 'audio/flac',                 // FLAC
+    'UEsDBBQ': 'application/zip',           // ZIP/PPTX/XLSX/DOCX
+    'UEsDBBQAAAA': 'application/zip',       // ZIP (另一个变体)
+    'H4sIAA': 'application/gzip',           // GZIP
+    'MTk5O': 'application/x-rar',           // RAR (旧版)
+    'N2YxOTk': 'application/x-rar',         // RAR (另一个变体)
+    'YnBsaXN0': 'application/x-plist',      // macOS plist
+    'AAAAAA': 'video/quicktime'             // MOV (可能)
   }
 
   for (const [magic, mime] of Object.entries(magicNumbers)) {
@@ -469,7 +497,7 @@ const processBase64 = (base64Str, mime) => {
 
     case 'image/svg+xml':
       try {
-        svgContent.value = atob(pureBase64)
+        svgContent.value = DOMPurify.sanitize(atob(pureBase64))
       } catch {
         svgContent.value = pureBase64
       }

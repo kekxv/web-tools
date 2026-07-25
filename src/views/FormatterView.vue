@@ -29,9 +29,9 @@
         </div>
 
         <div class="tool-group">
-          <el-button type="primary" @click="handleFormat" :disabled="!inputCode" size="default">
-            <el-icon><Operation /></el-icon>
-            格式化
+          <el-button type="primary" @click="handleFormat" :disabled="!inputCode || isFormatting" :loading="isFormatting" size="default">
+            <el-icon v-if="!isFormatting"><Operation /></el-icon>
+            {{ isFormatting ? '格式化中...' : '格式化' }}
           </el-button>
           <el-button @click="copyResult" :disabled="!outputCode" size="default">
             <el-icon><DocumentCopy /></el-icon>
@@ -62,9 +62,13 @@
           <div class="panel-header">
             <el-icon><Edit /></el-icon>
             <span>输入代码</span>
+            <span v-if="inputCode.length > 10000" class="file-size-hint">
+              （{{ (inputCode.length / 1024).toFixed(1) }} KB）
+            </span>
           </div>
           <textarea
             v-model="inputCode"
+            @input="handleInputChange"
             class="code-editor"
             placeholder="请输入需要格式化的代码，例如：{'name':'test','value':123}"
             spellcheck="false"
@@ -76,10 +80,36 @@
           <div class="panel-header">
             <el-icon><View /></el-icon>
             <span>格式化结果（语法高亮）</span>
-            <el-button size="small" @click="copyResult" :disabled="!outputCode">
-              <el-icon><DocumentCopy /></el-icon>
-              复制
-            </el-button>
+            <div class="header-actions">
+              <el-button
+                v-if="hasLongLines"
+                size="small"
+                @click="toggleExpandLines"
+                :type="allLinesExpanded ? 'info' : 'primary'"
+                link
+              >
+                {{ allLinesExpanded ? '折叠长行' : '展开长行' }}
+              </el-button>
+              <CopyButton
+                :text="outputCode"
+                size="small"
+                button-type="primary"
+                link
+                :show-label="true"
+                label="复制完整"
+                :disabled="!outputCode"
+              />
+              <CopyButton
+                v-if="hasLongLines && !allLinesExpanded"
+                :text="collapsedCode"
+                size="small"
+                button-type="success"
+                link
+                :show-label="true"
+                label="复制折叠"
+                :disabled="!collapsedCode"
+              />
+            </div>
           </div>
           <!-- Base64 图片缩略图 - 支持多个 -->
           <div v-if="base64Images.length > 0" class="base64-preview">
@@ -98,9 +128,9 @@
               />
             </div>
           </div>
-          <div class="code-highlight-wrapper">
+          <div class="code-highlight-wrapper" @click="handleCodeClick">
             <div class="code-highlight" ref="highlightContainer">
-              <pre><code ref="highlightCode" v-html="highlightedCode"></code></pre>
+              <pre><code ref="highlightCode" v-html="displayedCode"></code></pre>
             </div>
           </div>
         </div>
@@ -131,6 +161,39 @@
         <el-button type="primary" @click="showImageDialog = false" size="default">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- Base64 详情查看对话框 -->
+    <el-dialog v-model="base64PreviewVisible" title="Base64 详情" class="base64-detail-dialog" width="80%">
+      <div class="base64-detail-content">
+        <div class="base64-info-row">
+          <span class="info-label">类型:</span>
+          <el-tag size="small">{{ currentBase64Data.type }}</el-tag>
+        </div>
+        <div class="base64-info-row">
+          <span class="info-label">MIME:</span>
+          <el-tag size="small" type="info">{{ currentBase64Data.mime }}</el-tag>
+        </div>
+        <div class="base64-info-row">
+          <span class="info-label">长度:</span>
+          <span>{{ currentBase64Data.value.length }} 字符</span>
+        </div>
+        <div class="base64-preview-section">
+          <div class="preview-label">预览:</div>
+          <div class="preview-content" v-html="currentBase64Data.preview"></div>
+        </div>
+        <div class="base64-raw-section">
+          <div class="raw-label">原始 Base64:</div>
+          <pre class="raw-content">{{ currentBase64Data.value }}</pre>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="copyBase64Value" size="default">
+          <el-icon><DocumentCopy /></el-icon>
+          复制 Base64
+        </el-button>
+        <el-button type="primary" @click="base64PreviewVisible = false" size="default">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -140,6 +203,8 @@ import { ElMessage } from 'element-plus'
 import { formatCode, FORMATTERS, detectLanguage } from '../utils/formatter'
 import hljs from 'highlight.js/lib/core'
 import 'highlight.js/styles/atom-one-light.css'
+import CopyButton from '../components/CopyButton.vue'
+import { View } from '@element-plus/icons-vue'
 
 // 注册常用语言
 import json from 'highlight.js/lib/languages/json'
@@ -238,6 +303,8 @@ const inputCode = ref('')
 const outputCode = ref('')
 const errorMsg = ref('')
 const highlightContainer = ref(null)
+const isFormatting = ref(false) // 格式化状态标识
+let formatDebounceTimer: any = null // 防抖计时器
 
 // 新增状态
 const parseEscape = ref(false)
@@ -245,6 +312,146 @@ const detectBase64Image = ref(false)
 const base64Images = ref<string[]>([])
 const showImageDialog = ref(false)
 const currentImageIndex = ref(-1)
+const allLinesExpanded = ref(false)
+const maxLineLength = 50 // 折叠阈值
+const collapsedCode = ref('') // 折叠后的代码（用于复制）
+
+// 输入变化处理（防抖）
+const handleInputChange = () => {
+  // 清除之前的计时器
+  if (formatDebounceTimer) {
+    clearTimeout(formatDebounceTimer)
+  }
+
+  // 对于大文件（>10KB），延迟处理
+  const isLargeFile = inputCode.value.length > 10000
+
+  if (isLargeFile) {
+    // 大文件：500ms 防抖
+    formatDebounceTimer = setTimeout(() => {
+      // 可以在这里添加自动格式化或其他处理
+    }, 500)
+  }
+  // 小文件：立即响应（v-model 已经处理）
+}
+
+// 检查是否有超长字符串值
+const hasLongLines = computed(() => {
+  if (!outputCode.value) return false
+  // 匹配 JSON 中的字符串值，检查是否有超过阈值的
+  const stringValues = outputCode.value.match(/": "([^"]+)"/g) || []
+  return stringValues.some(match => {
+    const value = match.replace(/": "/, '').replace(/"$/, '')
+    return value.length > maxLineLength
+  })
+})
+
+// 切换展开/折叠长行
+const toggleExpandLines = () => {
+  allLinesExpanded.value = !allLinesExpanded.value
+}
+
+// Base64 检测相关
+const base64PreviewVisible = ref(false)
+const currentBase64Data = ref({
+  value: '',
+  type: '',
+  mime: '',
+  preview: ''
+})
+
+// 检测 Base64 字符串类型
+const detectBase64Type = (base64Str: string): { type: string, mime: string } => {
+  if (!base64Str || base64Str.length < 50) return { type: '', mime: '' }
+
+  // 检查是否有 data URI 前缀
+  const dataPrefixMatch = base64Str.match(/^data:([^;,]+);base64,/i)
+  if (dataPrefixMatch) {
+    const mime = dataPrefixMatch[1]
+    const type = mime.startsWith('image/') ? 'image' :
+                 mime.startsWith('video/') ? 'video' :
+                 mime.startsWith('audio/') ? 'audio' :
+                 mime === 'application/pdf' ? 'pdf' : 'unknown'
+    return { type, mime }
+  }
+
+  // 尝试通过 Base64 文件头魔数判断
+  const magicNumbers: Record<string, { type: string, mime: string }> = {
+    'JVBERi': { type: 'pdf', mime: 'application/pdf' },
+    'iVBORw0KGgo': { type: 'image', mime: 'image/png' },
+    '/9j/': { type: 'image', mime: 'image/jpeg' },
+    'R0lGODlh': { type: 'image', mime: 'image/gif' },
+    'R0lGODdh': { type: 'image', mime: 'image/gif' },
+    'Qk': { type: 'image', mime: 'image/bmp' },
+    'UklGR': { type: 'image', mime: 'image/webp' },
+    'PHN2Z': { type: 'image', mime: 'image/svg+xml' },
+    'PD94bW': { type: 'xml', mime: 'text/xml' },
+    'ew': { type: 'json', mime: 'application/json' },
+    'Ww': { type: 'json', mime: 'application/json' },
+    'PCFET0': { type: 'html', mime: 'text/html' },
+    'PGh0bW': { type: 'html', mime: 'text/html' },
+    'VXpu': { type: 'video', mime: 'video/mp4' },
+    'SUQz': { type: 'audio', mime: 'audio/mpeg' },
+    'T2dnUw': { type: 'audio', mime: 'audio/ogg' }
+  }
+
+  for (const [magic, info] of Object.entries(magicNumbers)) {
+    if (base64Str.startsWith(magic)) {
+      return info
+    }
+  }
+
+  // 检查是否是纯 base64（只包含 base64 字符）
+  const cleanStr = base64Str.replace(/\s/g, '')
+  if (/^[A-Za-z0-9+/]+=*$/.test(cleanStr) && cleanStr.length > 100) {
+    return { type: 'unknown', mime: 'application/octet-stream' }
+  }
+
+  return { type: '', mime: '' }
+}
+
+// 查看 Base64 详情
+const viewBase64Detail = (base64Value: string) => {
+  const { type, mime } = detectBase64Type(base64Value)
+
+  let preview = ''
+  if (type === 'image') {
+    const dataUrl = mime && !base64Value.startsWith('data:')
+      ? `data:${mime};base64,${base64Value}`
+      : base64Value
+    preview = `<img src="${dataUrl}" style="max-width: 100%; max-height: 400px;" />`
+  } else if (type === 'pdf') {
+    const dataUrl = !base64Value.startsWith('data:')
+      ? `data:application/pdf;base64,${base64Value}`
+      : base64Value
+    preview = `<iframe src="${dataUrl}" style="width: 100%; height: 500px; border: 1px solid #ddd; border-radius: 4px;" title="PDF Preview"></iframe>`
+  } else if (type === 'json') {
+    try {
+      const decoded = atob(base64Value)
+      const parsed = JSON.parse(decoded)
+      preview = `<pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto;">${JSON.stringify(parsed, null, 2)}</pre>`
+    } catch {
+      preview = '<p>无法解析 JSON</p>'
+    }
+  } else if (type === 'xml' || type === 'html') {
+    try {
+      const decoded = atob(base64Value)
+      preview = `<pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto;">${decoded}</pre>`
+    } catch {
+      preview = '<p>无法解码</p>'
+    }
+  } else {
+    preview = `<p>类型: ${type || '未知'}<br/>MIME: ${mime || '未知'}<br/>长度: ${base64Value.length} 字符</p>`
+  }
+
+  currentBase64Data.value = {
+    value: base64Value,
+    type: type || '未知',
+    mime: mime || '未知',
+    preview
+  }
+  base64PreviewVisible.value = true
+}
 
 // 当前查看的图片
 const currentImage = computed(() => {
@@ -263,6 +470,101 @@ const highlightedCode = computed(() => {
     // 如果语言不支持，返回纯文本
     return escapeHtml(outputCode.value)
   }
+})
+
+// 处理长字符串折叠后的代码（仅用于显示，不影响复制）
+// 只折叠字符串类型的值，不处理 key
+const displayedCode = computed(() => {
+  if (!outputCode.value) return ''
+
+  // 如果已展开或没有超长行，直接返回高亮后的代码
+  if (allLinesExpanded.value || !hasLongLines.value) {
+    collapsedCode.value = outputCode.value
+    return highlightedCode.value
+  }
+
+  // 先对原始代码进行高亮
+  const lang = getHighlightLanguage(selectedFormat.value)
+  let highlightedHtml
+  try {
+    highlightedHtml = hljs.highlight(outputCode.value, { language: lang }).value
+  } catch {
+    highlightedHtml = escapeHtml(outputCode.value)
+  }
+
+  // 然后对高亮后的HTML进行处理，添加折叠和复制标记
+  // hljs会将JSON的字符串值包裹在 <span class="hljs-string">"..."</span> 中
+  // 注意：引号会被转义为 &quot;
+  // 格式：": "value"" -> ": 📋"value""
+  const originalValues = new Map()
+  const base64Values = new Map()
+  let valueIndex = 0
+  let base64Index = 0
+
+  // 匹配 JSON 的 key-value 对：": "value""
+  // 注意：hljs高亮后，格式可能是：
+  // <span class="hljs-attr">&quot;key&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;value&quot;</span>
+  const result = highlightedHtml.replace(
+    /(<span class="hljs-punctuation">:<\/span>\s*)<span class="hljs-string">&quot;([^&]*)&quot;<\/span>/g,
+    (match, colonPart, content) => {
+      // 检测是否是 base64
+      const base64Info = detectBase64Type(content)
+      const isBase64 = base64Info.type !== ''
+
+      // 对于所有字符串值，都添加复制功能
+      if (content.length > maxLineLength) {
+        // 超过50字符：折叠并添加复制图标（在值前面）
+        const start = content.substring(0, 5)
+        const end = content.substring(content.length - 5)
+        originalValues.set(valueIndex, content)
+        const currentIndex = valueIndex
+        valueIndex++
+
+        // 如果是 base64，添加查看按钮（不显示类型标签）
+        if (isBase64) {
+          base64Values.set(base64Index, content)
+          const currentBase64Idx = base64Index
+          base64Index++
+          return `${colonPart}<span class="hljs-string folded-value base64-value" data-value-index="${currentIndex}" data-base64-index="${currentBase64Idx}"><span class="copy-icon">📋</span><span class="view-base64-icon" title="查看详情">👁</span>&quot;${start}...${end}&quot;</span>`
+        }
+        return `${colonPart}<span class="hljs-string folded-value" data-value-index="${currentIndex}"><span class="copy-icon">📋</span>&quot;${start}...${end}&quot;</span>`
+      } else if (content.length > 10) {
+        // 10-50字符：不折叠但添加复制图标（在值前面）
+        originalValues.set(valueIndex, content)
+        const currentIndex = valueIndex
+        valueIndex++
+
+        // 如果是 base64，添加查看按钮（不显示类型标签）
+        if (isBase64) {
+          base64Values.set(base64Index, content)
+          const currentBase64Idx = base64Index
+          base64Index++
+          return `${colonPart}<span class="hljs-string string-with-copy base64-value" data-value-index="${currentIndex}" data-base64-index="${currentBase64Idx}"><span class="copy-icon">📋</span><span class="view-base64-icon" title="查看详情">👁</span>&quot;${content}&quot;</span>`
+        }
+        return `${colonPart}<span class="hljs-string string-with-copy" data-value-index="${currentIndex}"><span class="copy-icon">📋</span>&quot;${content}&quot;</span>`
+      }
+      // 10字符以下：不添加复制图标
+      return match
+    }
+  )
+
+  // 保存折叠后的代码（用于复制，去掉HTML标记）
+  collapsedCode.value = outputCode.value.replace(/": "([^"]+)"/g, (match, value) => {
+    if (value.length > maxLineLength) {
+      const start = value.substring(0, 5)
+      const end = value.substring(value.length - 5)
+      return `": "${start}...${end}"`
+    }
+    return match
+  })
+
+  // 保存原始值映射，供点击时使用
+  ;(window as any).__foldedValues = originalValues
+
+  // 保存 base64 值映射，供查看时使用
+  ;(window as any).__base64Values = base64Values
+
+  return result
 })
 
 function escapeHtml(text) {
@@ -507,6 +809,60 @@ const onFormatChange = () => {
   errorMsg.value = ''
 }
 
+// 处理代码区域的点击事件（用于复制值和查看 Base64 详情）
+const handleCodeClick = async (event: MouseEvent) => {
+  const target = event.target as HTMLElement
+
+  // 检查是否点击了查看 Base64 图标
+  if (target.classList.contains('view-base64-icon')) {
+    const base64Value = target.closest('.base64-value') as HTMLElement
+    if (base64Value) {
+      const base64Index = base64Value.getAttribute('data-base64-index')
+      const base64Values = (window as any).__base64Values
+      if (base64Values && base64Index !== null) {
+        const base64Str = base64Values.get(parseInt(base64Index))
+        if (base64Str) {
+          viewBase64Detail(base64Str)
+        }
+      }
+    }
+    return
+  }
+
+  // 检查是否点击了复制图标
+  if (target.classList.contains('copy-icon')) {
+    // 查找父元素（可能是 .folded-value 或 .string-with-copy）
+    const valueElement = target.closest('.folded-value, .string-with-copy') as HTMLElement
+    if (valueElement) {
+      const valueIndex = valueElement.getAttribute('data-value-index')
+      const originalValues = (window as any).__foldedValues
+      if (originalValues && valueIndex !== null) {
+        const originalValue = originalValues.get(parseInt(valueIndex))
+        if (originalValue) {
+          try {
+            await navigator.clipboard.writeText(originalValue)
+            ElMessage.success('已复制原始值')
+          } catch (error) {
+            ElMessage.error('复制失败')
+          }
+        }
+      }
+    }
+  }
+}
+
+// 复制 Base64 值
+const copyBase64Value = async () => {
+  if (currentBase64Data.value) {
+    try {
+      await navigator.clipboard.writeText(currentBase64Data.value)
+      ElMessage.success('已复制 Base64')
+    } catch (error) {
+      ElMessage.error('复制失败')
+    }
+  }
+}
+
 const autoDetect = () => {
   if (inputCode.value) {
     const detected = detectLanguage(inputCode.value)
@@ -516,19 +872,34 @@ const autoDetect = () => {
 
 const handleFormat = async () => {
   if (!inputCode.value) return
+  if (isFormatting.value) {
+    ElMessage.warning('正在格式化，请稍候...')
+    return
+  }
 
+  isFormatting.value = true
   errorMsg.value = ''
   outputCode.value = ''
   base64Images.value = []
 
-  let codeToFormat = inputCode.value
-
-  // 如果勾选了解析转义，先解码
-  if (parseEscape.value) {
-    codeToFormat = unescapeText(codeToFormat)
-  }
+  // 对于大文件，使用 setTimeout 让出主线程
+  const isLargeFile = inputCode.value.length > 50000
 
   try {
+    let codeToFormat = inputCode.value
+
+    // 如果勾选了解析转义，先解码
+    if (parseEscape.value) {
+      codeToFormat = unescapeText(codeToFormat)
+    }
+
+    if (isLargeFile) {
+      ElMessage.info(`正在处理大文件（${(codeToFormat.length / 1024).toFixed(1)} KB）...`)
+    }
+
+    // 使用 setTimeout 让出主线程，避免阻塞 UI
+    await new Promise(resolve => setTimeout(resolve, 10))
+
     outputCode.value = await formatCode(codeToFormat, selectedFormat.value)
 
     // 如果勾选了 Base64 图片检测，检查并显示预览
@@ -539,8 +910,14 @@ const handleFormat = async () => {
         ElMessage.success(`检测到 ${extracted.length} 个 Base64 图片，点击缩略图可查看大图`)
       }
     }
-  } catch (err) {
-    errorMsg.value = err.message
+
+    if (isLargeFile) {
+      ElMessage.success('格式化完成')
+    }
+  } catch (err: any) {
+    errorMsg.value = err.message || '格式化失败'
+  } finally {
+    isFormatting.value = false
   }
 }
 
@@ -680,8 +1057,139 @@ const clearAll = () => {
   color: var(--primary-color);
 }
 
-.panel-header .el-button {
-  margin-left: auto;
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 12px;
+}
+
+/* 折叠值样式 */
+.folded-value {
+  position: relative;
+  cursor: pointer;
+}
+
+/* 带复制图标的字符串值样式 */
+.string-with-copy {
+  position: relative;
+}
+
+.copy-icon {
+  display: inline-block;
+  margin-left: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.folded-value:hover .copy-icon,
+.string-with-copy:hover .copy-icon {
+  opacity: 1;
+}
+
+.copy-icon:hover {
+  transform: scale(1.2);
+}
+
+.copy-icon:active {
+  transform: scale(0.95);
+}
+
+/* Base64 相关样式 */
+.base64-value {
+  position: relative;
+}
+
+.file-size-hint {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #909399;
+  font-weight: normal;
+}
+
+.base64-badge {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  background: #e6a23c;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+.view-base64-icon {
+  display: inline-block;
+  margin-right: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.base64-value:hover .view-base64-icon {
+  opacity: 1;
+}
+
+.view-base64-icon:hover {
+  transform: scale(1.2);
+}
+
+/* Base64 详情对话框 */
+.base64-detail-content {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.base64-info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.info-label {
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 60px;
+}
+
+.base64-preview-section,
+.base64-raw-section {
+  margin-top: 16px;
+}
+
+.preview-label,
+.raw-label {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.preview-content {
+  background: #f5f5f5;
+  padding: 16px;
+  border-radius: 4px;
+  min-height: 100px;
+  max-height: 400px;
+  overflow: auto;
+}
+
+.raw-content {
+  background: #f5f5f5;
+  padding: 12px;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  max-height: 200px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
 }
 
 .code-editor {

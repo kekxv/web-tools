@@ -338,7 +338,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import {
   RefreshRight, Van, Monitor, User, Trophy, CircleClose, WarningFilled
 } from '@element-plus/icons-vue'
@@ -357,6 +357,29 @@ const aiDifficulty = ref('normal')
 
 // AI 执行锁，防止多个 AI 同时执行
 let isAiProcessing = false
+// 跟踪所有 setTimeout，用于组件卸载时清理
+const pendingTimeouts: number[] = []
+
+// 辅助函数：创建可追踪的 setTimeout
+const safeSetTimeout = (fn: () => void, delay: number): number => {
+  const id = window.setTimeout(() => {
+    // 执行完后从数组中移除
+    const index = pendingTimeouts.indexOf(id)
+    if (index > -1) {
+      pendingTimeouts.splice(index, 1)
+    }
+    fn()
+  }, delay)
+  pendingTimeouts.push(id)
+  return id
+}
+
+// 组件卸载时清理所有定时器
+onUnmounted(() => {
+  pendingTimeouts.forEach(id => clearTimeout(id))
+  pendingTimeouts.length = 0
+})
+
 const isDealer = ref(true)
 const roundCount = ref(0)
 const currentWind = ref('东')
@@ -504,12 +527,18 @@ const newRound = () => {
 }
 
 // AI 回合
-const aiTurn = async () => {
+const aiTurn = async (retryCount = 0) => {
   // 防止多个 AI 同时执行
   if (isAiProcessing) {
-    console.log(`[AI 等待] 玩家${currentPlayer.value} 等待其他 AI 执行，100ms 后重试`)
-    setTimeout(() => aiTurn(), 100)
-    return
+    // 添加超时机制，防止永久卡死
+    if (retryCount >= 50) { // 最多等待5秒（50 * 100ms）
+      console.error(`[AI 超时] 玩家${currentPlayer.value} 等待AI锁超时，强制重置`)
+      isAiProcessing = false
+    } else {
+      console.log(`[AI 等待] 玩家${currentPlayer.value} 等待其他 AI 执行，100ms 后重试 (${retryCount + 1}/50)`)
+      safeSetTimeout(() => aiTurn(retryCount + 1), 100)
+      return
+    }
   }
   isAiProcessing = true
   console.log(`[AI 锁获取] 玩家${currentPlayer.value} 获取锁`)
@@ -520,9 +549,11 @@ const aiTurn = async () => {
   // 计算正常手牌数量
   // 麻将规则：13 张手牌，摸牌后 14 张，打牌后回 13 张
   // 吃/碰：移除 2 张 + 别人 1 张组成副露，然后打 1 张 → 手牌 = 13 - 3 = 10 张（待摸）
-  // 杠：移除 3 张 + 别人 1 张组成副露，然后摸 1 张打 1 张 → 手牌 = 13 - 3 = 10 张（待摸）
-  const chiPonCount = ai.exposedSets.length
-  const expectedHandSize = 13 - chiPonCount * 3
+  // 杠：移除 3 张 + 别人 1 张组成副露，杠后摸 1 张打 1 张 → 手牌 = 13 - 2 = 11 张（待摸）
+  // 注意：杠与其他副露的手牌减少量不同
+  const kanCount = ai.exposedSets.filter(s => s.type === 'kan').length
+  const chiPonCount = ai.exposedSets.filter(s => s.type !== 'kan').length
+  const expectedHandSize = 13 - chiPonCount * 3 - kanCount * 2
 
   console.log(`[AI 回合] 玩家${currentPlayer.value} (${ai.name}), 手牌数：${ai.hand.length}, 预期：${expectedHandSize}, 副露：${JSON.stringify(ai.exposedSets.map(s => ({ type: s.type, tiles: s.tiles.length })))}`)
 
@@ -548,7 +579,7 @@ const aiTurn = async () => {
     console.log(`[AI 摸牌] 玩家${currentPlayer.value} 摸到 ${drawnTile.display}`)
 
   // 稍微延迟，模拟思考
-    setTimeout(async () => {
+    safeSetTimeout(async () => {
       console.log(`[AI 思考] 玩家${currentPlayer.value} 开始思考`)
       try {
         // 直接传入完整手牌（14 张），让 AI 基于实际手牌做决策
@@ -626,7 +657,7 @@ const aiTurn = async () => {
     }, ai.config.THINK_TIME)
   } else if (ai.hand.length === expectedHandSize + 1) {
     // AI 是庄家或刚摸过牌，直接打牌
-    setTimeout(async () => {
+    safeSetTimeout(async () => {
       console.log(`[AI 思考] 玩家${currentPlayer.value} 开始思考（直接打牌）`)
       try {
         const decision = await ai.think('discard', null)
@@ -671,7 +702,7 @@ const aiTurn = async () => {
     // 强制摸牌或打牌
     if (ai.hand.length > expectedHandSize) {
       // 手牌多了，直接打出一张
-      setTimeout(async () => {
+      safeSetTimeout(async () => {
         try {
           const decision = await ai.think('discard', null)
           const discardIdx = decision.index !== undefined ? decision.index : (decision.discardIndex !== undefined ? decision.discardIndex : 0)
@@ -693,7 +724,7 @@ const aiTurn = async () => {
       if (drawnTile) {
         ai.addTile(drawnTile)
         remainingTiles.value = deck.value.remaining()
-        setTimeout(async () => {
+        safeSetTimeout(async () => {
           try {
             const decision = await ai.think('draw', drawnTile, ai.hand)
             const discardIdx = decision.index !== undefined ? decision.index : (decision.discardIndex !== undefined ? decision.discardIndex : -1)
@@ -764,7 +795,7 @@ const checkAiActions = (aiIndex, tile, fromPlayer, continueChain = false) => {
   if (canRon) {
     console.log(`[checkAiActions] 玩家${aiIndex} 可以荣和`)
     // AI 荣和
-    setTimeout(() => {
+    safeSetTimeout(() => {
       isAiProcessing = true
       console.log(`[checkAiActions] 玩家${aiIndex} 荣和执行`)
       doAiRon(aiIndex)
@@ -777,7 +808,7 @@ const checkAiActions = (aiIndex, tile, fromPlayer, continueChain = false) => {
   if (canPeng && Math.random() < ai.config.PON_PROBABILITY) {
     console.log(`[checkAiActions] 玩家${aiIndex} 可以碰`)
     // AI 碰
-    setTimeout(() => {
+    safeSetTimeout(() => {
       isAiProcessing = true
       console.log(`[checkAiActions] 玩家${aiIndex} 碰执行`)
       doAiPeng(aiIndex)
@@ -790,7 +821,7 @@ const checkAiActions = (aiIndex, tile, fromPlayer, continueChain = false) => {
   if (canGang && Math.random() < 0.75) {
     console.log(`[checkAiActions] 玩家${aiIndex} 可以杠`)
     // AI 杠
-    setTimeout(() => {
+    safeSetTimeout(() => {
       isAiProcessing = true
       console.log(`[checkAiActions] 玩家${aiIndex} 杠执行`)
       doAiGang(aiIndex)
@@ -804,7 +835,7 @@ const checkAiActions = (aiIndex, tile, fromPlayer, continueChain = false) => {
   if (canChi && Math.random() < ai.config.CHII_PROBABILITY) {
     console.log(`[checkAiActions] 玩家${aiIndex} 可以吃`)
     // AI 吃
-    setTimeout(() => {
+    safeSetTimeout(() => {
       isAiProcessing = true
       console.log(`[checkAiActions] 玩家${aiIndex} 吃执行`)
       doAiChi(aiIndex, chiPatterns[0].tiles)
@@ -862,7 +893,7 @@ const doAiPeng = async (aiIndex) => {
   gameState.value = 'ai_discarding'
 
   // 碰后打牌
-  setTimeout(async () => {
+  safeSetTimeout(async () => {
     try {
       const decision = await ai.think('discard', null)
       const discarded = ai.discardTile(decision.index !== undefined ? decision.index : (decision.discardIndex || 0))
@@ -908,9 +939,12 @@ const doAiGang = async (aiIndex) => {
   const drawnTile = deck.value.draw()
   remainingTiles.value = deck.value.remaining()
 
-  setTimeout(async () => {
+  safeSetTimeout(async () => {
     try {
-      const testHand = [...ai.hand, drawnTile]
+      // 将摸的牌加入AI手牌
+      ai.addTile(drawnTile)
+
+      const testHand = [...ai.hand]
       const result = checkAgari(testHand)
       if (result.agari) {
         endRound(aiIndex, { type: '杠上开花', fan: 3, isZimo: true }, true)
@@ -971,7 +1005,7 @@ const doAiChi = async (aiIndex, tiles) => {
   gameState.value = 'ai_discarding'
 
   // 吃后打牌
-  setTimeout(async () => {
+  safeSetTimeout(async () => {
     try {
       const decision = await ai.think('discard', null)
       const discarded = ai.discardTile(decision.index !== undefined ? decision.index : (decision.discardIndex || 0))

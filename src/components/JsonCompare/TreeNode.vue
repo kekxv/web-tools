@@ -29,8 +29,10 @@
           <!-- Base64 (优先判断) -->
           <template v-if="node.diff?.isBase64 && node.diff.type === 'diff'">
             <span class="value-base64">{{ formatBase64Short(node.diff.left) }}</span>
+            <el-icon class="copy-icon" @click.stop="copyValue(node.diff.left)"><DocumentCopy /></el-icon>
             <span class="diff-arrow"> ↔ </span>
             <span class="value-base64">{{ formatBase64Short(node.diff.right) }}</span>
+            <el-icon class="copy-icon" @click.stop="copyValue(node.diff.right)"><DocumentCopy /></el-icon>
             <el-button link type="primary" size="small" class="view-btn" @click.stop="handleViewBase64">
               查看
             </el-button>
@@ -39,25 +41,31 @@
           <!-- 差异值 -->
           <template v-else-if="node.diff?.type === 'diff'">
             <span class="value-left">{{ formatValue(node.diff.left) }}</span>
+            <el-icon class="copy-icon" @click.stop="copyValue(node.diff.left)"><DocumentCopy /></el-icon>
             <span class="diff-arrow"> ↔ </span>
             <span class="value-right">{{ formatValue(node.diff.right) }}</span>
+            <el-icon class="copy-icon" @click.stop="copyValue(node.diff.right)"><DocumentCopy /></el-icon>
           </template>
 
           <!-- 类型不匹配 -->
           <template v-else-if="node.diff?.type === 'type_mismatch'">
             <span class="value-type-mismatch">{{ formatValue(node.diff.left) }}</span>
+            <el-icon class="copy-icon" @click.stop="copyValue(node.diff.left)"><DocumentCopy /></el-icon>
             <span class="diff-arrow"> ↔ </span>
             <span class="value-type-mismatch">{{ formatValue(node.diff.right) }}</span>
+            <el-icon class="copy-icon" @click.stop="copyValue(node.diff.right)"><DocumentCopy /></el-icon>
           </template>
 
           <!-- 新增值 -->
           <template v-else-if="node.diff?.type === 'added'">
             <span class="value-added">{{ formatValue(node.diff.right) }}</span>
+            <el-icon class="copy-icon" @click.stop="copyValue(node.diff.right)"><DocumentCopy /></el-icon>
           </template>
 
           <!-- 删除值 -->
           <template v-else-if="node.diff?.type === 'removed'">
             <span class="value-removed">{{ formatValue(node.diff.left) }}</span>
+            <el-icon class="copy-icon" @click.stop="copyValue(node.diff.left)"><DocumentCopy /></el-icon>
           </template>
 
           <!-- 相同值 -->
@@ -65,12 +73,14 @@
             <!-- 判断是否是 Base64 -->
             <template v-if="node.diff?.isBase64">
               <span class="value-same">{{ formatBase64Short(getValue()) }}</span>
+              <el-icon class="copy-icon" @click.stop="copyValue(getValue())"><DocumentCopy /></el-icon>
               <el-button link type="primary" size="small" class="view-btn" @click.stop="handleViewSameBase64">
                 查看
               </el-button>
             </template>
             <template v-else>
               <span class="value-same">{{ formatValue(getValue()) }}</span>
+              <el-icon class="copy-icon" @click.stop="copyValue(getValue())"><DocumentCopy /></el-icon>
             </template>
           </template>
 
@@ -118,7 +128,8 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { ArrowDown, CaretRight } from '@element-plus/icons-vue'
+import { ArrowDown, CaretRight, DocumentCopy } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 interface TreeNodeDiff {
   type: string
@@ -207,10 +218,36 @@ const formatValue = (value: unknown): string => {
       const cleaned = value.replace(/^data:[^;]+;base64,/i, '').replace(/\s/g, '')
       return `"${cleaned.substring(0, 30)}..."`
     }
+    // 长字符串省略：开头5个字...结尾5个字
+    if (value.length > 50) {
+      const start = value.substring(0, 5)
+      const end = value.substring(value.length - 5)
+      return `"${start}...${end}"`
+    }
     return `"${value}"`
   }
-  if (typeof value === 'object') return JSON.stringify(value)
+  if (typeof value === 'object') {
+    const str = JSON.stringify(value)
+    // 长对象字符串省略：开头5个字...结尾5个字
+    if (str.length > 50) {
+      const start = str.substring(0, 5)
+      const end = str.substring(str.length - 5)
+      return `${start}...${end}`
+    }
+    return str
+  }
   return String(value)
+}
+
+// 复制值到剪贴板
+const copyValue = async (value: unknown) => {
+  const text = value === null ? 'null' : value === undefined ? 'undefined' : String(value)
+  try {
+    await navigator.clipboard.writeText(text)
+    ElMessage.success('已复制到剪贴板')
+  } catch (error) {
+    ElMessage.error('复制失败')
+  }
 }
 
 const handleViewBase64 = () => {
@@ -341,6 +378,31 @@ const formatBase64Short = (value: unknown): string => {
 .diff-arrow {
   color: #909399;
   font-weight: bold;
+}
+
+/* 复制图标 */
+.copy-icon {
+  font-size: 14px;
+  color: #c0c4cc;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 2px;
+  margin-right: 2px;
+  opacity: 0;
+  flex-shrink: 0;
+}
+
+.node-row:hover .copy-icon {
+  opacity: 1;
+}
+
+.copy-icon:hover {
+  color: #409eff;
+  transform: scale(1.1);
+}
+
+.copy-icon:active {
+  transform: scale(0.95);
 }
 
 .preview-text {

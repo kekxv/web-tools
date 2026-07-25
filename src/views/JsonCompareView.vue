@@ -160,7 +160,7 @@
                   <pre>{{ leftXmlContent }}</pre>
                 </div>
                 <div v-else-if="base64DataType.leftType === 'html'" class="preview-html">
-                  <iframe :srcdoc="leftHtmlContent" class="preview-frame" title="Left HTML"></iframe>
+                  <iframe :srcdoc="leftHtmlContent" class="preview-frame" title="Left HTML" sandbox=""></iframe>
                 </div>
                 <div v-else-if="base64DataType.leftType === 'text'" class="preview-text">
                   <pre>{{ leftTextContent }}</pre>
@@ -192,7 +192,7 @@
                   <pre>{{ rightXmlContent }}</pre>
                 </div>
                 <div v-else-if="base64DataType.rightType === 'html'" class="preview-html">
-                  <iframe :srcdoc="rightHtmlContent" class="preview-frame" title="Right HTML"></iframe>
+                  <iframe :srcdoc="rightHtmlContent" class="preview-frame" title="Right HTML" sandbox=""></iframe>
                 </div>
                 <div v-else-if="base64DataType.rightType === 'text'" class="preview-text">
                   <pre>{{ rightTextContent }}</pre>
@@ -227,7 +227,7 @@
                 <pre>{{ leftXmlContent }}</pre>
               </div>
               <div v-else-if="base64DataType.leftType === 'html'" class="preview-html">
-                <iframe :srcdoc="leftHtmlContent" class="preview-frame" title="HTML"></iframe>
+                <iframe :srcdoc="leftHtmlContent" class="preview-frame" title="HTML" sandbox=""></iframe>
               </div>
               <div v-else-if="base64DataType.leftType === 'text'" class="preview-text">
                 <pre>{{ leftTextContent }}</pre>
@@ -265,7 +265,7 @@
           <img :src="imageDataUrl" alt="图片预览" />
         </div>
         <div v-if="webContentType === 'html'" class="web-preview-html">
-          <iframe :srcdoc="htmlContent" class="html-frame" title="HTML Preview"></iframe>
+          <iframe :srcdoc="htmlContent" class="html-frame" title="HTML Preview" sandbox=""></iframe>
         </div>
       </div>
       <template #footer>
@@ -1448,7 +1448,18 @@ let rightRawJson = null
 const processBase64Data = (base64Str, side) => {
   const type = detectBase64Type(base64Str)
   const pureBase64 = base64Str.replace(/^data:[^;]+;base64,/i, '')
-  const dataUrl = base64Str.startsWith('data:') ? base64Str : `data:image/png;base64,${pureBase64}`
+
+  // 根据类型生成正确的 dataUrl
+  let dataUrl = base64Str
+  if (!base64Str.startsWith('data:')) {
+    if (type === 'pdf') {
+      dataUrl = `data:application/pdf;base64,${pureBase64}`
+    } else if (type === 'image') {
+      dataUrl = `data:image/png;base64,${pureBase64}`
+    } else {
+      dataUrl = `data:application/octet-stream;base64,${pureBase64}`
+    }
+  }
 
   if (side === 'left') {
     base64DataType.value.leftType = type
@@ -1738,6 +1749,32 @@ onMounted(() => {
   min-height: 200px;
 }
 
+/* Base64 对比布局 */
+.compare-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.compare-panel {
+  flex: 1;
+  min-width: 0;
+}
+
+.compare-panel-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #606266;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.compare-panel-label .el-icon {
+  color: #409eff;
+}
+
 .preview-image img {
   max-width: 100%;
   max-height: 400px;
@@ -1830,6 +1867,10 @@ onMounted(() => {
   .base64-dialog-content,
   .web-dialog-content {
     max-height: 60vh;
+  }
+
+  .compare-row {
+    flex-direction: column;
   }
 }
 </style>

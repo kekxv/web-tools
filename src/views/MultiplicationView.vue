@@ -244,6 +244,8 @@ const handleWrong = () => {
     showWrong.value = false
     inputValue.value = ''
     if (mode.value === 'challenge' && score.value <= 0) {
+      // 游戏结束前清除计时器
+      clearInterval(timerInterval)
       gameOver.value = true
       gameWon.value = false
     } else {

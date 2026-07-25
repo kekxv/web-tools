@@ -63,6 +63,19 @@ describe('Formatter Utils', () => {
       const result = await formatCode(input, 'xml')
       expect(result).toContain('<root>')
       expect(result).toContain('</root>')
+      expect(result).toContain('<item>')
+      expect(result).toContain('</item>')
+    })
+
+    it('应该正确处理包含长文本的 XML 而不抛出错误', async () => {
+      // 长文本可能导致负缩进错误
+      const longText = 'a'.repeat(100)
+      const input = `<root><item>${longText}</item></root>`
+      // 不应该抛出 RangeError
+      const result = await formatCode(input, 'xml')
+      expect(result).toContain('<root>')
+      expect(result).toContain('</root>')
+      expect(result).toContain(longText)
     })
 
     it('应该格式化 Diff', async () => {
@@ -76,6 +89,20 @@ describe('Formatter Utils', () => {
       const result = await formatCode(input, 'sql')
       expect(result).toContain('SELECT')
       expect(result).toContain('FROM')
+      expect(result).toContain('WHERE')
+      // 验证关键字大写
+      expect(result).toMatch(/SELECT.*FROM.*WHERE/s)
+    })
+
+    it('应该保留 SQL 字符串字面量的大小写', async () => {
+      const input = "SELECT * FROM users WHERE name = 'Alice'"
+      const result = await formatCode(input, 'sql')
+      // 字符串字面量应该保持原样，不被大写
+      expect(result).toContain("'Alice'")
+      // 关键字应该大写
+      expect(result).toContain('SELECT')
+      expect(result).toContain('FROM')
+      expect(result).toContain('WHERE')
     })
 
     it('应该格式化 JavaScript', async () => {
@@ -103,6 +130,24 @@ describe('Formatter Utils', () => {
       const input = 'def hello():\n    print("hi")'
       const result = await formatCode(input, 'python')
       expect(result).toContain('def')
+      expect(result).toContain('hello')
+      expect(result).toContain('print')
+    })
+
+    it('应该正确处理 Python 的 else 缩进', async () => {
+      const input = 'if x > 0:\n    print("positive")\nelse:\n    print("negative")'
+      const result = await formatCode(input, 'python')
+      // else 应该与 if 同级缩进
+      const lines = result.split('\n')
+      const ifLine = lines.find(l => l.includes('if x'))
+      const elseLine = lines.find(l => l.trim().startsWith('else'))
+      expect(ifLine).toBeDefined()
+      expect(elseLine).toBeDefined()
+      // 计算缩进空格数
+      const ifIndent = ifLine.length - ifLine.trimStart().length
+      const elseIndent = elseLine.length - elseLine.trimStart().length
+      // else 应该与 if 有相同的缩进
+      expect(elseIndent).toBe(ifIndent)
     })
 
     it('应该格式化 TypeScript', async () => {

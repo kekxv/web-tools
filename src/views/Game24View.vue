@@ -665,16 +665,66 @@ const clearExpression = () => {
   currentSolution.value = ''
 }
 
-// 计算表达式
+// 安全的数学表达式求值器（递归下降解析）
+// 替代 new Function() 防止代码注入
 const evaluateExpression = (expr) => {
   try {
-    let safeExpr = expr.replace(/[^0-9+\-*/()]/g, '')
+    // 仅允许数字、运算符、括号和小数点
+    let safeExpr = expr.replace(/[^0-9+\-*/().]/g, '')
     const openParens = (safeExpr.match(/\(/g) || []).length
     const closeParens = (safeExpr.match(/\)/g) || []).length
     if (openParens !== closeParens) {
       return null
     }
-    const result = new Function('return ' + safeExpr)()
+
+    // 递归下降解析器
+    let pos = 0
+    const input = safeExpr
+
+    const parseExpression = () => {
+      let result = parseTerm()
+      while (pos < input.length && (input[pos] === '+' || input[pos] === '-')) {
+        const op = input[pos++]
+        const right = parseTerm()
+        result = op === '+' ? result + right : result - right
+      }
+      return result
+    }
+
+    const parseTerm = () => {
+      let result = parseFactor()
+      while (pos < input.length && (input[pos] === '*' || input[pos] === '/')) {
+        const op = input[pos++]
+        const right = parseFactor()
+        result = op === '*' ? result * right : result / right
+      }
+      return result
+    }
+
+    const parseFactor = () => {
+      // 跳过空白
+      while (pos < input.length && input[pos] === ' ') pos++
+
+      // 处理括号
+      if (input[pos] === '(') {
+        pos++ // 跳过 '('
+        const result = parseExpression()
+        if (input[pos] !== ')') throw new Error('Missing closing parenthesis')
+        pos++ // 跳过 ')'
+        return result
+      }
+
+      // 处理数字
+      const start = pos
+      while (pos < input.length && (input[pos] >= '0' && input[pos] <= '9' || input[pos] === '.')) {
+        pos++
+      }
+      if (pos === start) throw new Error('Expected number')
+      return parseFloat(input.slice(start, pos))
+    }
+
+    const result = parseExpression()
+    if (pos !== input.length) return null // 未完全解析
     return result
   } catch {
     return null

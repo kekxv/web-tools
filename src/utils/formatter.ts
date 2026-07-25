@@ -167,7 +167,7 @@ function formatXML(code: string): string {
     if (char === '<') {
       // 检查是否是结束标签
       if (code[i + 1] === '/') {
-        indent--
+        indent = Math.max(0, indent - 1)
         formatted += '\n' + tab.repeat(indent)
       } else if (code[i + 1] === '?') {
         formatted += char
@@ -257,15 +257,24 @@ function formatSQL(code: string): string {
     'CONSTRAINT', 'CHECK', 'UNIQUE', 'ADD', 'MODIFY', 'COLUMN'
   ]
 
-  let result = code.toUpperCase()
-
-  keywords.forEach(keyword => {
-    const regex = new RegExp(`\\b${keyword.replace(/\s+/g, '\\s+')}\\b`, 'g')
-    result = result.replace(regex, '\n' + keyword + ' ')
+  // 保护字符串字面量（单引号和双引号）
+  const stringLiterals: string[] = []
+  let result = code.replace(/'([^'\\]|\\.)*'|"([^"\\]|\\.)*"/g, (match) => {
+    stringLiterals.push(match)
+    return `__STRING_${stringLiterals.length - 1}__`
   })
 
+  // 只对关键字进行大写处理
+  keywords.forEach(keyword => {
+    const regex = new RegExp(`\\b${keyword.replace(/\s+/g, '\\s+')}\\b`, 'gi')
+    result = result.replace(regex, '\n' + keyword.toUpperCase() + ' ')
+  })
+
+  // 恢复字符串字面量
+  result = result.replace(/__STRING_(\d+)__/g, (_, index) => stringLiterals[parseInt(index)])
+
   return result
-    .replace(/\s+/g, ' ')
+    .replace(/[ \t]+/g, ' ') // 只压缩空格和制表符，保留换行
     .replace(/,\s*/g, ',\n  ')
     .trim()
 }
@@ -281,17 +290,24 @@ function formatPython(code: string): string {
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i].trim()
 
-    if (line && !line.startsWith('#') && indent > 0) {
-      const prevLine = result[result.length - 1] || ''
-      if (prevLine && !prevLine.trimEnd().endsWith(':')) {
-        indent = Math.max(0, indent - 1)
-      }
+    // 跳过空行和注释
+    if (!line || line.startsWith('#')) {
+      result.push(line)
+      continue
+    }
+
+    // 处理减少缩进的关键字（else, elif, except, finally）
+    if (line.match(/^(else|elif|except|finally)\b/)) {
+      indent = Math.max(0, indent - 1)
     }
 
     result.push('  '.repeat(indent) + line)
 
-    if (line.match(/[:]\s*(#.*)?$/) ||
-        line.match(/\b(if|else|elif|for|while|def|class|try|except|finally|with|async)\b/)) {
+    // 处理增加缩进的情况
+    // 1. 以冒号结尾的行（if, for, while, def, class, try, except, else, elif, finally, with等）
+    // 2. 以特定关键字开头的行
+    if (line.endsWith(':') ||
+        line.match(/\b(if|for|while|def|class|try|except|else|elif|finally|with|async)\b.*:\s*(#.*)?$/)) {
       indent++
     }
   }

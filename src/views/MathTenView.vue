@@ -262,7 +262,7 @@
                   {{ currentQuestion.num1 }} + {{ currentQuestion.splitNum }} + {{ currentQuestion.remainNum }} = <b>{{ currentQuestion.answer }}</b>
                 </template>
                 <template v-else>
-                  {{ currentQuestion.teenNum }} - {{ currentQuestion.subtractor }} = 10 + {{ currentQuestion.ones }} - {{ currentQuestion.subtractor }} = <b>{{ currentQuestion.answer }}</b>
+                  {{ currentQuestion.teenNum }} - {{ currentQuestion.subtractor }} = {{ currentQuestion.ones }} + (10 - {{ currentQuestion.subtractor }}) = {{ currentQuestion.ones }} + {{ 10 - currentQuestion.subtractor }} = <b>{{ currentQuestion.answer }}</b>
                 </template>
               </div>
               <div class="complete-hint">
@@ -442,6 +442,8 @@ const checkAnswer = () => {
       showWrong.value = false
       inputValue.value = ''
       if (score.value <= 0) {
+        // 游戏结束前清除计时器
+        clearInterval(timerInterval)
         gameOver.value = true
         gameWon.value = false
       }
