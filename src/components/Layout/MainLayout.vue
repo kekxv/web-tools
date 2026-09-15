@@ -76,6 +76,10 @@
             <el-icon><Document /></el-icon>
             <template #title>LLM 流式整理</template>
           </el-menu-item>
+          <el-menu-item index="/bitmap">
+            <el-icon><Picture /></el-icon>
+            <template #title>图片转点阵</template>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       <!-- 遮罩层 -->
@@ -161,6 +165,10 @@
             <el-icon><Document /></el-icon>
             <template #title>LLM 流式整理</template>
           </el-menu-item>
+          <el-menu-item index="/bitmap">
+            <el-icon><Picture /></el-icon>
+            <template #title>图片转点阵</template>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 
@@ -186,7 +194,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { House, Files, Document, DataAnalysis, Key, Grid, Odometer, Van, Coin } from '@element-plus/icons-vue'
+import { House, Files, Document, DataAnalysis, Key, Grid, Odometer, Van, Coin, Picture } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const isCollapse = ref(false)
@@ -240,6 +248,7 @@ const currentTitle = computed(() => {
     '/hash': 'Hash 计算',
     '/totp': 'TOTP 验证码',
     '/stream-merge': 'LLM 流式整理',
+    '/bitmap': '图片转点阵',
     '/gobang': '五子棋',
     '/game24': '24 点',
     '/showhand': '梭哈',

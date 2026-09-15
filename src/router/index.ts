@@ -88,6 +88,12 @@ const routes: RouteRecordRaw[] = [
         name: 'StreamMerge',
         component: () => import('../views/StreamMergeView.vue'),
         meta: { title: 'LLM 流式整理' }
+      },
+      {
+        path: 'bitmap',
+        name: 'Bitmap',
+        component: () => import('../views/BitmapView.vue'),
+        meta: { title: '图片转点阵' }
       }
     ]
   }
