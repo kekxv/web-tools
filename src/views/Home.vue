@@ -96,6 +96,12 @@ const tools = [
     icon: 'Coin'
   },
   {
+    path: '/phone-lock',
+    title: 'iPhone 密码锁',
+    description: '模拟 iPhone 锁屏，设置密码后交给别人来猜',
+    icon: 'Iphone'
+  },
+  {
     path: '/stream-merge',
     title: 'LLM 流式整理',
     description: '将 LLM API 流式输出合并为单个数据',

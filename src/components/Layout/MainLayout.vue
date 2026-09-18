@@ -47,6 +47,10 @@
               <el-icon><Coin /></el-icon>
               <span>小小乘法表</span>
             </el-menu-item>
+            <el-menu-item index="/phone-lock">
+              <el-icon><Iphone /></el-icon>
+              <span>iPhone 密码锁</span>
+            </el-menu-item>
           </el-sub-menu>
           <el-menu-item index="/diff">
             <el-icon><Files /></el-icon>
@@ -132,6 +136,10 @@
               <el-icon><Coin /></el-icon>
               <span>小小乘法表</span>
             </el-menu-item>
+            <el-menu-item index="/phone-lock">
+              <el-icon><Iphone /></el-icon>
+              <span>iPhone 密码锁</span>
+            </el-menu-item>
           </el-sub-menu>
           <el-menu-item index="/diff">
             <el-icon><Files /></el-icon>
@@ -186,7 +194,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { House, Files, Document, DataAnalysis, Key, Grid, Odometer, Van, Coin } from '@element-plus/icons-vue'
+import { House, Files, Document, DataAnalysis, Key, Grid, Odometer, Van, Coin, Iphone } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const isCollapse = ref(false)
@@ -245,7 +253,8 @@ const currentTitle = computed(() => {
     '/showhand': '梭哈',
     '/mahjong': '广东麻将',
     '/math-ten': '凑十破十',
-    '/multiplication': '小小乘法表'
+    '/multiplication': '小小乘法表',
+    '/phone-lock': 'iPhone 密码锁'
   }
   return routeMap[route.path] || 'Web Tools'
 })

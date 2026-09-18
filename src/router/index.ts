@@ -84,6 +84,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '小小乘法表' }
       },
       {
+        path: 'phone-lock',
+        name: 'PhoneLock',
+        component: () => import('../views/PhoneLockView.vue'),
+        meta: { title: 'iPhone 密码锁' }
+      },
+      {
         path: 'stream-merge',
         name: 'StreamMerge',
         component: () => import('../views/StreamMergeView.vue'),
