@@ -87,7 +87,7 @@ const routes: RouteRecordRaw[] = [
         path: 'phone-lock',
         name: 'PhoneLock',
         component: () => import('../views/PhoneLockView.vue'),
-        meta: { title: 'iPhone 密码锁' }
+        meta: { title: '猜密码' }
       },
       {
         path: 'stream-merge',

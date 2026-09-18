@@ -47,16 +47,19 @@ describe('PhoneLock Utils', () => {
       }
     })
 
-    it('从第 5 次猜错开始按阶梯停用', () => {
-      expect(getLockoutSeconds(5)).toBe(LOCKOUT_STEPS[0])
-      expect(getLockoutSeconds(6)).toBe(LOCKOUT_STEPS[1])
-      expect(getLockoutSeconds(7)).toBe(LOCKOUT_STEPS[2])
-      expect(getLockoutSeconds(8)).toBe(LOCKOUT_STEPS[3])
+    it('从第 5 次猜错开始按阶梯停用：5 秒起，每次多 5 秒', () => {
+      expect(getLockoutSeconds(5)).toBe(5)
+      expect(getLockoutSeconds(6)).toBe(10)
+      expect(getLockoutSeconds(7)).toBe(15)
+      expect(getLockoutSeconds(8)).toBe(20)
+      expect(getLockoutSeconds(9)).toBe(25)
+      expect(getLockoutSeconds(10)).toBe(30)
     })
 
-    it('停用时长不超过上限', () => {
-      expect(getLockoutSeconds(9)).toBe(LOCKOUT_STEPS[LOCKOUT_STEPS.length - 1])
-      expect(getLockoutSeconds(100)).toBe(LOCKOUT_STEPS[LOCKOUT_STEPS.length - 1])
+    it('停用时长封顶 30 秒，不再继续加', () => {
+      expect(getLockoutSeconds(11)).toBe(30)
+      expect(getLockoutSeconds(50)).toBe(30)
+      expect(getLockoutSeconds(9999)).toBe(LOCKOUT_STEPS[LOCKOUT_STEPS.length - 1])
     })
   })
 

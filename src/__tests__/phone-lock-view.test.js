@@ -4,7 +4,7 @@ import PhoneLockView from '../views/PhoneLockView.vue'
 import { createChallenge, encodeChallenge } from '../utils/phone-lock-challenge'
 
 /**
- * iPhone 密码锁：完整流程测试
+ * 猜密码：完整流程测试
  * 设置密码 -> 锁定 -> 交接 -> 猜密码 -> 解锁 / 停用
  */
 
@@ -153,6 +153,33 @@ describe('PhoneLockView', () => {
     wrapper.unmount()
   })
 
+  it('猜测记录保留全部，次数是真实的第几次（截断后也不会错位）', async () => {
+    vi.useFakeTimers()
+    const wrapper = mount(PhoneLockView, { global: { stubs } })
+    await enterPasscode(wrapper, '1234')
+    await lockPhone(wrapper)
+    await startGuessing(wrapper)
+
+    for (let i = 0; i < 5; i++) {
+      await type(wrapper, String(i + 1).repeat(4))
+      await vi.advanceTimersByTimeAsync(600)
+    }
+    // 5 次猜错会停用手机，等倒计时走完再补第 6 次
+    await vi.advanceTimersByTimeAsync(6000)
+    await type(wrapper, '9999')
+    await vi.advanceTimersByTimeAsync(600)
+
+    const items = wrapper.findAll('.history-item')
+    expect(items).toHaveLength(6)
+    // 最新的排最上面，次数按真实顺序编
+    expect(items[0].find('.history-guess').text()).toBe('9 9 9 9')
+    expect(items[0].find('.history-times').text()).toBe('第 6 次')
+    expect(items[5].find('.history-guess').text()).toBe('1 1 1 1')
+    expect(items[5].find('.history-times').text()).toBe('第 1 次')
+    expect(wrapper.find('.history-count').text()).toBe('共 6 次')
+    wrapper.unmount()
+  })
+
   it('连续猜错 5 次会停用手机，倒计时结束后恢复', async () => {
     vi.useFakeTimers()
     const wrapper = mount(PhoneLockView, { global: { stubs } })
@@ -168,10 +195,10 @@ describe('PhoneLockView', () => {
     await type(wrapper, '0000')
 
     expect(wrapper.find('.prompt-text').text()).toBe('iPhone 已停用')
-    expect(wrapper.find('.prompt-lockout').text()).toContain('0:15')
+    expect(wrapper.find('.prompt-lockout').text()).toContain('0:05')
     expect(wrapper.find('.passcode-keypad').classes()).toContain('is-disabled')
 
-    await vi.advanceTimersByTimeAsync(15000)
+    await vi.advanceTimersByTimeAsync(5000)
     expect(wrapper.find('.prompt-lockout').exists()).toBe(false)
     expect(wrapper.find('.passcode-keypad').classes()).not.toContain('is-disabled')
 

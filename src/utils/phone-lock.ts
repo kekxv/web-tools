@@ -1,5 +1,5 @@
 /**
- * iPhone 密码锁小游戏逻辑
+ * 猜密码（模拟 iPhone 锁屏）小游戏逻辑
  *
  * 玩法：先设置一个密码并锁定手机，把手机交给别人来猜。
  * 连续猜错会被「停用」一段时间（模拟真实 iPhone 的锁定机制）。
@@ -15,8 +15,8 @@ export type PasscodeLength = (typeof PASSCODE_LENGTHS)[number]
 // 第几次猜错开始停用手机（即前 4 次猜错不锁）
 export const ATTEMPTS_BEFORE_LOCKOUT = 5
 
-// 停用时长（秒）阶梯，最后一项为上限
-export const LOCKOUT_STEPS = [15, 30, 60, 120, 300]
+// 停用时长（秒）阶梯：第一次 5 秒，每次多 5 秒，最后一项为上限
+export const LOCKOUT_STEPS = [5, 10, 15, 20, 25, 30]
 
 /**
  * 校验密码格式

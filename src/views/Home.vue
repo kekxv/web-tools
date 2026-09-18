@@ -97,7 +97,7 @@ const tools = [
   },
   {
     path: '/phone-lock',
-    title: 'iPhone 密码锁',
+    title: '猜密码',
     description: '模拟 iPhone 锁屏，设置密码后交给别人来猜',
     icon: 'Iphone'
   },

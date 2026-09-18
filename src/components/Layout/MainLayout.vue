@@ -49,7 +49,7 @@
             </el-menu-item>
             <el-menu-item index="/phone-lock">
               <el-icon><Iphone /></el-icon>
-              <span>iPhone 密码锁</span>
+              <span>猜密码</span>
             </el-menu-item>
           </el-sub-menu>
           <el-menu-item index="/diff">
@@ -142,7 +142,7 @@
             </el-menu-item>
             <el-menu-item index="/phone-lock">
               <el-icon><Iphone /></el-icon>
-              <span>iPhone 密码锁</span>
+              <span>猜密码</span>
             </el-menu-item>
           </el-sub-menu>
           <el-menu-item index="/diff">
@@ -263,7 +263,7 @@ const currentTitle = computed(() => {
     '/mahjong': '广东麻将',
     '/math-ten': '凑十破十',
     '/multiplication': '小小乘法表',
-    '/phone-lock': 'iPhone 密码锁'
+    '/phone-lock': '猜密码'
   }
   return routeMap[route.path] || 'Web Tools'
 })
