@@ -106,6 +106,12 @@ const tools = [
     title: 'LLM 流式整理',
     description: '将 LLM API 流式输出合并为单个数据',
     icon: 'Document'
+  },
+  {
+    path: '/bitmap',
+    title: '图片转点阵',
+    description: '将图片转换为 OLED / LED 点阵数据，支持多种取模和导出格式',
+    icon: 'Picture'
   }
 ]
 </script>
