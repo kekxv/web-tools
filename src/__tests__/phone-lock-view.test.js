@@ -161,6 +161,38 @@ describe('PhoneLockView', () => {
     wrapper.unmount()
   })
 
+  it('手机上沉浸时锁屏层挂到 body 上（躲开 iOS 滚动容器让 fixed 失效的问题）', async () => {
+    const original = window.matchMedia
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: query.includes('any-pointer: coarse'),
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false
+    }))
+    try {
+      const wrapper = mount(PhoneLockView, { global: { stubs } })
+      await enterPasscode(wrapper, '1234')
+      await lockPhone(wrapper)
+      await startGuessing(wrapper)
+      await flushPromises()
+
+      // 锁屏层被传送到 body，不再是 .phone-lock-view 的后代
+      expect(document.body.querySelector('.phone-lock-view .phone-screen')).toBe(null)
+      const screen = document.body.querySelector('.phone-screen')
+      expect(screen).not.toBe(null)
+      expect(screen.classList.contains('is-immersive-screen')).toBe(true)
+
+      wrapper.unmount()
+      expect(document.body.querySelector('.phone-screen')).toBe(null)
+    } finally {
+      window.matchMedia = original
+    }
+  })
+
   it('猜的过程中点退出全屏：已输入的位数不丢，也不会自己弹回去', async () => {
     const wrapper = mount(PhoneLockView, { global: { stubs } })
     await enterPasscode(wrapper, '1234')

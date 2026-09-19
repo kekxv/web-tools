@@ -17,7 +17,14 @@
         <span class="side-btn side-power"></span>
 
         <div class="phone-bezel">
-        <div class="phone-screen">
+        <!--
+          沉浸全屏时把锁屏层传送到 body：
+          iOS Safari 里父级 .main-content 带 -webkit-overflow-scrolling: touch，
+          会让 position: fixed 相对滚动容器定位（顶栏会露在下面），传到 body 才踏实。
+          非沉浸态 disabled，DOM 原地不动，布局和以前完全一样。
+        -->
+        <Teleport to="body" :disabled="!isImmersiveScreen">
+        <div class="phone-screen" :class="{ 'is-immersive-screen': isImmersiveScreen }">
           <!-- 墙纸 -->
           <div
             class="wallpaper"
@@ -205,6 +212,7 @@
 
           <div class="home-indicator"></div>
         </div>
+        </Teleport>
         </div>
       </div>
 
@@ -445,24 +453,37 @@ const showHint = ref(false)
  * 这里只记「用户主动退出过一次」和尝试调起真·全屏
  */
 const immersiveDismissed = ref(false)
-const isImmersive = computed(
-  () => (phase.value === 'locked' || phase.value === 'unlocked') && !immersiveDismissed.value
-)
 
-/** 与 CSS 同一套条件：窄屏竖屏（电脑用鼠标，pointer 不是 coarse，不会进全屏） */
-const PHONE_VIEWPORT_QUERY = '(max-width: 768px) and (orientation: portrait) and (pointer: coarse)'
+/** 与 CSS 同一套条件：窄屏 + 竖屏 + 触摸设备（电脑鼠标永远不命中，拖窄窗口也不会） */
+const PHONE_VIEWPORT_QUERY =
+  '(max-width: 768px) and (orientation: portrait) and (any-pointer: coarse) and (hover: none)'
 
-function isPhoneViewport(): boolean {
+const isPhoneViewport = ref(false)
+let phoneQuery: MediaQueryList | null = null
+
+function syncPhoneViewport() {
   try {
-    return window.matchMedia(PHONE_VIEWPORT_QUERY).matches
+    isPhoneViewport.value = window.matchMedia(PHONE_VIEWPORT_QUERY).matches
   } catch {
-    return false
+    isPhoneViewport.value = false
   }
 }
 
+/** 正在猜密码（含猜对后的桌面）且没主动退出过 = 沉浸阶段 */
+const isImmersive = computed(
+  () =>
+    !immersiveDismissed.value && (phase.value === 'locked' || phase.value === 'unlocked')
+)
+
+/**
+ * 真正把锁屏层铺满真机屏幕：在沉浸阶段基础上再要求「确实是手机」。
+ * 只有它为真时才会把 DOM 传送到 body（桌面上必须留在原地，否则布局会散）
+ */
+const isImmersiveScreen = computed(() => isImmersive.value && isPhoneViewport.value)
+
 /** 顺手申请系统整页全屏（安卓 Chrome 会连地址栏一起收掉；iOS Safari 不支持，忽略即可） */
 async function requestImmersiveFullscreen() {
-  if (!isPhoneViewport() || document.fullscreenElement) return
+  if (!isPhoneViewport.value || document.fullscreenElement) return
   const root = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }
   try {
     if (typeof root.requestFullscreen === 'function') {
@@ -907,6 +928,14 @@ watch(phase, (next) => {
 })
 
 onMounted(() => {
+  syncPhoneViewport()
+  try {
+    phoneQuery = window.matchMedia(PHONE_VIEWPORT_QUERY)
+    phoneQuery.addEventListener?.('change', syncPhoneViewport)
+  } catch {
+    phoneQuery = null
+  }
+
   tickTimer = setInterval(tick, 1000)
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('hashchange', handleHashChange)
@@ -917,6 +946,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  phoneQuery?.removeEventListener?.('change', syncPhoneViewport)
+  phoneQuery = null
   if (tickTimer) clearInterval(tickTimer)
   if (shakeTimer) clearTimeout(shakeTimer)
   if (clearTimer) clearTimeout(clearTimer)
@@ -2427,29 +2458,27 @@ onUnmounted(() => {
    必须是「窄屏 + 竖屏 + 触摸设备」才生效：
    电脑上把窗口拖窄（鼠标 pointer: fine）不会误进全屏。
    ============================================================ */
-@media screen and (max-width: 768px) and (orientation: portrait) and (pointer: coarse) {
-  .phone-lock-view.is-immersive {
-    /* 内部尺寸改按视口高度缩放：铺满整屏后键盘、时钟都不会被顶出去 */
-    --hunit: max(5.4px, calc(100dvh / 78.2));
-  }
-
-  .phone-lock-view.is-immersive .phone-screen {
+@media screen and (max-width: 768px) and (orientation: portrait) and (any-pointer: coarse) and (hover: none) {
+  .phone-screen.is-immersive-screen {
     position: fixed;
     inset: 0;
-    z-index: 60;
+    /* 传送到 body 了，层级要压过 App 顶栏（顶栏 1000） */
+    z-index: 1600;
     width: auto;
     height: auto;
     border-radius: 0;
+    /* 内部尺寸改按视口高度缩放：铺满整屏后键盘、时钟都不会被顶出去 */
+    --hunit: max(5.4px, calc(100dvh / 78.2));
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   /* 真机自带灵动岛/刘海，别画两个 */
-  .phone-lock-view.is-immersive .dynamic-island {
+  .phone-screen.is-immersive-screen .dynamic-island {
     display: none;
   }
 
-  .phone-lock-view.is-immersive .immersive-exit {
+  .phone-screen.is-immersive-screen .immersive-exit {
     display: inline-flex;
     align-items: center;
   }
