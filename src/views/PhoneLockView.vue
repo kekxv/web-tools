@@ -1,5 +1,5 @@
 <template>
-  <div class="phone-lock-view page-container">
+  <div class="phone-lock-view page-container" :class="{ 'is-immersive': isImmersive }">
     <!-- 毛玻璃背景光斑 -->
     <div class="aurora" aria-hidden="true">
       <span class="blob blob-1"></span>
@@ -183,6 +183,26 @@
             </div>
           </div>
 
+          <!-- 沉浸全屏时才出现：点一下回到完整界面（手机版显示） -->
+          <button
+            v-if="isImmersive"
+            type="button"
+            class="immersive-exit"
+            title="退出全屏"
+            aria-label="退出全屏"
+            @click="exitImmersive"
+          >
+            <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+              <path
+                d="M6 6 L18 18 M18 6 L6 18"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+
           <div class="home-indicator"></div>
         </div>
         </div>
@@ -340,7 +360,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import PasscodeKeypad from '../components/PhoneLock/PasscodeKeypad.vue'
 import {
   ATTEMPTS_BEFORE_LOCKOUT,
@@ -419,6 +439,55 @@ const shaking = ref(false)
 const errorFlash = ref(false)
 const errorText = ref('')
 const showHint = ref(false)
+
+/**
+ * 手机版沉浸全屏：开始猜密码后锁屏画面铺满真机屏幕（真机就是边框，不画模拟机身），
+ * 这里只记「用户主动退出过一次」和尝试调起真·全屏
+ */
+const immersiveDismissed = ref(false)
+const isImmersive = computed(
+  () => (phase.value === 'locked' || phase.value === 'unlocked') && !immersiveDismissed.value
+)
+
+/** 与 CSS 同一套条件：窄屏竖屏（电脑用鼠标，pointer 不是 coarse，不会进全屏） */
+const PHONE_VIEWPORT_QUERY = '(max-width: 768px) and (orientation: portrait) and (pointer: coarse)'
+
+function isPhoneViewport(): boolean {
+  try {
+    return window.matchMedia(PHONE_VIEWPORT_QUERY).matches
+  } catch {
+    return false
+  }
+}
+
+/** 顺手申请系统整页全屏（安卓 Chrome 会连地址栏一起收掉；iOS Safari 不支持，忽略即可） */
+async function requestImmersiveFullscreen() {
+  if (!isPhoneViewport() || document.fullscreenElement) return
+  const root = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }
+  try {
+    if (typeof root.requestFullscreen === 'function') {
+      await root.requestFullscreen({ navigationUI: 'hide' })
+    } else if (typeof root.webkitRequestFullscreen === 'function') {
+      await root.webkitRequestFullscreen()
+    }
+  } catch {
+    /* 不支持或用户拒绝：CSS 覆盖层已经把整屏盖住了，不影响沉浸感 */
+  }
+}
+
+function exitImmersive() {
+  immersiveDismissed.value = true
+  if (document.fullscreenElement && typeof document.exitFullscreen === 'function') {
+    document.exitFullscreen().catch(() => {})
+  }
+}
+
+/** 用户按 Esc / 手势退出系统全屏时，画面也一起退出来，别两套状态打架 */
+function handleFullscreenChange() {
+  if (!document.fullscreenElement && phase.value === 'locked') {
+    immersiveDismissed.value = true
+  }
+}
 
 const wallpaper = ref('aurora')
 const now = ref(new Date())
@@ -574,7 +643,9 @@ function lockPhone() {
 
 function startGuessing() {
   resetRound()
+  immersiveDismissed.value = false
   phase.value = 'locked'
+  void requestImmersiveFullscreen()
 }
 
 function relockSamePasscode() {
@@ -616,14 +687,17 @@ function resetGame() {
 /**
  * 进入挑战模式：只保留令牌，密码本身不进内存
  */
-function enterChallenge(next: Challenge) {
+function enterChallenge(next: Challenge, fullscreen = false) {
   challenge.value = next
   passcodeLength.value = next.length
   passcode.value = ''
   hintText.value = ''
   resetRound()
   setupStep.value = 'enter'
+  immersiveDismissed.value = false
   phase.value = 'locked'
+  // 从链接进来时没有用户手势，申请系统全屏会被拒，交给 CSS 覆盖层兜底
+  if (fullscreen) void requestImmersiveFullscreen()
 }
 
 /** 从 #/phone-lock?c=xxx 里读挑战码 */
@@ -658,7 +732,8 @@ function acceptToken() {
   }
   tokenError.value = ''
   tokenInput.value = ''
-  enterChallenge(parsed)
+  // 点按钮算用户手势，可以顺手申请真·全屏
+  enterChallenge(parsed, true)
 }
 
 /**
@@ -821,10 +896,21 @@ function handleHashChange() {
   }
 }
 
+// 猜对后继续留在沉浸里（要看解锁后的桌面），只有真的离开猜密码流程才收起来
+watch(phase, (next) => {
+  if (next !== 'locked' && next !== 'unlocked') {
+    immersiveDismissed.value = true
+    if (document.fullscreenElement && typeof document.exitFullscreen === 'function') {
+      document.exitFullscreen().catch(() => {})
+    }
+  }
+})
+
 onMounted(() => {
   tickTimer = setInterval(tick, 1000)
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('hashchange', handleHashChange)
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
 
   const parsed = parseChallenge(readChallengeFromUrl())
   if (parsed) enterChallenge(parsed)
@@ -836,6 +922,7 @@ onUnmounted(() => {
   if (clearTimer) clearTimeout(clearTimer)
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('hashchange', handleHashChange)
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
 })
 </script>
 
@@ -850,8 +937,12 @@ onUnmounted(() => {
   padding: 18px 20px 28px;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  /* 手机内部所有尺寸都跟着它缩放，兼容移动端浏览器地址栏变化 */
-  --hunit: 1vh;
+  /* 手机形状锁死 342:704（0.4858）：只定高度，宽度按比例算出来，
+     所以任何屏幕上都不会被压扁或拉长；高度先取「上限 / 屏幕宽 / 屏幕高」里最小的那个 */
+  --phone-ratio: 0.48580;
+  --phone-h: max(580px, min(704px, calc(92vw / var(--phone-ratio)), calc(100vh - 152px)));
+  /* 手机内部所有尺寸都跟着手机高度缩放（78.2 ≈ 设计稿 704px ÷ 9px） */
+  --hunit: calc(var(--phone-h) / 78.2);
   background:
     radial-gradient(120vmax 70vmax at 6% -12%, #e4eaff 0%, transparent 55%),
     radial-gradient(100vmax 60vmax at 104% 4%, #ffe7f3 0%, transparent 52%),
@@ -860,7 +951,7 @@ onUnmounted(() => {
 
 @supports (height: 100dvh) {
   .phone-lock-view {
-    --hunit: 1dvh;
+    --phone-h: max(580px, min(704px, calc(92vw / var(--phone-ratio)), calc(100dvh - 152px)));
   }
 }
 
@@ -946,11 +1037,8 @@ onUnmounted(() => {
 .phone-frame {
   position: relative;
   flex: 0 0 auto;
-  width: min(342px, 92vw);
-  height: min(704px, calc(100vh - 152px));
-  height: min(704px, calc(100dvh - 152px));
-  min-height: min(540px, max(470px, calc(100vh - 130px)));
-  min-height: min(540px, max(470px, calc(100dvh - 130px)));
+  width: calc(var(--phone-h) * var(--phone-ratio));
+  height: var(--phone-h);
   padding: 8px;
   border-radius: 54px;
   background:
@@ -1643,6 +1731,38 @@ onUnmounted(() => {
   animation: none;
 }
 
+/* 沉浸全屏时的退出按钮：桌面端不显示，手机版沉浸态才出现 */
+.immersive-exit {
+  display: none;
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 42px);
+  right: 12px;
+  z-index: 6;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.94);
+  background: rgba(28, 32, 56, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 6px 18px -8px rgba(0, 0, 0, 0.6);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  backdrop-filter: blur(10px) saturate(150%);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.immersive-exit:hover {
+  background: rgba(28, 32, 56, 0.48);
+}
+
+.immersive-exit:active {
+  transform: scale(0.94);
+}
+
 .home-indicator {
   position: absolute;
   bottom: 7px;
@@ -2241,12 +2361,12 @@ onUnmounted(() => {
     padding-bottom: 8px;
   }
 
+  .phone-lock-view {
+    /* 上下留出标题栏和页面边距，宽度会按同一比例算出来 */
+    --phone-h: max(580px, min(741px, calc(92vw / var(--phone-ratio)), calc(100vh - 120px)));
+  }
+
   .phone-frame {
-    width: min(360px, 100%);
-    height: min(660px, calc(100vh - 120px));
-    height: min(660px, calc(100dvh - 120px));
-    min-height: min(560px, max(470px, calc(100vh - 110px)));
-    min-height: min(560px, max(470px, calc(100dvh - 110px)));
     padding: 9px;
     border-radius: 48px;
     box-shadow:
@@ -2301,6 +2421,40 @@ onUnmounted(() => {
   }
 }
 
+/* ============================================================
+   沉浸全屏：开始猜密码后，锁屏画面直接铺满真机屏幕
+   真机本身就是边框，所以模拟机身/边框全部让位，内容顶到四边。
+   必须是「窄屏 + 竖屏 + 触摸设备」才生效：
+   电脑上把窗口拖窄（鼠标 pointer: fine）不会误进全屏。
+   ============================================================ */
+@media screen and (max-width: 768px) and (orientation: portrait) and (pointer: coarse) {
+  .phone-lock-view.is-immersive {
+    /* 内部尺寸改按视口高度缩放：铺满整屏后键盘、时钟都不会被顶出去 */
+    --hunit: max(5.4px, calc(100dvh / 78.2));
+  }
+
+  .phone-lock-view.is-immersive .phone-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* 真机自带灵动岛/刘海，别画两个 */
+  .phone-lock-view.is-immersive .dynamic-island {
+    display: none;
+  }
+
+  .phone-lock-view.is-immersive .immersive-exit {
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
 @media screen and (max-width: 400px) {
   .clock-time {
     letter-spacing: -2px;
@@ -2339,9 +2493,8 @@ onUnmounted(() => {
 
 /* 横屏小高度：压缩手机高度，避免溢出 */
 @media (max-height: 560px) and (orientation: landscape) {
-  .phone-frame {
-    height: min(520px, calc(100vh - 120px));
-    min-height: 470px;
+  .phone-lock-view {
+    --phone-h: max(580px, min(620px, calc(92vw / var(--phone-ratio)), calc(100vh - 110px)));
   }
 
   .info-panel {

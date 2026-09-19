@@ -134,6 +134,52 @@ describe('PhoneLockView', () => {
     wrapper.unmount()
   })
 
+  it('开始猜密码进入沉浸全屏，猜对后仍留在全屏，点图标才退出', async () => {
+    const wrapper = mount(PhoneLockView, { global: { stubs } })
+
+    // 设置密码、交接阶段都还不是全屏
+    expect(wrapper.classes()).not.toContain('is-immersive')
+    expect(wrapper.find('.immersive-exit').exists()).toBe(false)
+    await enterPasscode(wrapper, '1234')
+    await lockPhone(wrapper)
+    expect(wrapper.classes()).not.toContain('is-immersive')
+
+    // 开始猜密码 -> 全屏，退出图标出现
+    await startGuessing(wrapper)
+    expect(wrapper.classes()).toContain('is-immersive')
+    expect(wrapper.find('.immersive-exit').exists()).toBe(true)
+
+    // 猜对进桌面：不自动退出，还要能手动点掉
+    await type(wrapper, '1234')
+    expect(wrapper.find('.home-screen').exists()).toBe(true)
+    expect(wrapper.classes()).toContain('is-immersive')
+    expect(wrapper.find('.immersive-exit').exists()).toBe(true)
+
+    await wrapper.find('.immersive-exit').trigger('click')
+    expect(wrapper.classes()).not.toContain('is-immersive')
+    expect(wrapper.find('.home-screen').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('猜的过程中点退出全屏：已输入的位数不丢，也不会自己弹回去', async () => {
+    const wrapper = mount(PhoneLockView, { global: { stubs } })
+    await enterPasscode(wrapper, '1234')
+    await lockPhone(wrapper)
+    await startGuessing(wrapper)
+    await type(wrapper, '12')
+    expect(wrapper.findAll('.dot.is-filled')).toHaveLength(2)
+
+    await wrapper.find('.immersive-exit').trigger('click')
+    expect(wrapper.classes()).not.toContain('is-immersive')
+    expect(wrapper.find('.lock-screen').exists()).toBe(true)
+    expect(wrapper.findAll('.dot.is-filled')).toHaveLength(2)
+
+    await type(wrapper, '3')
+    expect(wrapper.classes()).not.toContain('is-immersive')
+    expect(wrapper.findAll('.dot.is-filled')).toHaveLength(3)
+    wrapper.unmount()
+  })
+
   it('密码错误时只提示剩余机会，不给任何命中线索', async () => {
     const wrapper = mount(PhoneLockView, { global: { stubs } })
     await enterPasscode(wrapper, '1234')
