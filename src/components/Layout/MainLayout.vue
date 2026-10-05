@@ -84,6 +84,10 @@
             <el-icon><Picture /></el-icon>
             <template #title>图片转点阵</template>
           </el-menu-item>
+          <el-menu-item index="/mortgage">
+            <el-icon><Coin /></el-icon>
+            <template #title>房贷助手</template>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       <!-- 遮罩层 -->
@@ -177,6 +181,10 @@
             <el-icon><Picture /></el-icon>
             <template #title>图片转点阵</template>
           </el-menu-item>
+          <el-menu-item index="/mortgage">
+            <el-icon><Coin /></el-icon>
+            <template #title>房贷助手</template>
+          </el-menu-item>
         </el-menu>
       </el-aside>
 
@@ -257,6 +265,7 @@ const currentTitle = computed(() => {
     '/totp': 'TOTP 验证码',
     '/stream-merge': 'LLM 流式整理',
     '/bitmap': '图片转点阵',
+    '/mortgage': '房贷助手',
     '/gobang': '五子棋',
     '/game24': '24 点',
     '/showhand': '梭哈',

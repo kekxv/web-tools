@@ -100,6 +100,12 @@ const routes: RouteRecordRaw[] = [
         name: 'Bitmap',
         component: () => import('../views/BitmapView.vue'),
         meta: { title: '图片转点阵' }
+      },
+      {
+        path: 'mortgage',
+        name: 'Mortgage',
+        component: () => import('../views/MortgageView.vue'),
+        meta: { title: '房贷助手' }
       }
     ]
   }

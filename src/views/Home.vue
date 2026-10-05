@@ -112,6 +112,12 @@ const tools = [
     title: '图片转点阵',
     description: '将图片转换为 OLED / LED 点阵数据，支持多种取模和导出格式',
     icon: 'Picture'
+  },
+  {
+    path: '/mortgage',
+    title: '房贷助手',
+    description: '计算月供、剩余利息与提前还款节省金额',
+    icon: 'Coin'
   }
 ]
 </script>
