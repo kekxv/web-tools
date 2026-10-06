@@ -64,10 +64,36 @@
         </div>
         <div class="form-actions">
           <el-button type="primary" size="large" @click="calculate" @keyup.enter="calculate" :loading="calculating">开始计算</el-button>
+          <el-button size="large" @click="openShareDialog">分享</el-button>
           <el-button size="large" @click="reset">重置</el-button>
         </div>
         <p class="form-hint">计算结果仅供参考，实际还款金额以贷款银行账单为准。</p>
       </el-card>
+
+      <el-dialog v-model="shareDialogVisible" title="分享房贷计算" width="min(560px, calc(100vw - 32px))" destroy-on-close>
+        <template v-if="shareDialogMode === 'create'">
+          <p class="share-description">设置一个验证码，发送生成的链接和验证码给对方。贷款参数只会保存在链接的加密内容中。</p>
+          <el-input v-model="shareCode" type="password" show-password maxlength="64" placeholder="请输入验证码" @keyup.enter="generateShare" />
+          <el-alert v-if="shareError" class="share-error" type="error" :closable="false" :title="shareError" />
+          <el-button class="share-action" type="primary" @click="generateShare">生成分享链接</el-button>
+          <template v-if="shareUrl">
+            <el-input v-model="shareUrl" type="textarea" :rows="3" readonly class="share-url" />
+            <div class="share-result-actions">
+              <span>请将链接和验证码一起发送给对方</span>
+              <el-button size="small" @click="copyShareUrl">复制链接</el-button>
+            </div>
+          </template>
+        </template>
+        <template v-else>
+          <p class="share-description">这是一个加密的房贷计算分享。输入发送方提供的验证码后即可查看。</p>
+          <el-input v-model="shareCode" type="password" show-password maxlength="64" placeholder="请输入查看验证码" @keyup.enter="openEncryptedShare" />
+          <el-alert v-if="shareError" class="share-error" type="error" :closable="false" :title="shareError" />
+          <template v-if="shareToken">
+            <el-input v-model="shareToken" type="textarea" :rows="3" readonly class="share-url" />
+          </template>
+          <el-button class="share-action" type="primary" @click="openEncryptedShare">输入验证码并查看</el-button>
+        </template>
+      </el-dialog>
 
       <template v-if="result">
         <div class="summary-grid">
@@ -218,9 +244,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { calculateEndDate, calculateMonthsBetween, calculatePrepaymentPlans, calculateScheduleByMethod, compareRepaymentMethods, inferAnnualRate, inferAnnualRateFromFirstPayment, formatRemainingTerm, type MortgageSchedule, type PrepaymentPlan, type RepaymentMethod } from '../utils/mortgage'
+import { buildMortgageShareUrl, decodeMortgageShare, encodeMortgageShare, type MortgageShareData } from '../utils/mortgage-share'
 
 const mode = ref<'payment' | 'rate'>('payment')
 const principalWan = ref(79.47)
@@ -235,6 +262,12 @@ const showPrepayment = ref(false)
 const method = ref<RepaymentMethod>('equal-payment')
 const result = ref<{ principal: number; term: number; payment: number; lastPayment: number; monthlyDecrease: number; totalInterest: number; totalPayment: number; endDate: string; annualRate: number; method: RepaymentMethod } | null>(null)
 const plans = ref<{ shorter: PrepaymentPlan; lowerPayment: PrepaymentPlan } | null>(null)
+const shareDialogVisible = ref(false)
+const shareDialogMode = ref<'create' | 'decrypt'>('create')
+const shareCode = ref('')
+const shareToken = ref('')
+const shareUrl = ref('')
+const shareError = ref('')
 
 const money = (value: number) => Number.isFinite(value) ? value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'
 /** Amounts of 10,000 元 and above are shown in 万元 so long figures stay readable. */
@@ -343,6 +376,93 @@ const calculate = () => {
   plans.value = calculatePrepaymentPlans(principal, annualRate, term, Number(prepaymentWan.value) * 10000, method.value, Number(prepayDelayMonths.value) || 0)
   calculating.value = false
 }
+
+const shareData = (): MortgageShareData => ({
+  mode: mode.value,
+  method: method.value,
+  principalWan: Number(principalWan.value),
+  months: Number(months.value),
+  annualRatePercent: Number(annualRatePercent.value),
+  paymentInput: Number(paymentInput.value),
+  startDate: startDate.value,
+  prepaymentWan: Number(prepaymentWan.value),
+  prepayDelayMonths: Number(prepayDelayMonths.value),
+})
+
+const openShareDialog = () => {
+  shareDialogMode.value = 'create'
+  shareCode.value = ''
+  shareToken.value = ''
+  shareUrl.value = ''
+  shareError.value = ''
+  shareDialogVisible.value = true
+}
+
+const generateShare = () => {
+  shareError.value = ''
+  try {
+    shareToken.value = encodeMortgageShare(shareData(), shareCode.value)
+    shareUrl.value = buildMortgageShareUrl(shareToken.value)
+  } catch (error) {
+    shareError.value = error instanceof Error ? error.message : '生成分享链接失败'
+  }
+}
+
+const copyShareUrl = async () => {
+  if (!shareUrl.value) return
+  try {
+    await navigator.clipboard.writeText(shareUrl.value)
+    ElMessage.success('分享链接已复制')
+  } catch {
+    ElMessage.warning('复制失败，请手动复制链接')
+  }
+}
+
+const applyShareData = (data: MortgageShareData) => {
+  mode.value = data.mode
+  method.value = data.method
+  principalWan.value = data.principalWan
+  months.value = data.months
+  annualRatePercent.value = data.annualRatePercent
+  paymentInput.value = data.paymentInput
+  startDate.value = data.startDate
+  prepaymentWan.value = data.prepaymentWan
+  prepayDelayMonths.value = data.prepayDelayMonths
+}
+
+const openEncryptedShare = () => {
+  shareError.value = ''
+  try {
+    applyShareData(decodeMortgageShare(shareToken.value, shareCode.value))
+    shareDialogVisible.value = false
+    calculate()
+    ElMessage.success('分享内容已解密并完成计算')
+  } catch (error) {
+    shareError.value = error instanceof Error ? error.message : '解密失败，请检查验证码'
+  }
+}
+
+const promptEncryptedShare = (value: unknown) => {
+  if (typeof value !== 'string' || !value) return
+  shareDialogMode.value = 'decrypt'
+  shareToken.value = value
+  shareCode.value = ''
+  shareUrl.value = ''
+  shareError.value = ''
+  shareDialogVisible.value = true
+}
+
+const shareFromCurrentHash = () => {
+  const queryStart = window.location.hash.indexOf('?')
+  if (queryStart < 0) return
+  promptEncryptedShare(new URLSearchParams(window.location.hash.slice(queryStart + 1)).get('share'))
+}
+
+onMounted(() => {
+  shareFromCurrentHash()
+  window.addEventListener('hashchange', shareFromCurrentHash)
+})
+onUnmounted(() => window.removeEventListener('hashchange', shareFromCurrentHash))
 
 const reset = () => { result.value = null; plans.value = null; showPrepayment.value = false; prepaymentWan.value = 15; prepayDelayMonths.value = 0 }
 
@@ -506,6 +626,14 @@ watch(startDate, (value) => {
 .timing-period { flex: 0 0 120px; }
 .timing-fields :deep(.el-date-editor) { flex: 1 1 auto; width: 100%; min-width: 0; }
 .input-tip { display: block; margin-top: 7px; color: #9fb0b5; font-size: 12px; }
+
+/* ---------- Encrypted sharing ---------- */
+.share-description { margin: 0 0 14px; color: #66808a; font-size: 13px; line-height: 1.7; }
+.share-action { width: 100%; margin-top: 16px; }
+.share-url { margin-top: 14px; }
+.share-url :deep(.el-textarea__inner) { font-size: 12px; line-height: 1.5; word-break: break-all; }
+.share-result-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; color: #8298a0; font-size: 12px; }
+.share-error { margin-top: 12px; }
 
 .plan-list { display: grid; gap: 14px; }
 .plan-row {
