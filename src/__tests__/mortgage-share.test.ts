@@ -9,14 +9,13 @@ const data: MortgageShareData = {
   annualRatePercent: 4.2,
   paymentInput: 5380.74,
   startDate: '2026-10-06',
-  prepaymentWan: 15,
-  prepayDelayMonths: 12,
 }
 
 describe('mortgage sharing', () => {
   it('round-trips form data with a verification code', () => {
     const token = encodeMortgageShare(data, '123456')
-    expect(token).toMatch(/^m1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/)
+    expect(token).toMatch(/^m2\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/)
+    expect(token.length).toBeLessThan(240)
     expect(decodeMortgageShare(token, '123456')).toEqual(data)
   })
 
@@ -34,8 +33,7 @@ describe('mortgage sharing', () => {
 
   it('rejects decrypted payloads with invalid fields', () => {
     const invalid = { ...data, method: 'invalid' as MortgageShareData['method'] }
-    const token = encodeMortgageShare(invalid, '123456')
-    expect(() => decodeMortgageShare(token, '123456')).toThrow('分享内容格式无效')
+    expect(() => encodeMortgageShare(invalid, '123456')).toThrow('分享内容格式无效')
   })
 
   it('rejects empty verification codes', () => {

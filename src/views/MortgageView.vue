@@ -385,8 +385,6 @@ const shareData = (): MortgageShareData => ({
   annualRatePercent: Number(annualRatePercent.value),
   paymentInput: Number(paymentInput.value),
   startDate: startDate.value,
-  prepaymentWan: Number(prepaymentWan.value),
-  prepayDelayMonths: Number(prepayDelayMonths.value),
 })
 
 const openShareDialog = () => {
@@ -426,8 +424,8 @@ const applyShareData = (data: MortgageShareData) => {
   annualRatePercent.value = data.annualRatePercent
   paymentInput.value = data.paymentInput
   startDate.value = data.startDate
-  prepaymentWan.value = data.prepaymentWan
-  prepayDelayMonths.value = data.prepayDelayMonths
+  prepaymentWan.value = 0
+  prepayDelayMonths.value = 0
 }
 
 const openEncryptedShare = () => {
