@@ -70,6 +70,17 @@
         <p class="form-hint">计算结果仅供参考，实际还款金额以贷款银行账单为准。</p>
       </el-card>
 
+      <el-card v-if="!result" class="panel feature-guide" shadow="never">
+        <div class="section-heading"><div><span class="section-kicker">GETTING STARTED</span><h2>房贷助手能帮你算什么？</h2></div></div>
+        <p class="guide-intro">填写当前剩余本金和期数，选择还款方式，点击“开始计算”查看贷款概览，再比较适合你的还款方案。</p>
+        <div class="guide-grid">
+          <div class="guide-item"><span class="guide-number">01</span><h3>月供与利息</h3><p>输入年利率，估算月供、剩余利息、总还款额和到期日，支持等额本息与等额本金。</p></div>
+          <div class="guide-item"><span class="guide-number">02</span><h3>由月供反推利率</h3><p>知道月供但不清楚利率？切换到反推模式；等额本金请填写当前首月月供。</p></div>
+          <div class="guide-item"><span class="guide-number">03</span><h3>自有资金提前还款</h3><p>设置提前还款金额与时点，左右对比“缩短年限”和“降低月供”的月供、期限及节省利息。</p></div>
+          <div class="guide-item"><span class="guide-number">04</span><h3>借款提前还款</h3><p>填写借款金额、期限和月利率或月供，查看房贷与借款合计还款、累计金额及扣除借款成本后的净节息。</p></div>
+        </div>
+      </el-card>
+
       <el-dialog v-model="shareDialogVisible" title="分享房贷计算" width="min(560px, calc(100vw - 32px))" destroy-on-close>
         <template v-if="shareDialogMode === 'create'">
           <p class="share-description">设置一个验证码，发送生成的链接和验证码给对方。贷款参数只会保存在链接的加密内容中。</p>
@@ -96,6 +107,8 @@
       </el-dialog>
 
       <template v-if="result">
+        <el-card class="panel schedule-card" shadow="never">
+          <div class="section-heading"><div><span class="section-kicker">DETAILS</span><h2>贷款概览</h2></div></div>
         <div class="summary-grid">
           <div class="summary-card highlight">
             <div class="summary-head">
@@ -124,6 +137,26 @@
           </div>
         </div>
 
+          <div class="breakdown">
+            <div class="breakdown-bar">
+              <span class="bar-principal" :style="{ width: `${principalShare}%` }"></span>
+              <span class="bar-interest"></span>
+            </div>
+            <div class="breakdown-legend">
+              <span><i class="dot-principal"></i>本金 {{ amount(result.principal) }}（{{ principalShare.toFixed(0) }}%）</span>
+              <span><i class="dot-interest"></i>利息 {{ amount(result.totalInterest) }}（{{ (100 - principalShare).toFixed(0) }}%）</span>
+            </div>
+          </div>
+          <div class="detail-grid">
+            <div><span>剩余本金</span><b :title="exact(result.principal)">{{ amount(result.principal) }}</b></div>
+            <div><span>年利率</span><b>{{ formatRate(result.annualRate) }}</b></div>
+            <div><span>还款总额</span><b :title="exact(result.totalPayment)">{{ amount(result.totalPayment) }}</b></div>
+            <div><span>还款方式</span><b>{{ methodName(result.method) }}</b></div>
+            <div v-if="result.method === 'equal-principal'"><span>月供区间</span><b class="range-value">{{ amount(result.payment) }} → {{ amount(result.lastPayment) }}</b></div>
+          </div>
+        </el-card>
+
+
         <el-card class="panel result-card" shadow="never">
           <div class="section-heading">
             <div><span class="section-kicker">REPAYMENT PLAN</span><h2>提前还款试算</h2></div>
@@ -134,6 +167,12 @@
             <p>输入提前还款本金，比较“缩短年限”和“降低月供”哪种方式更适合你。</p>
           </div>
           <div v-else class="prepay-content">
+            <div class="funding-switch" role="group" aria-label="提前还款资金来源">
+              <button type="button" :class="{ active: fundingMode === 'own' }" :aria-pressed="fundingMode === 'own'" @click="fundingMode = 'own'">自有资金</button>
+              <button type="button" :class="{ active: fundingMode === 'borrow' }" :aria-pressed="fundingMode === 'borrow'" @click="fundingMode = 'borrow'">借款资金</button>
+            </div>
+            <p class="funding-hint">{{ fundingMode === 'own' ? '用现有资金提前还款，对比节息与月供变化。' : '立即借款偿还部分房贷，对比借款成本与房贷节息。' }}</p>
+            <template v-if="fundingMode === 'own'">
             <div class="prepay-inputs">
               <div class="prepay-input">
                 <label>提前偿还本金</label>
@@ -176,29 +215,58 @@
                 </div>
               </div>
             </div>
+            </template>
+            <div v-else class="borrow-prepay">
+              <div class="borrow-inputs">
+                <div class="prepay-input">
+                  <label>替代借款金额</label>
+                  <el-input v-model.number="replacementBorrowWan" type="number" min="0" :max="principalWan" placeholder="例如 15"><template #append>万元</template></el-input>
+                </div>
+                <div class="prepay-input">
+                  <label>借款期限</label>
+                  <el-input v-model.number="replacementMonths" type="number" min="1" placeholder="例如 60"><template #append>期</template></el-input>
+                </div>
+                <div class="prepay-input">
+                  <label>借款输入方式</label>
+                  <el-radio-group v-model="replacementInputMode" class="borrow-mode">
+                    <el-radio-button value="rate">月利率</el-radio-button>
+                    <el-radio-button value="payment">月供</el-radio-button>
+                  </el-radio-group>
+                </div>
+                <div class="prepay-input">
+                  <label>{{ replacementInputMode === 'rate' ? '借款月利率' : '借款月供' }}</label>
+                  <el-input v-model.number="replacementInput" type="number" min="0" step="0.01" :placeholder="replacementInputMode === 'rate' ? '例如 0.3' : '例如 2735'"><template #append>{{ replacementInputMode === 'rate' ? '%' : '元' }}</template></el-input>
+                </div>
+                <div class="prepay-input">
+                  <label>提前还款手续费（可选）</label>
+                  <el-input v-model.number="prepaymentFee" type="number" min="0" placeholder="例如 1000"><template #append>元</template></el-input>
+                </div>
+              </div>
+              <el-button class="borrow-calculate" type="primary" @click="calculateBorrowPrepayment">计算借款提前还款</el-button>
+              <div v-if="borrowPlans" class="borrow-plan-list">
+                <div class="borrow-summary">
+                  <div class="borrow-summary-card emphasis"><span>推荐方案</span><strong>{{ recommendedBorrowKey === 'shorter' ? '缩短年限' : '降低月供' }}</strong><small>按净节省利息排序</small></div>
+                  <div class="borrow-summary-card"><span>预计净节省</span><strong :class="borrowPlans[recommendedBorrowKey].netInterestSaving >= 0 ? 'saving-positive' : 'saving-negative'">{{ amount(Math.abs(borrowPlans[recommendedBorrowKey].netInterestSaving)) }}</strong><small>{{ borrowPlans[recommendedBorrowKey].netInterestSaving >= 0 ? '利息' : '预计增加成本' }}</small></div>
+                  <div class="borrow-summary-card"><span>首月合计还款</span><strong>{{ amount(borrowPlans[recommendedBorrowKey].combinedPaymentDuringReplacement) }}</strong><small>房贷 + 借款</small></div>
+                </div>
+                <div v-for="(plan, key) in borrowPlans" :key="key" class="borrow-plan" :class="{ recommended: key === recommendedBorrowKey }">
+                  <div class="borrow-plan-title"><b>{{ key === 'shorter' ? '缩短年限' : '降低月供' }}</b><em v-if="key === recommendedBorrowKey">推荐</em></div>
+                  <div class="borrow-cashflow"><span>首月还款金额（房贷月供 + 借款还款）</span><strong>{{ amount(plan.mortgage.payment) }} + {{ amount(plan.replacement.payment) }} = {{ amount(plan.combinedPaymentDuringReplacement) }}/月</strong></div>
+                  <div class="cashflow-chart" aria-label="月度还款构成"><i class="cashflow-mortgage" :style="{ width: `${cashflowMortgageShare(plan)}%` }"></i><i class="cashflow-loan" :style="{ width: `${100 - cashflowMortgageShare(plan)}%` }"></i></div>
+                  <div class="cashflow-legend"><span><i class="dot-mortgage"></i>房贷 {{ amount(plan.mortgage.payment) }}</span><span><i class="dot-loan"></i>借款 {{ amount(plan.replacement.payment) }}</span></div>
+                  <div class="borrow-facts">
+                    <span>借款期间累计还款 <b>{{ amount(plan.replacementPeriodTotalPayment) }}</b></span>
+                    <span>完整方案总还款 <b>{{ amount(plan.totalStrategyPayment) }}</b></span>
+                    <span>借款利息 <b>{{ amount(plan.replacementInterest) }}</b></span>
+                    <span :class="plan.netInterestSaving >= 0 ? 'saving-positive' : 'saving-negative'">{{ plan.netInterestSaving >= 0 ? '净节省利息' : '预计增加成本' }} <b>{{ amount(Math.abs(plan.netInterestSaving)) }}</b></span>
+                  </div>
+                </div>
+              </div>
+              <p class="borrow-note">累计金额按未四舍五入的还款计划计算；未计税费、违约金、投资收益和银行实际重定价。</p>
+            </div>
           </div>
         </el-card>
 
-        <el-card class="panel schedule-card" shadow="never">
-          <div class="section-heading"><div><span class="section-kicker">DETAILS</span><h2>贷款概览</h2></div></div>
-          <div class="breakdown">
-            <div class="breakdown-bar">
-              <span class="bar-principal" :style="{ width: `${principalShare}%` }"></span>
-              <span class="bar-interest"></span>
-            </div>
-            <div class="breakdown-legend">
-              <span><i class="dot-principal"></i>本金 {{ amount(result.principal) }}（{{ principalShare.toFixed(0) }}%）</span>
-              <span><i class="dot-interest"></i>利息 {{ amount(result.totalInterest) }}（{{ (100 - principalShare).toFixed(0) }}%）</span>
-            </div>
-          </div>
-          <div class="detail-grid">
-            <div><span>剩余本金</span><b :title="exact(result.principal)">{{ amount(result.principal) }}</b></div>
-            <div><span>年利率</span><b>{{ formatRate(result.annualRate) }}</b></div>
-            <div><span>还款总额</span><b :title="exact(result.totalPayment)">{{ amount(result.totalPayment) }}</b></div>
-            <div><span>还款方式</span><b>{{ methodName(result.method) }}</b></div>
-            <div v-if="result.method === 'equal-principal'"><span>月供区间</span><b class="range-value">{{ amount(result.payment) }} → {{ amount(result.lastPayment) }}</b></div>
-          </div>
-        </el-card>
 
         <el-card v-if="comparison" class="panel compare-card" shadow="never">
           <div class="section-heading">
@@ -246,7 +314,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { calculateEndDate, calculateMonthsBetween, calculatePrepaymentPlans, calculateScheduleByMethod, compareRepaymentMethods, inferAnnualRate, inferAnnualRateFromFirstPayment, formatRemainingTerm, type MortgageSchedule, type PrepaymentPlan, type RepaymentMethod } from '../utils/mortgage'
+import { calculateEndDate, calculateMonthsBetween, calculatePrepaymentPlans, calculateScheduleByMethod, compareRepaymentMethods, inferAnnualRate, inferAnnualRateFromFirstPayment, formatRemainingTerm, calculateBorrowPrepaymentPlans, type MortgageSchedule, type PrepaymentPlan, type BorrowPrepaymentPlan, type RepaymentMethod } from '../utils/mortgage'
 import { buildMortgageShareUrl, decodeMortgageShare, encodeMortgageShare, type MortgageShareData } from '../utils/mortgage-share'
 
 const mode = ref<'payment' | 'rate'>('payment')
@@ -257,8 +325,15 @@ const paymentInput = ref(5380.74)
 const startDate = ref(new Date().toISOString().slice(0, 10))
 const prepaymentWan = ref(15)
 const prepayDelayMonths = ref(0)
+const replacementBorrowWan = ref(15)
+const replacementMonths = ref(60)
+const replacementInputMode = ref<'rate' | 'payment'>('rate')
+const replacementInput = ref(0.3)
+const prepaymentFee = ref(0)
+const borrowPlans = ref<{ shorter: BorrowPrepaymentPlan; lowerPayment: BorrowPrepaymentPlan } | null>(null)
 const calculating = ref(false)
 const showPrepayment = ref(false)
+const fundingMode = ref<'own' | 'borrow'>('own')
 const method = ref<RepaymentMethod>('equal-payment')
 const result = ref<{ principal: number; term: number; payment: number; lastPayment: number; monthlyDecrease: number; totalInterest: number; totalPayment: number; endDate: string; annualRate: number; method: RepaymentMethod } | null>(null)
 const plans = ref<{ shorter: PrepaymentPlan; lowerPayment: PrepaymentPlan } | null>(null)
@@ -314,6 +389,16 @@ const firstPaymentGap = computed(() => {
   if (!comparison.value) return 0
   return Math.max(0, comparison.value.equalPrincipal.payment - comparison.value.equalPayment.payment)
 })
+
+const recommendedBorrowKey = computed<'shorter' | 'lowerPayment'>(() => {
+  if (!borrowPlans.value) return 'shorter'
+  return borrowPlans.value.lowerPayment.netInterestSaving > borrowPlans.value.shorter.netInterestSaving ? 'lowerPayment' : 'shorter'
+})
+
+const cashflowMortgageShare = (plan: BorrowPrepaymentPlan) => {
+  const total = plan.mortgage.payment + plan.replacement.payment
+  return total > 0 ? Math.min(100, Math.max(0, plan.mortgage.payment / total * 100)) : 0
+}
 
 const selectMethod = (value: RepaymentMethod) => { method.value = value }
 
@@ -374,7 +459,23 @@ const calculate = () => {
     method: method.value,
   }
   plans.value = calculatePrepaymentPlans(principal, annualRate, term, Number(prepaymentWan.value) * 10000, method.value, Number(prepayDelayMonths.value) || 0)
+  borrowPlans.value = null
   calculating.value = false
+}
+
+const calculateBorrowPrepayment = () => {
+  const current = result.value
+  if (!current) return
+  const borrowed = Number(replacementBorrowWan.value) * 10000
+  const term = Number(replacementMonths.value)
+  const input = Number(replacementInput.value)
+  if (!Number.isFinite(borrowed) || borrowed <= 0 || borrowed > current.principal) { ElMessage.warning('替代借款金额必须大于 0 且不超过剩余本金'); return }
+  if (!Number.isInteger(term) || term <= 0) { ElMessage.warning('请输入有效的借款期限'); return }
+  if (!Number.isFinite(input) || input < 0) { ElMessage.warning('请输入有效的借款月利率或月供'); return }
+  const options = replacementInputMode.value === 'rate'
+    ? { rate: input / 100, payment: undefined }
+    : { rate: undefined, payment: input }
+  borrowPlans.value = calculateBorrowPrepaymentPlans(current.principal, current.annualRate, current.term, borrowed, term, options.rate, options.payment, current.method, Math.max(0, Number(prepaymentFee.value) || 0))
 }
 
 const shareData = (): MortgageShareData => ({
@@ -462,7 +563,7 @@ onMounted(() => {
 })
 onUnmounted(() => window.removeEventListener('hashchange', shareFromCurrentHash))
 
-const reset = () => { result.value = null; plans.value = null; showPrepayment.value = false; prepaymentWan.value = 15; prepayDelayMonths.value = 0 }
+const reset = () => { result.value = null; plans.value = null; borrowPlans.value = null; showPrepayment.value = false; prepaymentWan.value = 15; replacementBorrowWan.value = 15; prepayDelayMonths.value = 0 }
 
 // Recalculate only the plan when its inputs change, keeping the main result stable.
 const refreshPlans = () => {
@@ -522,6 +623,12 @@ watch(startDate, (value) => {
   margin-bottom: 18px;
 }
 .panel :deep(.el-card__body) { padding: 24px 28px 22px; }
+.guide-intro { margin: -6px 0 22px; color: var(--mq-ink-soft); font-size: 14px; line-height: 1.8; }
+.guide-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.guide-item { position: relative; padding: 18px 20px; border-radius: 14px; background: #f7fbfa; }
+.guide-number { color: #73aaa2; font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+.guide-item h3 { margin: 8px 0; color: var(--mq-ink); font-size: 15px; }
+.guide-item p { margin: 0; color: var(--mq-ink-soft); font-size: 13px; line-height: 1.8; }
 
 /* ---------- Form ---------- */
 .mode-tabs { margin-bottom: 0; }
@@ -601,6 +708,10 @@ watch(startDate, (value) => {
 }
 .summary-card .date-value { font-size: 24px; }
 .summary-card small { position: relative; display: block; color: var(--mq-muted); font-size: 12.5px; }
+.schedule-card .summary-grid { margin-bottom: 24px; }
+.schedule-card .summary-card { border: none; background: #f7fbfb; box-shadow: none; }
+.schedule-card .summary-card.highlight { background: linear-gradient(150deg, #f0fbf8, #e1f3ef); }
+.schedule-card .summary-card:hover { transform: none; box-shadow: none; }
 
 /* ---------- Section heading ---------- */
 .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
@@ -617,7 +728,13 @@ watch(startDate, (value) => {
 .empty-plan svg { flex: none; width: 34px; height: 34px; padding: 8px; box-sizing: content-box; border-radius: 12px; background: #e4f4f1; color: var(--mq-primary); }
 .empty-plan p { margin: 0; font-size: 14px; line-height: 1.6; }
 
-.prepay-inputs { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 20px; }
+.funding-switch { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: #eef5f4; }
+.funding-switch button { padding: 9px 22px; border: none; border-radius: 9px; background: transparent; color: #66808a; font: inherit; font-size: 14px; cursor: pointer; }
+.funding-switch button.active { background: #fff; color: var(--mq-primary-dark); font-weight: 600; box-shadow: 0 2px 6px rgba(23, 58, 72, .08); }
+.funding-switch button:focus-visible { outline: 2px solid var(--mq-primary); outline-offset: 2px; }
+.funding-hint { margin: 12px 0 20px; color: #8298a0; font-size: 13px; line-height: 1.6; }
+.prepay-inputs { display: grid; grid-template-columns: 1fr 1.25fr; gap: 18px; margin-bottom: 20px; padding: 18px; background: #f7fbfa; border-radius: 14px; }
+.prepay-inputs .prepay-input { max-width: none; min-width: 0; }
 .prepay-input { flex: 1 1 240px; max-width: 340px; }
 .timing-input { flex: 1 1 340px; max-width: 420px; }
 .timing-fields { display: flex; gap: 10px; }
@@ -633,10 +750,10 @@ watch(startDate, (value) => {
 .share-result-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; color: #8298a0; font-size: 12px; }
 .share-error { margin-top: 12px; }
 
-.plan-list { display: grid; gap: 14px; }
+.plan-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .plan-row {
-  display: grid; grid-template-columns: minmax(190px, 1.05fr) minmax(180px, 1.2fr) auto;
-  align-items: center; gap: 24px; padding: 18px 22px;
+  display: flex; flex-direction: column;
+  align-items: stretch; gap: 18px; padding: 20px 22px; min-width: 0;
   border: 1px solid #e4eef0; border-radius: 16px; background: #fff;
   transition: border-color .2s, box-shadow .2s, transform .2s;
 }
@@ -651,11 +768,48 @@ watch(startDate, (value) => {
 .plan-name { font-size: 16px; font-weight: 600; color: #26404f; }
 .plan-tag { padding: 2px 9px; border-radius: 999px; background: #d9f1eb; color: #23786e; font-size: 11px; font-weight: 600; font-style: normal; }
 .plan-meta { margin-top: 9px; color: var(--mq-muted); font-size: 12.5px; line-height: 1.5; }
-.plan-figures strong { display: block; color: #26404f; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.plan-figures strong { display: block; color: #1f6b63; font-size: 25px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .plan-figures span { display: block; margin-top: 5px; color: #7f939c; font-size: 13px; font-variant-numeric: tabular-nums; }
-.saving { text-align: right; white-space: nowrap; }
+.saving { margin-top: auto; padding-top: 15px; border-top: 1px dashed #dbe8e6; text-align: left; white-space: nowrap; }
 .saving span { display: block; color: var(--mq-muted); font-size: 12px; }
 .saving strong { display: block; margin-top: 5px; color: #26857a; font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.borrow-prepay { margin-top: 0; }
+.borrow-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.borrow-heading h3 { margin: 5px 0 0; color: #1d3748; font-size: 18px; }
+.borrow-inputs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-bottom: 16px; padding: 18px; background: #f7fbfa; border-radius: 14px; }
+.borrow-inputs .prepay-input { min-width: 0; max-width: none; }
+.borrow-calculate { --el-button-bg-color: var(--mq-primary); --el-button-border-color: var(--mq-primary); --el-button-hover-bg-color: var(--mq-primary-dark); --el-button-hover-border-color: var(--mq-primary-dark); border-radius: 10px; }
+.borrow-mode { display: flex; width: 100%; }
+.borrow-mode :deep(.el-radio-button) { flex: 1; }
+.borrow-mode :deep(.el-radio-button__inner) { width: 100%; padding: 11px 8px; }
+.borrow-mode { --el-color-primary: var(--mq-primary); }
+.borrow-plan-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+.borrow-summary { grid-column: 1 / -1; display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.borrow-summary-card { padding: 14px 16px; border: 1px solid #e2eeee; border-radius: 13px; background: #f8fcfb; }
+.borrow-summary-card.emphasis { background: linear-gradient(135deg, #e8f7f3, #f4fbf9); border-color: #b8ddd6; }
+.borrow-summary-card span, .borrow-summary-card small { display: block; color: #8298a0; font-size: 12px; }
+.borrow-summary-card strong { display: block; margin: 7px 0 3px; color: #1f6b63; font-size: 20px; font-variant-numeric: tabular-nums; }
+.borrow-summary-card.emphasis strong { color: #216f67; }
+.borrow-plan { min-width: 0; padding: 20px 22px; border: 1px solid #e4eef0; border-radius: 16px; background: #fff; }
+.borrow-plan.recommended { border-color: #7cc0b6; background: linear-gradient(140deg, #f5fcf9, #e9f7f3); }
+.borrow-plan-title { display: flex; align-items: center; gap: 9px; color: #26404f; }
+.borrow-plan-title em { padding: 2px 8px; border-radius: 999px; background: #2f8b81; color: #fff; font-size: 11px; font-style: normal; }
+.borrow-cashflow { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 16px; color: #6d858d; font-size: 13px; }
+.borrow-cashflow strong { color: #1f6b63; font-size: 17px; font-variant-numeric: tabular-nums; }
+.cashflow-chart { display: flex; height: 8px; margin-top: 13px; overflow: hidden; border-radius: 999px; background: #edf3f3; }
+.cashflow-chart i { display: block; height: 100%; transition: width .3s ease; }
+.cashflow-mortgage { background: #3b9b90; }
+.cashflow-loan { background: #e6ad60; }
+.cashflow-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 7px; color: #8298a0; font-size: 11.5px; }
+.cashflow-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.cashflow-legend i { width: 7px; height: 7px; border-radius: 2px; }
+.cashflow-legend .dot-mortgage { background: #3b9b90; }
+.cashflow-legend .dot-loan { background: #e6ad60; }
+.borrow-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 14px; padding-top: 15px; border-top: 1px dashed #dbe8e6; color: #8298a0; font-size: 12px; }
+.borrow-facts b { display: block; margin-top: 5px; color: #2b4553; font-size: 14px; font-variant-numeric: tabular-nums; }
+.borrow-facts .saving-positive b { color: #1f7a70; }
+.borrow-facts .saving-negative b { color: #c26b43; }
+.borrow-note { margin: 13px 0 0; color: #9fb0b5; font-size: 12px; line-height: 1.6; }
 
 /* ---------- Overview ---------- */
 .breakdown { margin-bottom: 20px; }
@@ -702,8 +856,8 @@ watch(startDate, (value) => {
 /* ---------- Responsive ---------- */
 @media (max-width: 900px) {
   .form-grid { grid-template-columns: repeat(2, 1fr); }
-  .plan-row { grid-template-columns: 1fr auto; gap: 14px 18px; }
-  .plan-identity { grid-column: 1 / -1; }
+  .borrow-inputs { grid-template-columns: repeat(2, 1fr); }
+  .borrow-facts { grid-template-columns: repeat(2, 1fr); }
   .detail-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 768px) {
@@ -718,20 +872,22 @@ watch(startDate, (value) => {
   .method-row { gap: 10px; padding: 14px 0 16px; margin-bottom: 18px; }
   .method-left { gap: 10px; }
   .method-hint { width: 100%; }
-  .form-grid, .summary-grid, .compare-grid { grid-template-columns: 1fr; gap: 14px; }
+  .form-grid, .summary-grid, .compare-grid, .borrow-inputs, .prepay-inputs, .plan-list, .borrow-plan-list, .guide-grid { grid-template-columns: 1fr; gap: 14px; }
+  .borrow-summary { grid-template-columns: 1fr; }
   .form-actions { margin-top: 20px; }
   .form-actions .el-button--primary { min-width: 0; flex: 1; }
   .summary-card { padding: 16px 18px; }
   .summary-value { font-size: 25px; }
   .section-heading { align-items: flex-start; }
   .section-heading .el-button { padding: 8px 12px; }
-  .plan-row { grid-template-columns: 1fr; gap: 12px; padding: 16px; }
+  .plan-row, .borrow-plan { gap: 12px; padding: 17px 18px; }
   .saving { text-align: left; padding-top: 12px; border-top: 1px dashed #d7e6e4; }
   .breakdown-legend { gap: 6px 16px; }
   .detail-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .detail-grid div { padding: 13px 14px; }
   .method-card { padding: 17px 18px; }
   .method-payment { font-size: 23px; }
+  .borrow-heading, .borrow-cashflow { align-items: flex-start; flex-direction: column; gap: 7px; }
   .compare-result { padding: 14px 16px; }
   .compare-caption { display: none; }
 }

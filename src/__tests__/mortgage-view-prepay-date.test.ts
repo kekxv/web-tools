@@ -37,6 +37,27 @@ const prepayPeriodInput = (wrapper) => wrapper.find('input[placeholder="0"]')
 const prepayDateInput = (wrapper) => wrapper.findAll('.stub-date')[1]
 
 describe('MortgageView prepayment timing', () => {
+  it('shows the feature guide before calculating and hides it after results appear', async () => {
+    const wrapper = mount(MortgageView, { global: { stubs } })
+    expect(wrapper.find('.feature-guide').exists()).toBe(true)
+    expect(wrapper.find('.feature-guide').text()).toContain('借款提前还款')
+    await wrapper.findAll('button').find((button) => button.text().includes('开始计算')).trigger('click')
+    expect(wrapper.find('.feature-guide').exists()).toBe(false)
+    await wrapper.findAll('button').find((button) => button.text() === '重置').trigger('click')
+    expect(wrapper.find('.feature-guide').exists()).toBe(true)
+  })
+  it('shows one funding form at a time and preserves the selected form when switching back', async () => {
+    const wrapper = mount(MortgageView, { global: { stubs } })
+    await openPrepayment(wrapper)
+    expect(wrapper.find('.prepay-inputs').exists()).toBe(true)
+    expect(wrapper.find('.borrow-inputs').exists()).toBe(false)
+    await wrapper.findAll('button').find((button) => button.text() === '借款资金').trigger('click')
+    expect(wrapper.find('.prepay-inputs').exists()).toBe(false)
+    expect(wrapper.find('.borrow-inputs').exists()).toBe(true)
+    await wrapper.findAll('button').find((button) => button.text() === '自有资金').trigger('click')
+    expect(wrapper.find('.prepay-inputs').exists()).toBe(true)
+    expect(wrapper.find('.plan-list').exists()).toBe(true)
+  })
   it('fills the date when the number of periods is typed', async () => {
     const wrapper = mount(MortgageView, { global: { stubs } })
     await openPrepayment(wrapper)

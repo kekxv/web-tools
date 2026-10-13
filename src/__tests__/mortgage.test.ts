@@ -11,6 +11,8 @@ import {
   calculateEndDate,
   calculateMonthsBetween,
   formatRemainingTerm,
+  calculateReplacementLoan,
+  calculateBorrowPrepaymentPlans,
 } from '../utils/mortgage'
 
 describe('mortgage calculations', () => {
@@ -52,6 +54,68 @@ describe('mortgage calculations', () => {
   it('calculates end date by adding months', () => {
     expect(calculateEndDate('2025-01-31', 12)).toBe('2026-01-31')
     expect(calculateEndDate('2024-02-29', 12)).toBe('2025-02-28')
+  })
+})
+
+describe('borrowed prepayment calculations', () => {
+  it('calculates a replacement loan from monthly rate', () => {
+    const loan = calculateReplacementLoan(150000, 60, 0.003)
+    expect(loan.payment).toBeCloseTo(2735.48, 2)
+    expect(loan.totalInterest).toBeCloseTo(14128.95, 0)
+    expect(loan.totalPayment).toBeCloseTo(164128.95, 0)
+  })
+
+  it('infers replacement monthly rate from payment', () => {
+    const byRate = calculateReplacementLoan(150000, 60, 0.003)
+    const byPayment = calculateReplacementLoan(150000, 60, undefined, byRate.payment)
+    expect(byPayment.monthlyRate).toBeCloseTo(0.003, 6)
+    expect(byPayment.payment).toBeCloseTo(byRate.payment, 6)
+  })
+
+  it('combines mortgage and replacement-loan repayments for both plans', () => {
+    const plans = calculateBorrowPrepaymentPlans(800000, 0.042, 240, 150000, 60, 0.003)
+    expect(plans.shorter.replacement.payment).toBeCloseTo(2735.48, 2)
+    expect(plans.shorter.combinedPaymentDuringReplacement).toBeCloseTo(7668.05, 0)
+    expect(plans.shorter.replacementPeriodTotalPayment).toBeGreaterThan(0)
+    expect(plans.shorter.totalStrategyPayment).toBeCloseTo(
+      plans.shorter.mortgage.totalPayment - 150000 + plans.shorter.replacement.totalPayment,
+      6,
+    )
+    expect(plans.shorter.netInterestSaving).toBeCloseTo(
+      calculateSchedule(800000, 0.042, 240).totalInterest - plans.shorter.mortgage.totalInterest - plans.shorter.replacement.totalInterest,
+      6,
+    )
+    expect(plans.lowerPayment.combinedPaymentDuringReplacement).toBeLessThan(plans.shorter.combinedPaymentDuringReplacement)
+  })
+
+  it('stops adding the mortgage payment after an early payoff', () => {
+    const plans = calculateBorrowPrepaymentPlans(120000, 0.042, 12, 110000, 60, 0.003)
+    expect(plans.shorter.mortgage.months).toBeLessThan(60)
+    expect(plans.shorter.replacementPeriodTotalPayment).toBeCloseTo(
+      plans.shorter.mortgage.totalPayment - 110000 + plans.shorter.replacement.totalPayment,
+      0,
+    )
+  })
+
+  it('subtracts early repayment fees from net interest saving', () => {
+    const withoutFee = calculateBorrowPrepaymentPlans(800000, 0.042, 240, 150000, 60, 0.003).shorter
+    const withFee = calculateBorrowPrepaymentPlans(800000, 0.042, 240, 150000, 60, 0.003, undefined, 'equal-payment', 1200).shorter
+    expect(withFee.netInterestSaving).toBeCloseTo(withoutFee.netInterestSaving - 1200, 6)
+    expect(withFee.totalStrategyPayment).toBeCloseTo(withoutFee.totalStrategyPayment + 1200, 6)
+  })
+
+  it('matches total cash savings with net interest savings without counting borrowed principal twice', () => {
+    const plans = calculateBorrowPrepaymentPlans(800000, 0.042, 240, 150000, 60, 0.003, undefined, 'equal-principal', 1200)
+    for (const plan of Object.values(plans)) {
+      expect(plan.originalStrategyPayment - plan.totalStrategyPayment).toBeCloseTo(plan.netInterestSaving, 5)
+      expect(plan.combinedPaymentDuringReplacement).toBeCloseTo(plan.mortgage.payment + plan.replacement.payment, 5)
+    }
+  })
+
+  it('keeps the original monthly principal for a shortened equal-principal loan with a partial last payment', () => {
+    const plan = calculateBorrowPrepaymentPlans(800000, 0.042, 240, 151000, 60, 0.003, undefined, 'equal-principal').shorter
+    const mortgageWindow = calculateEqualPrincipalSchedule(649000, 0.042, 60, 800000 / 240)
+    expect(plan.replacementPeriodTotalPayment).toBeCloseTo(mortgageWindow.totalPayment + plan.replacement.totalPayment, 5)
   })
 })
 

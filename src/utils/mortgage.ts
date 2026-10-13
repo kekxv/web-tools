@@ -37,6 +37,30 @@ export interface RepaymentComparison {
   interestSaving: number
 }
 
+export interface ReplacementLoanPlan {
+  principal: number
+  months: number
+  monthlyRate: number
+  payment: number
+  totalPayment: number
+  totalInterest: number
+}
+
+export interface BorrowPrepaymentPlan {
+  mortgage: PrepaymentPlan
+  replacement: ReplacementLoanPlan
+  mortgagePaymentDuringReplacement: number
+  replacementPaymentDuringReplacement: number
+  combinedPaymentDuringReplacement: number
+  replacementPeriodTotalPayment: number
+  totalStrategyPayment: number
+  originalStrategyPayment: number
+  mortgageInterestSaving: number
+  replacementInterest: number
+  fee: number
+  netInterestSaving: number
+}
+
 const EPSILON = 1e-8
 /** A loan is considered repaid once the balance drops below this amount. */
 const BALANCE_EPSILON = 0.005
@@ -189,6 +213,81 @@ export function inferAnnualRateFromFirstPayment(principal: number, months: numbe
   if (firstPayment < monthlyPrincipal - 0.01) return 0
   const monthlyRate = (firstPayment - monthlyPrincipal) / principal
   return Math.max(0, monthlyRate) * 12
+}
+
+/** Calculate the equal-payment loan used to fund an early mortgage repayment. */
+export function calculateReplacementLoan(principal: number, months: number, monthlyRate?: number, payment?: number): ReplacementLoanPlan {
+  const safePrincipal = Number.isFinite(principal) && principal > 0 ? principal : 0
+  const safeMonths = Number.isInteger(months) && months > 0 ? months : 0
+  if (safePrincipal <= 0 || safeMonths <= 0) return { principal: safePrincipal, months: safeMonths, monthlyRate: 0, payment: 0, totalPayment: 0, totalInterest: 0 }
+  let rate = Number.isFinite(monthlyRate) && (monthlyRate as number) >= 0 ? monthlyRate as number : 0
+  if (!(Number.isFinite(monthlyRate) && (monthlyRate as number) >= 0) && Number.isFinite(payment) && (payment as number) >= safePrincipal / safeMonths) {
+    let low = 0
+    let high = 1
+    for (let i = 0; i < 100; i += 1) {
+      const mid = (low + high) / 2
+      const candidate = calculateMonthlyPayment(safePrincipal, mid * 12, safeMonths)
+      if (candidate < (payment as number)) low = mid
+      else high = mid
+    }
+    rate = (low + high) / 2
+  }
+  const actualPayment = Number.isFinite(monthlyRate) && (monthlyRate as number) >= 0
+    ? calculateMonthlyPayment(safePrincipal, rate * 12, safeMonths)
+    : (Number.isFinite(payment) && (payment as number) >= safePrincipal / safeMonths ? payment as number : 0)
+  if (actualPayment <= 0) return { principal: safePrincipal, months: safeMonths, monthlyRate: 0, payment: 0, totalPayment: 0, totalInterest: 0 }
+  const schedule = calculateSchedule(safePrincipal, rate * 12, safeMonths, actualPayment)
+  return { principal: safePrincipal, months: safeMonths, monthlyRate: rate, payment: actualPayment, totalPayment: schedule.totalPayment, totalInterest: schedule.totalInterest }
+}
+
+/** Compare borrowing money to prepay the mortgage immediately. */
+export function calculateBorrowPrepaymentPlans(
+  principal: number,
+  annualRate: number,
+  months: number,
+  borrowedAmount: number,
+  replacementMonths: number,
+  replacementMonthlyRate?: number,
+  replacementPayment?: number,
+  method: RepaymentMethod = 'equal-payment',
+  fee = 0,
+): { shorter: BorrowPrepaymentPlan; lowerPayment: BorrowPrepaymentPlan } {
+  const base = calculateScheduleByMethod(method, principal, annualRate, months)
+  const borrowed = Math.min(Math.max(Number(borrowedAmount) || 0, 0), Math.max(principal, 0))
+  const replacement = calculateReplacementLoan(borrowed, replacementMonths, replacementMonthlyRate, replacementPayment)
+  const plans = calculatePrepaymentPlans(principal, annualRate, months, borrowed, method)
+  const build = (mortgage: PrepaymentPlan, keepPayment: number): BorrowPrepaymentPlan => {
+    const postPrepayPrincipal = Math.max(0, principal - borrowed)
+    const replacementWindow = Math.min(replacement.months, mortgage.months)
+    const monthlyPrincipal = Math.max(0, mortgage.payment - postPrepayPrincipal * annualRate / 12)
+    const mortgagePaymentDuringReplacement = replacementWindow > 0
+      ? (method === 'equal-principal'
+        ? calculateEqualPrincipalSchedule(postPrepayPrincipal, annualRate, replacementWindow, monthlyPrincipal).totalPayment
+        : calculateSchedule(postPrepayPrincipal, annualRate, replacementWindow, keepPayment).totalPayment)
+      : 0
+    const replacementPaymentDuringReplacement = replacement.months > 0 ? replacement.totalPayment : 0
+    const mortgageInterestSaving = Math.max(0, base.totalInterest - mortgage.totalInterest)
+    // The prepayment is funded by the replacement loan; its principal is paid back only once.
+    const totalStrategyPayment = mortgage.totalPayment - borrowed + replacement.totalPayment + Math.max(0, fee)
+    return {
+      mortgage,
+      replacement,
+      mortgagePaymentDuringReplacement,
+      replacementPaymentDuringReplacement,
+      combinedPaymentDuringReplacement: mortgage.payment + replacement.payment,
+      replacementPeriodTotalPayment: mortgagePaymentDuringReplacement + replacementPaymentDuringReplacement,
+      totalStrategyPayment,
+      originalStrategyPayment: base.totalPayment,
+      mortgageInterestSaving,
+      replacementInterest: replacement.totalInterest,
+      fee: Math.max(0, fee),
+      netInterestSaving: mortgageInterestSaving - replacement.totalInterest - Math.max(0, fee),
+    }
+  }
+  return {
+    shorter: build(plans.shorter, base.payment),
+    lowerPayment: build(plans.lowerPayment, plans.lowerPayment.payment),
+  }
 }
 
 /** Compare both repayment methods on the same principal, rate and term. */
