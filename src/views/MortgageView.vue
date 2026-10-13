@@ -312,7 +312,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
+import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { calculateEndDate, calculateMonthsBetween, calculatePrepaymentPlans, calculateScheduleByMethod, compareRepaymentMethods, inferAnnualRate, inferAnnualRateFromFirstPayment, formatRemainingTerm, calculateBorrowPrepaymentPlans, type MortgageSchedule, type PrepaymentPlan, type BorrowPrepaymentPlan, type RepaymentMethod } from '../utils/mortgage'
 import { buildMortgageShareUrl, decodeMortgageShare, encodeMortgageShare, type MortgageShareData } from '../utils/mortgage-share'
@@ -486,6 +486,17 @@ const shareData = (): MortgageShareData => ({
   annualRatePercent: Number(annualRatePercent.value),
   paymentInput: Number(paymentInput.value),
   startDate: startDate.value,
+  prepayment: {
+    fundingMode: fundingMode.value,
+    expanded: showPrepayment.value,
+    amountWan: Number(prepaymentWan.value),
+    delayMonths: Number(prepayDelayMonths.value),
+    borrowWan: Number(replacementBorrowWan.value),
+    borrowMonths: Number(replacementMonths.value),
+    inputMode: replacementInputMode.value,
+    input: Number(replacementInput.value),
+    fee: Number(prepaymentFee.value),
+  },
 })
 
 const openShareDialog = () => {
@@ -518,6 +529,9 @@ const copyShareUrl = async () => {
 }
 
 const applyShareData = (data: MortgageShareData) => {
+  result.value = null
+  plans.value = null
+  borrowPlans.value = null
   mode.value = data.mode
   method.value = data.method
   principalWan.value = data.principalWan
@@ -525,16 +539,29 @@ const applyShareData = (data: MortgageShareData) => {
   annualRatePercent.value = data.annualRatePercent
   paymentInput.value = data.paymentInput
   startDate.value = data.startDate
-  prepaymentWan.value = 0
-  prepayDelayMonths.value = 0
+  prepaymentWan.value = data.prepayment?.amountWan ?? 0
+  prepayDelayMonths.value = data.prepayment?.delayMonths ?? 0
+  fundingMode.value = data.prepayment?.fundingMode ?? 'own'
+  showPrepayment.value = data.prepayment?.expanded ?? false
+  replacementBorrowWan.value = data.prepayment?.borrowWan ?? 15
+  replacementMonths.value = data.prepayment?.borrowMonths ?? 60
+  replacementInputMode.value = data.prepayment?.inputMode ?? 'rate'
+  replacementInput.value = data.prepayment?.input ?? 0.3
+  prepaymentFee.value = data.prepayment?.fee ?? 0
 }
 
-const openEncryptedShare = () => {
+const openEncryptedShare = async () => {
   shareError.value = ''
   try {
     applyShareData(decodeMortgageShare(shareToken.value, shareCode.value))
+    // Flush form watchers before calculating so they cannot clear the restored borrowing result.
+    await nextTick()
     shareDialogVisible.value = false
     calculate()
+    if (fundingMode.value === 'borrow') {
+      showPrepayment.value = true
+      calculateBorrowPrepayment()
+    }
     ElMessage.success('分享内容已解密并完成计算')
   } catch (error) {
     shareError.value = error instanceof Error ? error.message : '解密失败，请检查验证码'

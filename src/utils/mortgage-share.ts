@@ -10,6 +10,17 @@ export interface MortgageShareData {
   annualRatePercent: number
   paymentInput: number
   startDate: string
+  prepayment?: {
+    fundingMode: 'own' | 'borrow'
+    expanded: boolean
+    amountWan: number
+    delayMonths: number
+    borrowWan: number
+    borrowMonths: number
+    inputMode: 'rate' | 'payment'
+    input: number
+    fee: number
+  }
 }
 
 const PREFIX = 'm2.'
@@ -27,7 +38,8 @@ const assertCode = (code: string) => {
 export function encodeMortgageShare(data: MortgageShareData, code: string): string {
   assertCode(code)
   if (!isValidMortgageShareData(data)) throw new Error('分享内容格式无效')
-  const compact = [data.mode === 'payment' ? 0 : 1, data.method === 'equal-payment' ? 0 : 1, data.principalWan, data.months, data.annualRatePercent, data.paymentInput, data.startDate]
+  const compact: unknown[] = [data.mode === 'payment' ? 0 : 1, data.method === 'equal-payment' ? 0 : 1, data.principalWan, data.months, data.annualRatePercent, data.paymentInput, data.startDate]
+  if (data.prepayment) compact.push(data.prepayment)
   const plaintext = LZString.compressToEncodedURIComponent(JSON.stringify(compact))
   const encrypted = CryptoJS.AES.encrypt(plaintext, code.trim()).toString()
   const mac = CryptoJS.HmacSHA256(encrypted, code.trim()).toString(CryptoJS.enc.Base64)
@@ -58,7 +70,7 @@ export function decodeMortgageShare(token: string, code: string): MortgageShareD
 function decodeCompact(plaintext: string | null): MortgageShareData {
   if (!plaintext) throw new Error('验证码错误或分享内容已损坏')
   const values = JSON.parse(plaintext) as unknown[]
-  if (!Array.isArray(values) || values.length !== 7) throw new Error('分享内容格式无效')
+  if (!Array.isArray(values) || (values.length !== 7 && values.length !== 8)) throw new Error('分享内容格式无效')
   return {
     mode: values[0] === 0 ? 'payment' : 'rate',
     method: values[1] === 0 ? 'equal-payment' : 'equal-principal',
@@ -67,6 +79,7 @@ function decodeCompact(plaintext: string | null): MortgageShareData {
     annualRatePercent: values[4] as number,
     paymentInput: values[5] as number,
     startDate: values[6] as string,
+    ...(values.length === 8 ? { prepayment: values[7] as MortgageShareData['prepayment'] } : {}),
   }
 }
 
@@ -81,6 +94,18 @@ function isValidMortgageShareData(data: MortgageShareData): boolean {
   const parsedDate = new Date(`${data.startDate}T00:00:00`)
   const [year, month, day] = data.startDate.split('-').map(Number)
   if (Number.isNaN(parsedDate.getTime()) || parsedDate.getFullYear() !== year || parsedDate.getMonth() + 1 !== month || parsedDate.getDate() !== day) return false
+  if (data.prepayment !== undefined) {
+    const plan = data.prepayment
+    if (!plan || !['own', 'borrow'].includes(plan.fundingMode) || typeof plan.expanded !== 'boolean') return false
+    if (!Number.isFinite(plan.amountWan) || plan.amountWan < 0 || plan.amountWan > data.principalWan) return false
+    if (!Number.isInteger(plan.delayMonths) || plan.delayMonths < 0 || plan.delayMonths >= data.months) return false
+    if (!Number.isFinite(plan.borrowWan) || plan.borrowWan <= 0) return false
+    if (plan.fundingMode === 'borrow' && plan.borrowWan > data.principalWan) return false
+    if (!Number.isInteger(plan.borrowMonths) || plan.borrowMonths <= 0) return false
+    if (!['rate', 'payment'].includes(plan.inputMode) || !Number.isFinite(plan.input) || plan.input < 0) return false
+    if (plan.inputMode === 'payment' && plan.input < plan.borrowWan * 10000 / plan.borrowMonths) return false
+    if (!Number.isFinite(plan.fee) || plan.fee < 0) return false
+  }
   return true
 }
 

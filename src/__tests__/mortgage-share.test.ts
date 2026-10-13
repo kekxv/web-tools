@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { decodeMortgageShare, encodeMortgageShare, type MortgageShareData } from '../utils/mortgage-share'
+import CryptoJS from 'crypto-js'
+import LZString from 'lz-string'
 
 const data: MortgageShareData = {
   mode: 'payment',
@@ -12,6 +14,31 @@ const data: MortgageShareData = {
 }
 
 describe('mortgage sharing', () => {
+  it('opens existing m1 and m2 links without borrowing parameters', () => {
+    const compact = [0, 0, data.principalWan, data.months, data.annualRatePercent, data.paymentInput, data.startDate]
+    for (const [prefix, plaintext] of [['m1', JSON.stringify(data)], ['m2', LZString.compressToEncodedURIComponent(JSON.stringify(compact))]]) {
+      const encrypted = CryptoJS.AES.encrypt(plaintext, '123456').toString()
+      const safe = (value: string) => value.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+      const mac = CryptoJS.HmacSHA256(encrypted, '123456').toString(CryptoJS.enc.Base64)
+      expect(decodeMortgageShare(`${prefix}.${safe(encrypted)}.${safe(mac)}`, '123456')).toEqual(data)
+    }
+  })
+  it('round-trips borrowing settings in both rate and payment modes', () => {
+    for (const inputMode of ['rate', 'payment'] as const) {
+      const shared = { ...data, prepayment: { fundingMode: 'borrow' as const, expanded: true, amountWan: 12, delayMonths: 6, borrowWan: 15, borrowMonths: 60, inputMode, input: inputMode === 'rate' ? 0.3 : 2800, fee: 1200 } }
+      expect(decodeMortgageShare(encodeMortgageShare(shared, '123456'), '123456')).toEqual(shared)
+    }
+  })
+
+  it('rejects invalid borrowing parameters', () => {
+    const shared = { ...data, prepayment: { fundingMode: 'borrow' as const, expanded: true, amountWan: 12, delayMonths: 6, borrowWan: 15, borrowMonths: 60, inputMode: 'rate' as const, input: 0.3, fee: -10 } }
+    expect(() => encodeMortgageShare(shared, '123456')).toThrow('分享内容格式无效')
+  })
+
+  it('allows sharing a small mortgage when the unused borrowing amount exceeds its balance', () => {
+    const shared = { ...data, principalWan: 5, prepayment: { fundingMode: 'own' as const, expanded: false, amountWan: 0, delayMonths: 0, borrowWan: 15, borrowMonths: 60, inputMode: 'rate' as const, input: 0.3, fee: 0 } }
+    expect(decodeMortgageShare(encodeMortgageShare(shared, '123456'), '123456')).toEqual(shared)
+  })
   it('round-trips form data with a verification code', () => {
     const token = encodeMortgageShare(data, '123456')
     expect(token).toMatch(/^m2\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/)

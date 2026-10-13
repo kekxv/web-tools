@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import MortgageView from '../views/MortgageView.vue'
+import { encodeMortgageShare, decodeMortgageShare } from '../utils/mortgage-share'
 
 /**
  * 提前还款时点：期数与日期两个输入框互相同步。
@@ -37,6 +38,26 @@ const prepayPeriodInput = (wrapper) => wrapper.find('input[placeholder="0"]')
 const prepayDateInput = (wrapper) => wrapper.findAll('.stub-date')[1]
 
 describe('MortgageView prepayment timing', () => {
+  it('restores and recalculates a shared borrowing plan', async () => {
+    const source = mount(MortgageView, { global: { stubs } })
+    await openPrepayment(source)
+    await source.findAll('button').find((button) => button.text() === '借款资金').trigger('click')
+    await source.findAll('.borrow-inputs input')[0].setValue(12)
+    await source.findAll('.borrow-inputs input')[1].setValue(48)
+    await source.findAll('button').find((button) => button.text() === '计算借款提前还款').trigger('click')
+    const token = encodeMortgageShare(source.vm.shareData(), '123456')
+    const target = mount(MortgageView, { global: { stubs } })
+    target.vm.shareToken = token
+    target.vm.shareCode = '123456'
+    await target.vm.openEncryptedShare()
+    expect(target.find('.borrow-inputs').exists()).toBe(true)
+    expect(target.findAll('.borrow-inputs input')[0].element.value).toBe('12')
+    expect(target.findAll('.borrow-inputs input')[1].element.value).toBe('48')
+    expect(target.find('.borrow-plan-list').text()).toBe(source.find('.borrow-plan-list').text())
+    expect(decodeMortgageShare(token, '123456').prepayment.fundingMode).toBe('borrow')
+    source.unmount()
+    target.unmount()
+  })
   it('shows the feature guide before calculating and hides it after results appear', async () => {
     const wrapper = mount(MortgageView, { global: { stubs } })
     expect(wrapper.find('.feature-guide').exists()).toBe(true)
