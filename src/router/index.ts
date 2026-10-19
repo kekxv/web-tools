@@ -42,6 +42,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'TOTP 验证码' }
       },
       {
+        path: 'brick-assistant',
+        name: 'BrickAssistant',
+        component: () => import('../views/BrickAssistantView.vue'),
+        meta: { title: '砖了个砖助手' }
+      },
+      {
         path: 'gobang',
         name: 'Gobang',
         component: () => import('../views/GobangView.vue'),

@@ -60,6 +60,12 @@ const tools = [
     icon: 'Key'
   },
   {
+    path: '/brick-assistant',
+    title: '砖了个砖助手',
+    description: '上传、拍照或粘贴游戏截图，识别棋盘并计算下一步消除',
+    icon: 'Grid'
+  },
+  {
     path: '/gobang',
     title: '五子棋',
     description: '简单有趣的五子棋小游戏',

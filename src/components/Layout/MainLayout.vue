@@ -23,6 +23,10 @@
               <el-icon><Van /></el-icon>
               <span>休闲一下</span>
             </template>
+            <el-menu-item index="/brick-assistant">
+              <el-icon><Grid /></el-icon>
+              <span>砖了个砖助手</span>
+            </el-menu-item>
             <el-menu-item index="/gobang">
               <el-icon><Grid /></el-icon>
               <span>五子棋</span>
@@ -120,6 +124,10 @@
               <el-icon><Van /></el-icon>
               <span>休闲一下</span>
             </template>
+            <el-menu-item index="/brick-assistant">
+              <el-icon><Grid /></el-icon>
+              <span>砖了个砖助手</span>
+            </el-menu-item>
             <el-menu-item index="/gobang">
               <el-icon><Grid /></el-icon>
               <span>五子棋</span>
@@ -266,6 +274,7 @@ const currentTitle = computed(() => {
     '/stream-merge': 'LLM 流式整理',
     '/bitmap': '图片转点阵',
     '/mortgage': '房贷助手',
+    '/brick-assistant': '砖了个砖助手',
     '/gobang': '五子棋',
     '/game24': '24 点',
     '/showhand': '梭哈',
