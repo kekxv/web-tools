@@ -24,11 +24,11 @@
               <span>休闲一下</span>
             </template>
             <el-menu-item index="/brick-assistant">
-              <el-icon><Grid /></el-icon>
+              <el-icon><Tickets /></el-icon>
               <span>砖了个砖助手</span>
             </el-menu-item>
             <el-menu-item index="/gobang">
-              <el-icon><Grid /></el-icon>
+              <el-icon><Aim /></el-icon>
               <span>五子棋</span>
             </el-menu-item>
             <el-menu-item index="/game24">
@@ -125,11 +125,11 @@
               <span>休闲一下</span>
             </template>
             <el-menu-item index="/brick-assistant">
-              <el-icon><Grid /></el-icon>
+              <el-icon><Tickets /></el-icon>
               <span>砖了个砖助手</span>
             </el-menu-item>
             <el-menu-item index="/gobang">
-              <el-icon><Grid /></el-icon>
+              <el-icon><Aim /></el-icon>
               <span>五子棋</span>
             </el-menu-item>
             <el-menu-item index="/game24">
@@ -218,7 +218,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { House, Files, Document, DataAnalysis, Key, Grid, Odometer, Van, Coin, Iphone, Picture } from '@element-plus/icons-vue'
+import { House, Files, Document, DataAnalysis, Key, Grid, Odometer, Van, Coin, Iphone, Picture, Tickets, Aim } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const isCollapse = ref(false)
@@ -482,5 +482,11 @@ const currentTitle = computed(() => {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
+}
+@media screen and (max-width: 768px) {
+  .header { height: 48px !important; min-height: 48px !important; padding: 0 12px !important; }
+  .header-title { font-size: 15px !important; }
+  .mobile-menu-btn { width: 34px !important; height: 34px !important; }
+  .main-content { height: calc(100vh - 48px) !important; }
 }
 </style>
