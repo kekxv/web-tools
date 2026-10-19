@@ -48,3 +48,8 @@
 - [x] Verify desktop and 320/390/768px mobile layouts, crop selection, playback and undo in Chromium; run all tests/build, review changes, and commit all assistant feature files and navigation.
 
 - UI validation: 373 tests passed; production build passed with existing chunk-size warnings. Chromium checked 320/390/768/1440px widths: no page/content horizontal overflow, 44px playback buttons, playback and undo passed. Original image push/preview/cancel and four-corner crop alignment passed; mobile pointer crop remains [30,40,400,560].
+
+## Auto dimensions and perspective correction
+- [x] Add tested quadrilateral rectification utility; three anchors infer the fourth corner, four anchors use a full homography.
+- [x] Add an image workflow for automatic row/column detection and manual 3/4-point perspective selection, then recognize the rectified board with the detected dimensions.
+- [x] Verify non-14×10 boards, perspective samples, mobile point selection, existing animations, tests/build, and commit.

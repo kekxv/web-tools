@@ -37,7 +37,8 @@
       <summary>2 · 调整棋盘范围与识别</summary>
       <p class="hint">在原图上拖框，范围需紧贴完整棋盘外沿（包含空格，不含边框和道具）。自动定位适用于浅色砖块，无法识别时请手动框选。</p>
       <div class="crop-layout">
-        <div class="source-image" @pointerdown="startCrop" @pointermove="moveCrop" @pointerup="finishCrop" @pointercancel="cancelCrop">
+        <div class="source-image" :class="{ 'perspective-picking': perspectiveMode }" @pointerdown="startCrop" @pointermove="moveCrop" @pointerup="finishCrop" @pointercancel="cancelCrop" @click="pickPerspective">
+          <span v-for="(point, index) in perspectivePoints" :key="index" class="perspective-point" :style="{ left: `${point.x / (source?.width || 1) * 100}%`, top: `${point.y / (source?.height || 1) * 100}%` }">{{ index + 1 }}</span>
           <img :src="imageUrl" alt="导入的游戏画面，拖动以选择棋盘" draggable="false" />
           <div class="crop-box" :style="cropStyle">
             <svg class="crop-grid" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
@@ -51,7 +52,7 @@
           <label>行数 <input v-model.number="rows" type="number" min="1" max="24" /></label>
           <label>列数 <input v-model.number="cols" type="number" min="1" max="24" /></label>
           <label>图案合并阈值 <input v-model.number="threshold" type="number" min="5" max="65" /></label>
-          <p class="hint">不同图案被合并时调低阈值；相同图案被拆开时调高。调整后点击重新识别。</p>
+          <p class="hint">自动定位会同时估计棋盘范围和实际行列，不限于 14 × 10；也可手动输入行列。不同图案被合并时调低阈值；相同图案被拆开时调高。</p>
           <div class="crop-numbers">
             <label>左边距（像素）<input data-test="crop-x" type="number" min="0" step="0.1" :value="roundedCrop('x')" @change="updateCrop('x', $event)" /></label>
             <label>上边距（像素）<input data-test="crop-y" type="number" min="0" step="0.1" :value="roundedCrop('y')" @change="updateCrop('y', $event)" /></label>
@@ -59,8 +60,13 @@
             <label>高度（像素）<input data-test="crop-height" type="number" min="4" step="0.1" :value="roundedCrop('height')" @change="updateCrop('height', $event)" /></label>
           </div>
           <p class="hint">分格线应对齐砖块边缘。可微调边距和尺寸，再重新识别，避免裁入相邻砖块。</p>
-          <button @click="autoLocate">自动定位</button>
-          <button class="primary" @click="recognize">识别 / 重新识别</button>
+          <div class="perspective-tools">
+            <button :class="{ 'edit-active': perspectiveMode }" @click="togglePerspective">{{ perspectiveMode ? `已选 ${perspectivePoints.length} 点` : '三点 / 四点透视定位' }}</button>
+            <button v-if="perspectivePoints.length" @click="perspectivePoints = []; perspectiveMode = false">清除定位点</button>
+          </div>
+          <p v-if="perspectiveMode" class="hint perspective-hint">依次点击左上、右上、右下、左下四个角；至少选 3 点，前三点会推算第四角。</p>
+          <button @click="autoLocate">自动定位（含行列）</button>
+          <button class="primary" @click="recognizeAction">识别 / 重新识别</button>
         </div>
       </div>
     </details>
@@ -127,8 +133,8 @@
 <script setup lang="ts">
 import BrickImageBoard from '../components/BrickImageBoard.vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { applyMove, classifyTiles, detectGrid, findMoves, pushTiles } from '../utils/brick-assistant'
-import type { Board, Cell, Grid, Move } from '../utils/brick-assistant'
+import { applyMove, classifyTiles, detectGrid, findMoves, pushTiles, rectifyPerspective } from '../utils/brick-assistant'
+import type { Board, Cell, Grid, Move, Point, Quad } from '../utils/brick-assistant'
 
 const upload = ref<HTMLInputElement>(), camera = ref<HTMLInputElement>()
 const imageUrl = ref(''), error = ref(''), notice = ref(''), busy = ref(false)
@@ -138,7 +144,7 @@ const board = ref<Board>([]), groupImages = ref<Record<number, string>>({})
 const tileImages = ref<string[][]>([])
 const moves = ref<Move[]>([]), selectedMove = ref(0)
 const editing = ref<Cell | null>(null), history = ref<Snapshot[]>([])
-const animating = ref(false), correctionMode = ref(false)
+const animating = ref(false), correctionMode = ref(false), perspectiveMode = ref(false), perspectivePoints = ref<Point[]>([])
 const imageSize = ref({ width: 1, height: 1 }), recognizedGrid = ref<Grid | null>(null)
 const erasedCells = ref<boolean[][]>([])
 let emptySample: Cell | null = null
@@ -279,6 +285,10 @@ function autoLocate() {
     notice.value = '未能自动定位。请在图片上拖框选择棋盘，并设置行列数。'
   }
 }
+function recognizeAction() {
+  if (perspectivePoints.value.length >= 3) { rectifySelected(); return }
+  recognize()
+}
 function recognize() {
   if (!source) return
   error.value = ''
@@ -320,22 +330,43 @@ function point(event: PointerEvent) {
     y: Math.max(0, Math.min(source!.height, (event.clientY - rect.top) / rect.height * source!.height)) }
 }
 function startCrop(event: PointerEvent) {
-  if (!source || event.button !== 0) return
+  if (perspectiveMode || !source || event.button !== 0) return
   priorCrop = { ...crop.value }; cropStart = point(event)
   ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
 }
 function moveCrop(event: PointerEvent) {
-  if (!cropStart || !source) return
+  if (perspectiveMode || !cropStart || !source) return
   const end = point(event)
   crop.value = { ...crop.value, x: Math.min(end.x, cropStart.x), y: Math.min(end.y, cropStart.y), width: Math.abs(end.x - cropStart.x), height: Math.abs(end.y - cropStart.y) }
 }
 function finishCrop(event: PointerEvent) {
-  if (!cropStart) return
+  if (perspectiveMode || !cropStart) return
   moveCrop(event)
   if (crop.value.width < 8 || crop.value.height < 8) cancelCrop()
   else { cropStart = null; priorCrop = null }
 }
 function cancelCrop() { if (priorCrop) crop.value = priorCrop; cropStart = null; priorCrop = null }
+function togglePerspective() { perspectiveMode.value = !perspectiveMode.value; perspectivePoints.value = [] }
+function pickPerspective(event: MouseEvent) {
+  if (!perspectiveMode.value || !source || perspectivePoints.value.length >= 4) return
+  const p = point(event as unknown as PointerEvent)
+  perspectivePoints.value = [...perspectivePoints.value, p]
+  if (perspectivePoints.value.length >= 3) notice.value = '已选 3 点，可以校正；如有右下角点位可继续补选第 4 点。'
+  if (perspectivePoints.value.length === 4) { perspectiveMode.value = false; rectifySelected() }
+}
+function rectifySelected() {
+  if (!source || perspectivePoints.value.length < 3) { error.value = '请至少选择左上、右上、左下三个棋盘角点。'; return }
+  const [topLeft, topRight, third, fourth] = perspectivePoints.value
+  const bottomRight = fourth ?? { x: topRight.x + third.x - topLeft.x, y: topRight.y + third.y - topLeft.y }
+  const bottomLeft = fourth ? third : third
+  const quad: Quad = { topLeft, topRight, bottomRight, bottomLeft }
+  const width = Math.max(Math.hypot(topRight.x - topLeft.x, topRight.y - topLeft.y), Math.hypot(bottomRight.x - bottomLeft.x, bottomRight.y - bottomLeft.y))
+  const height = Math.max(Math.hypot(bottomLeft.x - topLeft.x, bottomLeft.y - topLeft.y), Math.hypot(bottomRight.x - topRight.x, bottomRight.y - topRight.y))
+  const scale = Math.min(1, 1400 / Math.max(width, height)), pixels = source.getContext('2d')!.getImageData(0, 0, source.width, source.height)
+  const rectified = rectifyPerspective(pixels, quad, Math.max(64, Math.round(width * scale)), Math.max(64, Math.round(height * scale)))
+  const canvas = document.createElement('canvas'); canvas.width = rectified.width; canvas.height = rectified.height; canvas.getContext('2d')!.putImageData(new ImageData(rectified.data, rectified.width, rectified.height), 0, 0)
+  source = canvas; imageSize.value = { width: canvas.width, height: canvas.height }; imageUrl.value = canvas.toDataURL('image/png'); perspectivePoints.value = []; resetBoard(); autoLocate(); notice.value = '透视校正完成，已自动估计棋盘行列。请核对分格线后识别。'
+}
 
 async function loadFile(file: File) {
   if (busy.value) return
@@ -439,4 +470,7 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 @media (max-width: 900px) { .analysis-layout { grid-template-columns: 1fr; }.import-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }.crop-layout { grid-template-columns: minmax(0, 1fr) 230px; }.suggestions { margin-top: 0; }.hero-art { flex-basis: 120px; }.hero-art span { height: 52px; font-size: 28px; } }
 @media (max-width: 600px) { .brick-assistant { padding: 16px 12px calc(24px + env(safe-area-inset-bottom)); }.intro { padding: 24px 20px; border-radius: 18px; }.intro-copy { position: relative; z-index: 1; }.intro p { max-width: 235px; font-size: 12px; }.hero-icon { width: 38px; height: 38px; font-size: 23px; border-radius: 12px; }h1 { font-size: 23px; gap: 8px; }.hero-art { position: absolute; right: -32px; bottom: -16px; width: 100px; opacity: .2; margin: 0; }.hero-art span { height: 44px; font-size: 25px; }.eyebrow { font-size: 10px; }.local-badge { margin-top: 14px; font-size: 11px; }.workflow { margin: 16px 0; gap: 6px; }.workflow li { padding: 10px 7px; gap: 5px; font-size: 11px; justify-content: center; }.workflow li > span { font-size: 10px; }.panel { padding: 18px 14px; border-radius: 15px; margin-bottom: 16px; }.section-heading { margin-bottom: 16px; }h2 { font-size: 17px; }.section-note { display: none; }.import-actions { gap: 8px; }.import-action { padding: 14px 12px; gap: 6px; }.import-action strong { font-size: 13px; }.import-action small { font-size: 11px; }.action-icon { width: 32px; height: 32px; font-size: 22px; }.demo-actions { gap: 6px 12px; }.demo-actions > span { width: 100%; }.demo-actions button { min-height: 44px; }.crop-layout { grid-template-columns: 1fr; gap: 16px; }.crop-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px; }.crop-controls .hint, .crop-numbers { grid-column: 1 / -1; }.crop-controls input { font-size: 16px; }.crop-controls label { min-width: 0; }.board-toolbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }.board-toolbar > .primary { grid-column: 1 / -1; }.board-toolbar button { padding: 10px 6px; font-size: 12px; }.board-stats { gap: 4px; font-size: 10px; }.board-stats strong { font-size: 15px; margin-right: 2px; }.analysis-layout { gap: 16px; }.suggestions .actions { display: grid; grid-template-columns: 1fr 1fr; }.suggestions .actions button { font-size: 12px; padding-inline: 6px; }.live-badge { font-size: 10px; }.original-tile { align-items: flex-start; }.original-tile img { flex-shrink: 0; }.move-option { gap: 8px; } }
 @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+
+.perspective-picking { cursor: crosshair; outline: 2px dashed #13815f; outline-offset: 4px; }.perspective-point { position: absolute; z-index: 4; display: grid; place-items: center; width: 26px; height: 26px; margin: -13px 0 0 -13px; border: 2px solid white; border-radius: 50%; background: #13815f; color: white; font-size: 12px; font-weight: 700; box-shadow: 0 2px 7px #123b2b66; pointer-events: none; }.perspective-tools { display: flex; flex-wrap: wrap; gap: 8px; }.perspective-hint { padding: 9px 11px; background: #edf7f0; border-radius: 8px; }
+@media (max-width: 600px) { .perspective-tools { display: grid; grid-template-columns: 1fr 1fr; }.perspective-tools button { padding-inline: 6px; font-size: 12px; } }
 </style>

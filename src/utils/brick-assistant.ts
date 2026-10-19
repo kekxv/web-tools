@@ -187,3 +187,56 @@ export function detectGrid(image: Pixels): Grid | null {
   return { x, y, width: Math.min(width, horizontal.origin + cols * horizontal.pitch) - x,
     height: Math.min(height, vertical.origin + rows * vertical.pitch) - y, rows, cols }
 }
+
+export interface Point { x: number; y: number }
+export interface Quad { topLeft: Point; topRight: Point; bottomRight: Point; bottomLeft: Point }
+
+function solveHomography(matrix: number[][], values: number[]): number[] | null {
+  const a = matrix.map((row, i) => [...row, values[i]])
+  for (let col = 0; col < values.length; col++) {
+    let pivot = col
+    for (let row = col + 1; row < values.length; row++) if (Math.abs(a[row][col]) > Math.abs(a[pivot][col])) pivot = row
+    if (Math.abs(a[pivot][col]) < 1e-10) return null
+    ;[a[col], a[pivot]] = [a[pivot], a[col]]
+    const divisor = a[col][col]
+    for (let j = col; j <= values.length; j++) a[col][j] /= divisor
+    for (let row = 0; row < values.length; row++) if (row !== col) {
+      const factor = a[row][col]
+      for (let j = col; j <= values.length; j++) a[row][j] -= factor * a[col][j]
+    }
+  }
+  return a.map(row => row[values.length])
+}
+
+/** Rectify a board quadrilateral into a front-facing canvas. The input points are clockwise. */
+export function rectifyPerspective(source: Pixels, quad: Quad, outputWidth = 800, outputHeight = 800): Pixels {
+  const corners = quadToPairs(quad), destination = [{ x: 0, y: 0 }, { x: outputWidth - 1, y: 0 }, { x: outputWidth - 1, y: outputHeight - 1 }, { x: 0, y: outputHeight - 1 }]
+  // Solve the inverse mapping (rectified pixel -> source pixel), so every output
+  // pixel can be sampled directly. Parallelograms are singular in the projective
+  // system; the bilinear fallback still handles that common three-point case.
+  const matrix: number[][] = [], valuesX: number[] = [], valuesY: number[] = []
+  destination.forEach((point, i) => {
+    const u = point.x, v = point.y, x = corners[i].x, y = corners[i].y
+    matrix.push([u, v, 1, 0, 0, 0, -x * u, -x * v]); valuesX.push(x)
+    matrix.push([0, 0, 0, u, v, 1, -y * u, -y * v]); valuesY.push(y)
+  })
+  const hx = solveHomography(matrix.map(row => [...row]), valuesX), hy = solveHomography(matrix.map(row => [...row]), valuesY)
+  const data = new Uint8ClampedArray(outputWidth * outputHeight * 4)
+  const lerp = (a: Point, b: Point, t: number): Point => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t })
+  for (let v = 0; v < outputHeight; v++) for (let u = 0; u < outputWidth; u++) {
+    let point: Point
+    if (hx && hy) {
+      const denominator = hx[6] * u + hx[7] * v + 1
+      point = { x: (hx[0] * u + hx[1] * v + hx[2]) / denominator, y: (hy[0] * u + hy[1] * v + hy[2]) / denominator }
+    } else {
+      const tx = outputWidth === 1 ? 0 : u / (outputWidth - 1), ty = outputHeight === 1 ? 0 : v / (outputHeight - 1)
+      point = lerp(lerp(quad.topLeft, quad.topRight, tx), lerp(quad.bottomLeft, quad.bottomRight, tx), ty)
+    }
+    const sx = Math.round(point.x), sy = Math.round(point.y), out = (v * outputWidth + u) * 4
+    if (sx < 0 || sy < 0 || sx >= source.width || sy >= source.height) continue
+    const input = (sy * source.width + sx) * 4
+    data.set(source.data.slice(input, input + 4), out)
+  }
+  return { data, width: outputWidth, height: outputHeight }
+}
+function quadToPairs(quad: Quad): Point[] { return [quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft] }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findMoves, applyMove, classifyTiles, detectGrid, pushTiles } from '../utils/brick-assistant'
+import { findMoves, applyMove, classifyTiles, detectGrid, pushTiles, rectifyPerspective } from '../utils/brick-assistant'
 
 // These fixtures catch illegal paths through occupied cells and false image merges.
 describe('框内推动与直线消除', () => {
@@ -104,5 +104,16 @@ describe('本地图片识别', () => {
     expect(grid.rows).toBe(3)
     expect(grid.x).toBeCloseTo(9, 0)
     expect(detectGrid({ data: new Uint8ClampedArray(400), width: 10, height: 10 })).toBeNull()
+  })
+})
+
+describe('棋盘透视校正', () => {
+  it('四点透视把四角颜色映射到校正图对应角落', () => {
+    const width = 10, height = 10, data = new Uint8ClampedArray(width * height * 4)
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) data.set([x < 5 ? 255 : 0, y < 5 ? 255 : 0, 40, 255], (y * width + x) * 4)
+    const result = rectifyPerspective({ data, width, height }, { topLeft: { x: 1, y: 1 }, topRight: { x: 8, y: 0 }, bottomRight: { x: 9, y: 8 }, bottomLeft: { x: 0, y: 8 } }, 8, 8)
+    expect(Array.from(result.data.slice(0, 3))).toEqual([255, 255, 40])
+    expect(result.width).toBe(8)
+    expect(result.height).toBe(8)
   })
 })
