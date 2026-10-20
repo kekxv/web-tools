@@ -6,8 +6,18 @@
         <li><b>{{ groupIds.length }}</b> 图案</li>
         <li><b>{{ board.length }} × {{ board[0].length }}</b> 棋盘</li>
       </ul>
-      <button v-if="reviewItems.length" class="chip warn review-chip" :title="`${reviewItems.length} 处分组需要确认：相似但未合并，或刚达标的一对`" @click="showReview = true">⚠ {{ reviewItems.length }} 处分组待确认</button>
-      <span v-else-if="warnGroups.length" class="chip warn" :title="`图案 ${warnGroups.join('、')} 的数量为奇数，请检查漏识别或错误分组`">⚠ 图案 {{ warnGroups.join('、') }} 数量为奇数</span>
+      <button v-if="reviewItems.length" class="chip warn review-chip" data-test="review-chip" aria-haspopup="dialog"
+        :title="`${reviewItems.length} 处分组需要确认：相似但未合并，或刚达标的一对。点开逐条确认。`" @click="showReview = true">
+        <span class="chip-icon" aria-hidden="true">⚠</span>
+        <span>{{ reviewItems.length }} 处分组待确认</span>
+        <span class="chip-go" aria-hidden="true">去核对 ›</span>
+      </button>
+      <button v-else-if="warnGroups.length" class="chip warn review-chip" data-test="review-chip" aria-haspopup="dialog"
+        :title="`图案 ${warnGroups.join('、')} 的数量为奇数，请检查漏识别或错误分组。点开手动合并。`" @click="showReview = true">
+        <span class="chip-icon" aria-hidden="true">⚠</span>
+        <span>图案 {{ warnGroups.join('、') }} 数量为奇数</span>
+        <span class="chip-go" aria-hidden="true">去核对 ›</span>
+      </button>
       <div class="bar-actions">
         <span class="bar-note"><span aria-hidden="true">●</span> 本地处理</span>
         <button class="ghost" data-test="undo" :disabled="!history.length" @click="undo">撤销</button>
@@ -48,16 +58,19 @@
         <div class="strip-row">
           <span class="strip-label">下一步</span>
           <strong class="strip-title">{{ moveTitle }}</strong>
-          <span class="strip-meta"><span v-if="moves.length">{{ moves.length }} 组可选 · </span>框内推动 → 同图案直线消除</span>
-          <button class="primary" :disabled="animating" @click="calculate">计算下一步</button>
-          <button class="ghost" :class="{ on: showTips }" aria-label="规则与提示" @click="showTips = !showTips">规则</button>
+          <span v-if="moves.length" class="strip-meta">{{ moves.length }} 组可选 · 点一个选中，再按下方「播放并消除」</span>
+          <div class="strip-actions">
+            <button class="ghost" :class="{ on: showTips }" aria-label="规则与提示" @click="showTips = !showTips">规则</button>
+            <button class="primary" :disabled="animating" @click="calculate">计算下一步</button>
+          </div>
         </div>
         <div v-if="showTips" class="strip-tips">
           <p>只推动起点处连续相邻的一组，隔着空格的砖块会挡住去路；中间有障碍不能消除。所有移动都受外框限制，不能拐弯或绕到框外。</p>
           <p>演示顺序是先推动整段砖块，再消除无遮挡的配对，完成后自动标出下一步。游戏有掉落、移动或重排时，请重新截取画面。</p>
         </div>
         <div v-if="moves.length" class="strip-pairs">
-          <button v-for="(move, index) in moves.slice(0, 30)" :key="index" :title="`${position(move.from)} ↔ ${position(move.to)}`" :disabled="animating" class="move-option" :class="{ active: selectedMove === index }" @click="selectedMove = index; editing = null">
+          <button v-for="(move, index) in moves.slice(0, 30)" :key="index" :title="`选中第 ${index + 1} 组：${position(move.from)} ↔ ${position(move.to)}`" :disabled="animating" class="move-option" :class="{ active: selectedMove === index }"
+            :aria-pressed="selectedMove === index" @click="selectedMove = index; editing = null">
             <span class="index">{{ index + 1 }}</span>
             <img v-if="tileImages[move.from.row]?.[move.from.col]" class="pair-thumb" :src="tileImages[move.from.row][move.from.col]" alt="第一块" />
             <span aria-hidden="true">↔</span>
@@ -93,27 +106,32 @@
           </div>
         </div>
         <div class="dock">
-          <button class="primary" data-test="apply" :disabled="animating || !currentMove" @click="simulate(true)">{{ animating ? '播放中…' : '▶ 播放并消除' }}</button>
+          <button class="primary" data-test="apply" :disabled="animating || !currentMove" title="推动并消除选中的这一组" @click="simulate(true)">{{ animating ? '播放中…' : '▶ 播放并消除' }}</button>
           <button v-if="animating" data-test="stop" @click="cancelAnimation">取消</button>
-          <button data-test="preview" :disabled="animating || !currentMove" @click="simulate(false)">单步演示</button>
+          <button data-test="preview" :disabled="animating || !currentMove" title="只演示推动，不消除" @click="simulate(false)">单步演示</button>
           <span class="dock-sep" aria-hidden="true"></span>
-          <button data-test="edit-toggle" :disabled="animating" :class="{ on: correctionMode }" @click="correctionMode = !correctionMode; editing = null">{{ correctionMode ? '完成校正' : '校正图案' }}</button>
-          <button data-test="toggle-frames" :class="{ on: showFrames }" @click="showFrames = !showFrames">{{ showFrames ? '隐藏边框' : '显示边框' }}</button>
+          <button data-test="edit-toggle" :disabled="animating" :class="{ on: correctionMode }" title="点格子改图案编号或设为空格" @click="correctionMode = !correctionMode; editing = null">{{ correctionMode ? '完成校正' : '校正图案' }}</button>
+          <button data-test="toggle-frames" :class="{ on: showFrames }" title="画出每块砖的边框，方便核对分格" @click="showFrames = !showFrames">{{ showFrames ? '隐藏边框' : '显示边框' }}</button>
         </div>
       </section>
 
       <section v-if="showReview" class="sheet review" aria-label="分组核对">
         <div class="sheet-body">
           <button class="sheet-close" aria-label="关闭" @click="showReview = false; picked = []">✕</button>
-          <header class="card-head"><h2>分组核对</h2><span>分数越小越像，阈值 {{ threshold }}</span></header>
+          <header class="card-head">
+            <h2>分组核对</h2>
+            <span v-if="reviewItems.length" class="review-count">{{ reviewItems.length }} 处待确认</span>
+            <span class="review-knob">分数越小越像，阈值 {{ threshold }}</span>
+          </header>
           <ul v-if="reviewItems.length" class="review-list">
-            <li v-for="item in reviewItems" :key="item.key" class="review-item">
+            <li v-for="(item, index) in reviewItems" :key="item.key" class="review-item">
               <div class="review-pair">
                 <img v-if="tileImages[item.a.row]?.[item.a.col]" :src="tileImages[item.a.row][item.a.col]" alt="第一块" />
                 <span class="review-sign" aria-hidden="true">{{ item.kind === 'merge' ? '≠?' : item.kind === 'odd' ? '≈?' : '=?' }}</span>
                 <img v-if="tileImages[item.b.row]?.[item.b.col]" :src="tileImages[item.b.row][item.b.col]" alt="第二块" />
               </div>
               <div class="review-text">
+                <span class="review-index">第 {{ index + 1 }} 处 / 共 {{ reviewItems.length }} 处</span>
                 <p v-if="item.kind === 'merge'">图案 {{ item.groupA }} 与图案 {{ item.groupB }} 很像但没到合并线（{{ Math.round(item.score) }} &gt; {{ Math.round(item.limit) }}），是同一图案吗？</p>
                 <p v-else-if="item.kind === 'odd'">图案 {{ item.groupA }} 与图案 {{ item.groupB }} 都只有一块，是这批砖里最像彼此的一对（分数 {{ Math.round(item.score) }}）：反光或裁切常把同一个图案拆成两个，合并吗？</p>
                 <p v-else>图案 {{ item.groupA }} 共 {{ item.count }} 块，数量是奇数，其中这一对分数 {{ Math.round(item.score) }} 刚过线（阈值 {{ Math.round(item.limit) }}），确实是同一个图案吗？</p>
@@ -134,7 +152,7 @@
           <p v-else class="muted">自动分组没有发现模棱两可的情况。</p>
           <div class="review-manual">
             <h3>手动合并</h3>
-            <p class="hint">反光、遮挡会把同一个图案拆成两个编号：点两个编号，就能把它们并成一类。</p>
+            <p class="review-hint">反光、遮挡会把同一个图案拆成两个编号：点两个编号，就能把它们并成一类。数量标成 <b class="single-mark">1</b> 的就是只有一块的图案。</p>
             <div class="review-groups">
               <button v-for="group in reviewGroups" :key="group.id" class="review-group" :class="{ picked: picked.includes(group.id), single: group.count < 2 }"
                 :title="`图案 ${group.id}：${group.count} 块`" @click="togglePick(group.id)">
@@ -146,10 +164,10 @@
             <div class="review-manual-actions">
               <button class="primary" :disabled="picked.length !== 2" @click="mergePicked">合并这两个图案</button>
               <button :disabled="!picked.length" @click="picked = []">清除选择</button>
-              <span v-if="picked.length === 1" class="hint">再点一个编号</span>
+              <span v-if="picked.length === 1" class="review-hint">再点一个编号</span>
             </div>
           </div>
-          <p class="hint">合并会把两组并成一类；拆开会把其中一块单独分到新图案，之后还能在「校正图案」里手动修改。</p>
+          <p class="review-foot">合并会把两组并成一类；拆开会把其中一块单独分到新图案，之后还能在「校正图案」里手动修改。答完会自动重新计算下一步。</p>
         </div>
       </section>
 
@@ -782,8 +800,24 @@ async function captureScreen() {
     error.value = e instanceof DOMException && e.name === 'NotAllowedError' ? '屏幕选择已取消或未获授权，可改为上传或粘贴截图。' : '截取画面失败，请使用系统截图后粘贴或上传。'
   } finally { stream?.getTracks().forEach(track => track.stop()); stream = null; busy.value = false }
 }
-onMounted(() => document.addEventListener('paste', onPaste))
-onUnmounted(() => { cancelAnimation(); disposed = true; document.removeEventListener('paste', onPaste); stream?.getTracks().forEach(track => track.stop()) })
+/** Esc closes whatever is on top, the way every other sheet in the browser does. */
+function onKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Escape') return
+  const target = event.target as HTMLElement | null
+  if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return
+  if (editing.value) { editing.value = null; return }
+  if (showReview.value) { showReview.value = false; picked.value = []; return }
+  if (showImport.value) { showImport.value = false; return }
+  if (showSettings.value) { showSettings.value = false; return }
+  if (showTips.value) showTips.value = false
+}
+onMounted(() => { document.addEventListener('paste', onPaste); document.addEventListener('keydown', onKeydown) })
+onUnmounted(() => {
+  cancelAnimation(); disposed = true
+  document.removeEventListener('paste', onPaste)
+  document.removeEventListener('keydown', onKeydown)
+  stream?.getTracks().forEach(track => track.stop())
+})
 </script>
 
 <style scoped>
@@ -802,6 +836,7 @@ button.primary:not(:disabled):hover { background: var(--accent-ink); border-colo
 button.ghost { border-color: transparent; background: transparent; color: var(--muted); padding: 0 8px; }
 button.ghost:not(:disabled):hover { background: var(--soft); color: var(--ink); }
 button.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+button:focus-visible, .review-group:focus-visible, .move-option:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---- top bar ---- */
 .bar { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; padding: 6px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
@@ -811,9 +846,13 @@ button.on { border-color: var(--accent); color: var(--accent); background: var(-
 .bar-note { display: inline-flex; align-items: center; gap: 5px; margin-right: 6px; color: var(--muted); font-size: 11px; white-space: nowrap; }
 .bar-note span { color: #16a34a; font-size: 8px; }
 .chip { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 11px; white-space: nowrap; }
-.chip.warn { color: #92400e; background: #fffbeb; border: 1px solid #fbe3a5; }
-.chip.review-chip { min-height: 26px; padding: 3px 10px; font: inherit; font-size: 11px; cursor: pointer; }
-.chip.review-chip:hover { background: #fef3c7; border-color: #f5d78a; }
+.chip.warn { gap: 6px; color: #8a4b00; background: #fef3c7; border: 1px solid #f2c14e; font-weight: 600; }
+.chip.review-chip { min-height: 28px; padding: 3px 8px 3px 10px; font: inherit; font-size: 11.5px; cursor: pointer; box-shadow: 0 1px 0 #00000012; }
+.chip.review-chip:hover { background: #fde68a; border-color: #e0a92c; }
+.chip.review-chip:active { box-shadow: none; transform: translateY(1px); }
+.chip-icon { font-size: 12px; }
+.chip-go { padding-left: 8px; margin-left: 2px; border-left: 1px solid #e6b44a; color: #9a5a00; }
+.chip.review-chip:hover .chip-go { color: #7a3f00; }
 
 /* ---- import: the empty state, and the sheet once a board is open ---- */
 .import { flex: 1 1 auto; display: grid; place-items: center; min-height: 0; padding: 8px; }
@@ -837,7 +876,8 @@ button.on { border-color: var(--accent); color: var(--accent); background: var(-
 .strip-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .strip-label { color: var(--muted); font-size: 11px; letter-spacing: .6px; }
 .strip-title { font-size: 15px; font-weight: 600; }
-.strip-meta { margin-right: auto; color: var(--muted); font-size: 11.5px; }
+.strip-meta { color: var(--muted); font-size: 11.5px; }
+.strip-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
 .strip-tips { display: grid; gap: 4px; padding: 8px 10px; background: var(--soft); border-radius: 8px; }
 .strip-tips p { margin: 0; color: var(--muted); font-size: 11.5px; line-height: 1.6; }
 .strip-pairs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
@@ -878,25 +918,31 @@ button.on { border-color: var(--accent); color: var(--accent); background: var(-
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-right: 34px; }
 .card-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .card-head span { color: var(--muted); font-size: 11.5px; }
+.review-count { padding: 2px 8px; border-radius: 999px; background: #fef3c7; border: 1px solid #f2c14e; color: #8a4b00; font-size: 11px; font-weight: 600; }
+.card-head .review-knob { margin-left: auto; }
 .review-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .review-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .review-pair { display: flex; align-items: center; gap: 6px; }
 .review-pair img { width: 52px; height: 52px; object-fit: cover; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
 .review-sign { color: var(--muted); font-size: 13px; font-weight: 600; }
+.review-index { display: block; margin-bottom: 2px; color: var(--muted); font-size: 10.5px; letter-spacing: .3px; }
 .review-text p { margin: 0; font-size: 12.5px; line-height: 1.6; }
 .review-where { color: var(--muted); font-size: 11px; }
 .review-actions { display: flex; gap: 6px; }
-.review-actions button { min-height: 32px; white-space: nowrap; }
+.review-actions button { min-height: 34px; white-space: nowrap; }
+.review-actions button.primary { min-width: 96px; }
 .review-manual { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 .review-manual h3 { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
-.review-manual .hint { text-align: left; }
+.review-hint { margin: 0 0 8px; color: var(--muted); font-size: 11.5px; line-height: 1.6; text-align: left; max-width: none; }
+.single-mark { color: #b45309; }
+.review-foot { margin: 12px 0 0; color: var(--muted); font-size: 11.5px; line-height: 1.6; }
 .review-groups { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
 .review-group { position: relative; display: grid; place-items: center; width: 46px; height: 46px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); cursor: pointer; overflow: hidden; }
 .review-group img { width: 100%; height: 100%; object-fit: cover; }
 .review-group.picked { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .review-group-id { position: absolute; right: 2px; bottom: 1px; padding: 0 3px; border-radius: 4px; background: rgb(31 36 48 / 72%); color: #fff; font-size: 10px; line-height: 14px; }
-.review-group-count { position: absolute; top: 1px; left: 2px; color: var(--ink); font-size: 10px; line-height: 13px; }
-.review-group.single .review-group-count { color: #b45309; }
+.review-group-count { position: absolute; top: 2px; left: 2px; min-width: 14px; padding: 0 3px; border-radius: 7px; background: #ffffffd9; color: var(--ink); font-size: 10px; font-weight: 600; line-height: 13px; text-align: center; }
+.review-group.single .review-group-count { background: #fef3c7; color: #8a4b00; }
 .review-manual-actions { display: flex; align-items: center; gap: 8px; }
 .review-manual-actions button { min-height: 32px; }
 .crop-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
@@ -940,6 +986,10 @@ input:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
   .strip { padding: 8px 10px; gap: 6px; }
   .strip-title { font-size: 14px; }
   .strip-meta { order: 4; flex-basis: 100%; margin: 0; }
+  .strip-actions { order: 3; margin-left: auto; }
+  .chip.review-chip { min-height: 30px; }
+  .review-index { font-size: 10px; }
+  .review-actions button.primary { min-width: 0; }
   .dock { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 6px; }
   .dock button.primary, .dock button[data-test='stop'] { grid-column: 1 / -1; }
   .dock button { border-color: var(--line); background: var(--surface); border-radius: 8px; min-height: 36px; padding: 0 8px; font-size: 12px; }
