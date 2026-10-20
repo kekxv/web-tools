@@ -1442,26 +1442,3 @@ export function rectifyPerspective(source: Pixels, quad: Quad, outputWidth = 800
   return { data, width: outputWidth, height: outputHeight }
 }
 function quadToPairs(quad: Quad): Point[] { return [quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft] }
-
-export function __sig(tile: Pixels) {
-  const sig = signature(tile)
-  return { ink: +sig.ink.toFixed(2), solid: +sig.solid.toFixed(2), span: sig.span, aspect: +sig.aspect.toFixed(2), glare: +sig.glare.toFixed(2), partial: sig.partial, colour: sig.colour.map(v => Math.round(v)) }
-}
-
-export function __dist(a: Pixels, b: Pixels) {
-  const sa = signature(a), sb = signature(b)
-  let best = -1
-  for (let dy = -SHIFT; dy <= SHIFT; dy++) for (let dx = -SHIFT; dx <= SHIFT; dx++) best = Math.max(best, correlation(sa, sb, dx, dy))
-  let bestEdges = -1
-  for (let dy = -SHIFT; dy <= SHIFT; dy++) for (let dx = -SHIFT; dx <= SHIFT; dx++) bestEdges = Math.max(bestEdges, mapCorrelation(sa.edges, sb.edges, dx, dy))
-  const gainA = Math.hypot(...sa.colour) || 1, gainB = Math.hypot(...sb.colour) || 1
-  const scale = gainB / gainA
-  const colour = Math.hypot(sa.colour[0] * scale - sb.colour[0], sa.colour[1] * scale - sb.colour[1], sa.colour[2] * scale - sb.colour[2])
-  const stretch = Math.max(0, Math.abs(Math.log(sa.aspect / sb.aspect)) - 0.25)
-  return {
-    total: +signatureDistance(sa, sb).toFixed(1),
-    shape: +(SHAPE_WEIGHT * (1 - Math.max(-1, Math.min(1, best)))).toFixed(1), corr: +best.toFixed(2),
-    structure: +(STRUCTURE_WEIGHT * (1 - Math.max(-1, Math.min(1, bestEdges)))).toFixed(1), edgeCorr: +bestEdges.toFixed(2),
-    colour: +(COLOUR_WEIGHT * colour).toFixed(1), aspect: +(ASPECT_WEIGHT * stretch).toFixed(1),
-  }
-}

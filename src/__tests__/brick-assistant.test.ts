@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findMoves, applyMove, classifyTiles, detectBoard, detectGrid, expandQuad, findTileBounds, isTileCandidate, needsRectification, pushTiles, quadFromPoints, rectifyPerspective, reviewGrouping, trimTile } from '../utils/brick-assistant'
+import { analyzeTiles, findMoves, applyMove, classifyTiles, detectBoard, detectGrid, expandQuad, findTileBounds, isTileCandidate, needsRectification, pushTiles, quadFromPoints, rectifyPerspective, reviewGrouping, trimTile } from '../utils/brick-assistant'
 import type { Pixels, TileBox } from '../utils/brick-assistant'
 
 // These fixtures catch illegal paths through occupied cells and false image merges.
@@ -708,6 +708,32 @@ describe('反光', () => {
     }
     return { data, width: size, height: size }
   }
+  it('同一对砖块，两个方向的分数一样', () => {
+    // The contrast alignment scales one crop to the other, and the shifted overlap is not symmetric
+    // on its own: measured one way the same pair of crops scored 26, the other way 47, so whether
+    // two bricks merged depended on which one came first.
+    const tiles = [brick(), brick({ radius: 0.5, cx: 0.2, cy: 0.1 }), brick({ gate: true })]
+    const analysis = analyzeTiles(tiles, 26)
+    for (let a = 0; a < tiles.length; a++) for (let b = 0; b < tiles.length; b++) {
+      expect(Math.abs(analysis.distance(a, b) - analysis.distance(b, a))).toBeLessThan(1e-6)
+    }
+  })
+  it('木板上的一块反光不算图案', () => {
+    // An empty cell under the reflection: the wooden board with a bright spot on it, which the
+    // lattice reads as a cell of its own. Its "ink" is brighter than the board, not darker.
+    const board = (cx = 0.1, cy = 0.4, radius = 0.5) => {
+      const data = new Uint8ClampedArray(size * size * 4)
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+        const u = (x - size / 2) / size, v = (y - size / 2) / size
+        let colour = [150, 90, 50]
+        const d = Math.hypot(u - cx, v - cy) / radius
+        if (d < 1) colour = colour.map(channel => channel + (250 - channel) * Math.pow(1 - d, 1.2))
+        data.set([...colour.map(Math.round), 255], (y * size + x) * 4)
+      }
+      return { data, width: size, height: size }
+    }
+    expect(classifyTiles([brick(), board()], 26)).toEqual([1, 0])
+  })
   it('反光扫过整格、又没有图标时不算图案', () => {
     // The detector traces the bright spot as a cell; without this it became a pattern of its own.
     const clean = brick()
