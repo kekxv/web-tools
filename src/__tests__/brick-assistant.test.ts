@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { findMoves, applyMove, classifyTiles, detectBoard, detectGrid, expandQuad, findTileBounds, isTileCandidate, needsRectification, pushTiles, quadFromPoints, rectifyPerspective, reviewGrouping, trimTile } from '../utils/brick-assistant'
 import type { Pixels, TileBox } from '../utils/brick-assistant'
@@ -649,17 +648,25 @@ describe('分组复核', () => {
 // A reflection: bright enough to read as a tile, and it hides whatever sits under it.
 describe('反光', () => {
   const size = 40
-  const brick = (options: { icon?: boolean; radius?: number; cx?: number; cy?: number } = {}) => {
+  const brick = (options: { icon?: boolean; gate?: boolean; radius?: number; cx?: number; cy?: number } = {}) => {
     const data = new Uint8ClampedArray(size * size * 4)
-    const { icon = true, radius = 0, cx = 0.3, cy = -0.3 } = options
+    const { icon = true, gate = false, radius = 0, cx = 0.3, cy = -0.3 } = options
     for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
       let colour: number[] = x < 2 || y < 2 || x >= size - 2 || y >= size - 2 ? [185, 180, 100] : [245, 250, 195]
       const u = (x - size / 2) / size, v = (y - size / 2) / size
-      if (icon) {
+      if (icon && !gate) {
         // A fork: handle, shoulder and three tines.
         if (Math.abs(u) < 0.045 && v > -0.05 && v < 0.42) colour = [150, 95, 50]
         if (Math.abs(u) < 0.22 && v > 0.3 && v < 0.42) colour = [120, 125, 130]
         for (const tine of [-0.16, 0, 0.16]) if (Math.abs(u - tine) < 0.035 && v > 0.12 && v < 0.32) colour = [120, 125, 130]
+      }
+      if (icon && gate && Math.abs(u) < 0.36 && Math.abs(v) < 0.34) {
+        // A pale gate in dark outlines, the way the game draws its white fence and barn beams: pale
+        // and dark cancel out, so the icon's average colour comes back as the brick face colour.
+        colour = [245, 250, 195]
+        const bars = [0.2, -0.02, -0.24]
+        const near = bars.findIndex(centre => Math.abs(v - centre) < 0.078)
+        if (near >= 0) colour = Math.abs(Math.abs(v - bars[near]) - 0.078) < 0.02 ? [150, 148, 140] : [250, 250, 245]
       }
       if (radius > 0) {
         // A reflection clips towards white, the way a screen overexposes under a light.
@@ -682,13 +689,11 @@ describe('反光', () => {
     expect(classifyTiles([clean, washed], 26)).toEqual([1, 0])
   })
   it('浅色图标不会被当成反光', () => {
-    // A real crop of the game's pale gate: bright bars in dark outlines, so pale and dark cancel and
-    // the icon's average colour is the brick face colour. Reading that as "no icon" hid the brick.
-    const raw = new Uint8ClampedArray(readFileSync('src/__tests__/fixtures/light-gate.raw'))
-    const data = new Uint8ClampedArray(32 * 30 * 4)
-    for (let i = 0; i < 32 * 30; i++) { data[i * 4] = raw[i * 3]; data[i * 4 + 1] = raw[i * 3 + 1]; data[i * 4 + 2] = raw[i * 3 + 2]; data[i * 4 + 3] = 255 }
-    const gate: Pixels = { data, width: 32, height: 30 }
-    expect(classifyTiles([brick(), gate, gate], 26)).toEqual([1, 2, 2])
+    // Bright bars in dark outlines: about the share a real crop of the game's gate has (measured
+    // there: ink 0.87, solid 0.76, average colour [1, 2, 2]). Averaging back to the face colour says
+    // nothing about whether an icon is drawn, so it must not decide that the cell is empty.
+    const gate = brick({ gate: true })
+    expect(classifyTiles([brick(), gate, brick({ gate: true })], 26)).toEqual([1, 2, 2])
   })
   it('反光落在砖块旁边而不是图标上时，还是同一个图案', () => {
     const clean = brick()
