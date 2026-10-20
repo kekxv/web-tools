@@ -1110,7 +1110,16 @@ function mapCorrelation(a: Float32Array, b: Float32Array, dx: number, dy: number
  * threshold for another one. Shape and colour are judged separately, because a brick icon is
  * mostly shape and two patterns may share one outline in two colours.
  */
+/**
+ * Two crops of one pattern must read the same whichever way round they are compared: the contrast
+ * alignment and the shifted overlap are not symmetric on their own, and an order-dependent number
+ * made the grouping depend on which brick happened to come first.
+ */
 function signatureDistance(a: TileSignature, b: TileSignature): number {
+  return (oneWayDistance(a, b) + oneWayDistance(b, a)) / 2
+}
+
+function oneWayDistance(a: TileSignature, b: TileSignature): number {
   let best = -1
   for (let dy = -SHIFT; dy <= SHIFT; dy++) for (let dx = -SHIFT; dx <= SHIFT; dx++) best = Math.max(best, correlation(a, b, dx, dy))
   const shape = SHAPE_WEIGHT * (1 - Math.min(1, Math.max(-1, best)))
@@ -1134,6 +1143,10 @@ function isBlank(sig: TileSignature): boolean {
   // A washed-out crop with nothing solid left is a reflection, not a brick: the detector reads
   // the bright spot as a cell, and every such cell used to become a pattern of its own.
   if (sig.glare >= 0.4 && sig.solid < 0.4) return true
+  // A reflection is also *brighter* than the brick face on every channel, while a pattern is
+  // painted on the face and reads darker or neutral there. Requiring an unsolid shape as well
+  // keeps pale icons out: they barely differ from the face, and where they do, the shape is solid.
+  if (sig.solid < 0.5 && sig.colour[0] > 25 && sig.colour[1] > 25 && sig.colour[2] > 25) return true
   // Do not test the *average* ink colour here. A light-grey gate drawn in dark outlines averages
   // back to the face colour, and a stray bright patch that averages to grey is not worth losing a
   // brick over: the puzzle breaks when a brick goes missing, while an extra cell is one click.
@@ -1199,7 +1212,7 @@ export function analyzeTiles(tiles: Pixels[], threshold: number): TileAnalysis {
   }
 }
 export interface GroupReview {
-  kind: 'merge' | 'split'
+  kind: 'merge' | 'split' | 'odd'
   a: Cell
   b: Cell
   groupA: number
@@ -1217,6 +1230,9 @@ export interface GroupReview {
  * limit to be sure: two groups that only just missed it, and an odd group whose weakest pair
  * only just passed. Blank or certain cases are left alone instead of nagging.
  */
+/** How much closer than its runner up a lone brick's best partner has to be to be worth asking. */
+const ODD_MARGIN = 12
+
 export function reviewGrouping(
   board: Board,
   distance: (a: number, b: number) => number,
@@ -1239,6 +1255,47 @@ export function reviewGrouping(
     const score = distance(at(a), at(b)), gate = limit(at(a), at(b))
     if (!Number.isFinite(score) || score <= gate || score > gate * 1.2) continue
     items.push({ kind: 'merge', a, b, groupA: ids[i], groupB: ids[j], score, limit: gate, count: groups.get(ids[i])!.length + groups.get(ids[j])!.length, key: `merge:${ids[i]}-${ids[j]}` })
+  }
+  // The board is dealt in pairs, so a lone brick usually means two crops of one pattern were read
+  // as two patterns. This stays a question, not a merge: two lone groups can equally come from two
+  // bricks the detector missed. A pair is only worth asking about when it is clearly the closest
+  // candidate for both bricks; with nothing to compare against, it has to be close in absolute
+  // terms as well. Blank crops score Infinity, so they never win.
+  const singles = ids.filter(id => groups.get(id)!.length === 1)
+  const listed = new Set(items.map(item => `${Math.min(item.groupA, item.groupB)}-${Math.max(item.groupA, item.groupB)}`))
+  const nearest = new Map<number, { id: number; score: number; limit: number; next: number }>()
+  for (const one of singles) {
+    const cell = groups.get(one)![0]
+    let first: { id: number; score: number; limit: number } | null = null, second = Infinity
+    for (const other of singles) {
+      if (other === one) continue
+      const score = distance(at(cell), at(groups.get(other)![0]))
+      if (!Number.isFinite(score)) continue
+      if (!first || score < first.score) { if (first) second = first.score; first = { id: other, score, limit: limit(at(cell), at(groups.get(other)![0])) } }
+      else if (score < second) second = score
+    }
+    if (first) nearest.set(one, { ...first, next: second })
+  }
+  const brickCount = ids.reduce((sum, id) => sum + groups.get(id)!.length, 0)
+  const paired = new Set<string>()
+  for (const [one, pick] of nearest) {
+    if (nearest.get(pick.id)?.id !== one) continue
+    const pairKey = `${Math.min(one, pick.id)}-${Math.max(one, pick.id)}`
+    if (paired.has(pairKey) || listed.has(pairKey)) continue
+    // With exactly two lone bricks and every other pattern already paired, the board is one split
+    // pair away from being complete: that pair is worth asking about however far apart it scores,
+    // because nothing else on this board can be its partner. A two-brick board says nothing.
+    const alone = singles.length === 2 && brickCount > 4 && ids.every(id => id === one || id === pick.id || groups.get(id)!.length % 2 === 0)
+    const clearWinner = alone || (Number.isFinite(pick.next) ? pick.score + ODD_MARGIN <= pick.next : pick.score > pick.limit && pick.score <= pick.limit * 1.5)
+    // Even a clear winner has to be in the same league: two patterns 120 apart are simply different
+    // patterns, and asking would teach the player to ignore the sheet.
+    if (!clearWinner || pick.score > pick.limit * 3) continue
+    paired.add(pairKey)
+    items.push({
+      kind: 'odd', a: groups.get(one)![0], b: groups.get(pick.id)![0],
+      groupA: Math.min(one, pick.id), groupB: Math.max(one, pick.id),
+      score: pick.score, limit: pick.limit, count: 2, key: `odd:${pairKey}`,
+    })
   }
   ids.forEach(id => {
     const members = groups.get(id)!
@@ -1385,3 +1442,26 @@ export function rectifyPerspective(source: Pixels, quad: Quad, outputWidth = 800
   return { data, width: outputWidth, height: outputHeight }
 }
 function quadToPairs(quad: Quad): Point[] { return [quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft] }
+
+export function __sig(tile: Pixels) {
+  const sig = signature(tile)
+  return { ink: +sig.ink.toFixed(2), solid: +sig.solid.toFixed(2), span: sig.span, aspect: +sig.aspect.toFixed(2), glare: +sig.glare.toFixed(2), partial: sig.partial, colour: sig.colour.map(v => Math.round(v)) }
+}
+
+export function __dist(a: Pixels, b: Pixels) {
+  const sa = signature(a), sb = signature(b)
+  let best = -1
+  for (let dy = -SHIFT; dy <= SHIFT; dy++) for (let dx = -SHIFT; dx <= SHIFT; dx++) best = Math.max(best, correlation(sa, sb, dx, dy))
+  let bestEdges = -1
+  for (let dy = -SHIFT; dy <= SHIFT; dy++) for (let dx = -SHIFT; dx <= SHIFT; dx++) bestEdges = Math.max(bestEdges, mapCorrelation(sa.edges, sb.edges, dx, dy))
+  const gainA = Math.hypot(...sa.colour) || 1, gainB = Math.hypot(...sb.colour) || 1
+  const scale = gainB / gainA
+  const colour = Math.hypot(sa.colour[0] * scale - sb.colour[0], sa.colour[1] * scale - sb.colour[1], sa.colour[2] * scale - sb.colour[2])
+  const stretch = Math.max(0, Math.abs(Math.log(sa.aspect / sb.aspect)) - 0.25)
+  return {
+    total: +signatureDistance(sa, sb).toFixed(1),
+    shape: +(SHAPE_WEIGHT * (1 - Math.max(-1, Math.min(1, best)))).toFixed(1), corr: +best.toFixed(2),
+    structure: +(STRUCTURE_WEIGHT * (1 - Math.max(-1, Math.min(1, bestEdges)))).toFixed(1), edgeCorr: +bestEdges.toFixed(2),
+    colour: +(COLOUR_WEIGHT * colour).toFixed(1), aspect: +(ASPECT_WEIGHT * stretch).toFixed(1),
+  }
+}

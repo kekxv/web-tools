@@ -643,6 +643,37 @@ describe('分组复核', () => {
     // Two odd groups far apart must not turn into a merge question either.
     expect(reviewGrouping([[1, 2, 2]], () => 70, gate)).toEqual([])
   })
+  it('两块都只有一块、又明显最像彼此时会问是不是同一个图案', () => {
+    // Three lone groups: the first two sit 74 apart, everything else is 90 or more. That is the
+    // pattern of one icon split in two by a reflection, and it never reaches the merge line.
+    const distance = (a: number, b: number) => (a === 0 && b === 1 ? 74 : 94)
+    const items = reviewGrouping([[1, 2, 3]], distance, gate)
+    expect(items).toHaveLength(1)
+    expect(items[0]).toMatchObject({ kind: 'odd', groupA: 1, groupB: 2, score: 74, count: 2 })
+    expect(items[0].a).toEqual({ row: 0, col: 0 })
+    expect(items[0].b).toEqual({ row: 0, col: 1 })
+  })
+  it('其它图案都成对、只剩两块孤砖时，离得远也要问一句', () => {
+    // Two pairs plus two lone bricks, 74 apart: nothing else on the board can be their partner, so
+    // the split is worth a question even though it never gets near the merge line.
+    const distance = (a: number, b: number) => (Math.min(a, b) === 4 && Math.max(a, b) === 5 ? 74 : 4)
+    const items = reviewGrouping([[1, 1, 2, 2, 3, 4]], distance, gate)
+    expect(items).toHaveLength(1)
+    expect(items[0]).toMatchObject({ kind: 'odd', groupA: 3, groupB: 4, score: 74 })
+  })
+  it('只问互相都是第一名的两块，单相思的不问', () => {
+    // Brick 0 likes brick 1 best, but brick 1 and brick 2 like each other best: only that pair is a
+    // question, so a lone brick whose favourite is already taken stays quiet.
+    const distance = (a: number, b: number) => {
+      const key = `${Math.min(a, b)}-${Math.max(a, b)}`
+      if (key === '0-1') return 20
+      if (key === '1-2') return 10
+      return 120
+    }
+    const items = reviewGrouping([[1, 2, 3]], distance, gate)
+    expect(items).toHaveLength(1)
+    expect(items[0]).toMatchObject({ kind: 'odd', groupA: 2, groupB: 3, score: 10 })
+  })
 })
 
 // A reflection: bright enough to read as a tile, and it hides whatever sits under it.

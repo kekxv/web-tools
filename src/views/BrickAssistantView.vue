@@ -110,16 +110,17 @@
             <li v-for="item in reviewItems" :key="item.key" class="review-item">
               <div class="review-pair">
                 <img v-if="tileImages[item.a.row]?.[item.a.col]" :src="tileImages[item.a.row][item.a.col]" alt="第一块" />
-                <span class="review-sign" aria-hidden="true">{{ item.kind === 'merge' ? '≠?' : '=?' }}</span>
+                <span class="review-sign" aria-hidden="true">{{ item.kind === 'merge' ? '≠?' : item.kind === 'odd' ? '≈?' : '=?' }}</span>
                 <img v-if="tileImages[item.b.row]?.[item.b.col]" :src="tileImages[item.b.row][item.b.col]" alt="第二块" />
               </div>
               <div class="review-text">
                 <p v-if="item.kind === 'merge'">图案 {{ item.groupA }} 与图案 {{ item.groupB }} 很像但没到合并线（{{ Math.round(item.score) }} &gt; {{ Math.round(item.limit) }}），是同一图案吗？</p>
+                <p v-else-if="item.kind === 'odd'">图案 {{ item.groupA }} 与图案 {{ item.groupB }} 都只有一块，是这批砖里最像彼此的一对（分数 {{ Math.round(item.score) }}）：反光或裁切常把同一个图案拆成两个，合并吗？</p>
                 <p v-else>图案 {{ item.groupA }} 共 {{ item.count }} 块，数量是奇数，其中这一对分数 {{ Math.round(item.score) }} 刚过线（阈值 {{ Math.round(item.limit) }}），确实是同一个图案吗？</p>
                 <span class="review-where">{{ position(item.a) }} · {{ position(item.b) }}</span>
               </div>
               <div class="review-actions">
-                <template v-if="item.kind === 'merge'">
+                <template v-if="item.kind === 'merge' || item.kind === 'odd'">
                   <button class="primary" @click="mergeReview(item)">合并为一类</button>
                   <button @click="dismissReview(item)">不是同一类</button>
                 </template>
