@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import BrickAssistantView from '../views/BrickAssistantView.vue'
+import BrickImageBoard from '../components/BrickImageBoard.vue'
 
 describe('砖了个砖助手交互', () => {
   afterEach(() => vi.useRealTimers())
@@ -23,6 +24,23 @@ describe('砖了个砖助手交互', () => {
     expect(wrapper.findAll('.brick-cell:not(.empty)')).toHaveLength(11)
     wrapper.unmount()
   })
+  it('核对面板里可以手动把两个图案并成一类', async () => {
+    const wrapper = mount(BrickAssistantView)
+    await wrapper.get('[data-test=demo]').trigger('click')
+    const before = wrapper.findAll('.bar-stats li')[1].text()
+    await wrapper.get('[data-test=review-toggle]').trigger('click')
+    const groups = wrapper.findAll('.review-group')
+    expect(groups.length).toBe(Number(before.match(/\d+/)![0]))
+    await groups[0].trigger('click')
+    await groups[1].trigger('click')
+    await wrapper.get('.review-manual-actions .primary').trigger('click')
+    const after = wrapper.findAll('.bar-stats li')[1].text()
+    expect(Number(after.match(/\d+/)![0])).toBe(Number(before.match(/\d+/)![0]) - 1)
+    // The merged number is gone, so the board has one fewer pattern and the cells still line up.
+    expect(wrapper.findAll('.review-group').length).toBe(groups.length - 1)
+    expect(wrapper.text()).toContain('已把图案')
+    wrapper.unmount()
+  })
   it('只演示不修改棋盘，导入新示例会取消旧动画', async () => {
     vi.useFakeTimers()
     const wrapper = mount(BrickAssistantView)
@@ -33,6 +51,8 @@ describe('砖了个砖助手交互', () => {
     expect(wrapper.findAll('.brick-cell:not(.empty)')).toHaveLength(12)
     expect(wrapper.findAll('.clearing')).toHaveLength(0)
     await wrapper.get('[data-test=apply]').trigger('click')
+    // A new import goes through the "换一张图" sheet once a board is on screen.
+    await wrapper.get('[data-test=import-toggle]').trigger('click')
     await wrapper.get('[data-test=demo]').trigger('click')
     await vi.advanceTimersByTimeAsync(1200)
     expect(wrapper.findAll('.brick-cell:not(.empty)')).toHaveLength(12)
@@ -81,6 +101,27 @@ describe('砖了个砖助手交互', () => {
     const wrapper = mount(BrickAssistantView)
     await wrapper.get('[data-test="capture"]').trigger('click')
     expect(wrapper.get('[role="alert"]').text()).toContain('截图')
+    wrapper.unmount()
+  })
+  it('推动结束以动画事件为准，砖块落位后才切到消除', async () => {
+    vi.useFakeTimers()
+    const wrapper = mount(BrickAssistantView)
+    await wrapper.get('[data-test=push-demo]').trigger('click')
+    await wrapper.get('[data-test=apply]').trigger('click')
+    const board = wrapper.getComponent(BrickImageBoard)
+    expect(board.props('phase')).toBe('push')
+    expect(wrapper.findAll('.pushing-tile')).toHaveLength(4)
+    // The board reports the end of the slide, so the tiles land exactly where the cells take over.
+    board.vm.$emit('pushed')
+    await wrapper.vm.$nextTick()
+    expect(board.props('phase')).toBe('clear')
+    expect(wrapper.findAll('.pushing-tile')).toHaveLength(0)
+    // A repeated event must not push twice.
+    board.vm.$emit('pushed')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.findAll('.clearing')).toHaveLength(2)
+    await vi.advanceTimersByTimeAsync(1100)
+    expect(wrapper.findAll('.brick-cell:not(.empty)')).toHaveLength(8)
     wrapper.unmount()
   })
 })
