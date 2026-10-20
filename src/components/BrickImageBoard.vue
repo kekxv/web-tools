@@ -168,7 +168,7 @@ function cellStyle(row: number, col: number) {
 
 <style scoped>
 .image-stage { position: relative; width: 100%; margin: 12px auto 14px; isolation: isolate; --cap: var(--stage-cap, min(58vh, 540px)); }
-.image-frame { position: relative; margin-inline: auto; width: min(100%, calc(var(--cap) * var(--ratio, 1)), var(--board-max, 100%)); aspect-ratio: var(--ratio, 1); overflow: hidden; border-radius: 8px; box-shadow: 0 0 0 1px #0f172014; }
+.image-frame { position: relative; margin-inline: auto; width: min(calc(100% - 28px), calc(var(--cap) * var(--ratio, 1)), var(--board-max, 100%)); aspect-ratio: var(--ratio, 1); overflow: hidden; border-radius: 8px; box-shadow: 0 0 0 1px #0f172014; }
 .game-screenshot { display: block; height: auto; user-select: none; }
 .image-board-area { position: absolute; inset: 0; overflow: hidden; }.image-cells { display: grid; width: 100%; height: 100%; }.image-cells.mapped { display: block; position: relative; }
 .brick-cell { position: relative; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 0; background: transparent; background-size: 100% 100%; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; color: #303133; display: flex; align-items: center; justify-content: center; overflow: visible; }

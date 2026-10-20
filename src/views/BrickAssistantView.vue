@@ -914,7 +914,7 @@ button:focus-visible, .review-group:focus-visible, .move-option:focus-visible { 
 .muted { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
 
 /* ---- board stage ---- */
-.stage { position: relative; flex: 1 1 auto; display: flex; align-items: center; justify-content: center; min-height: 0; padding: 8px 8px 58px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.stage { position: relative; flex: 1 1 auto; display: flex; align-items: center; justify-content: center; min-height: 0; padding: 10px 10px 58px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
 .messages { flex: 0 0 auto; display: grid; gap: 6px; }
 .messages > p { margin: 0; font-size: 11.5px; }
 .messages > .status { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--muted); }
@@ -972,8 +972,10 @@ button:focus-visible, .review-group:focus-visible, .move-option:focus-visible { 
 .review-manual-actions { display: flex; align-items: center; gap: 8px; }
 .review-manual-actions button { min-height: 32px; }
 .crop-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
-.source-image { position: relative; overflow: hidden; max-width: 100%; background: var(--soft); border-radius: 8px; line-height: 0; cursor: crosshair; touch-action: none; user-select: none; }
-.source-image > img { display: block; width: 100%; }
+/* The preview shrinks to the picture, so the crop box and the corner handles (placed as a
+   percentage of this box) still land on the pixels they mean. */
+.source-image { position: relative; overflow: hidden; width: fit-content; max-width: 100%; margin-inline: auto; background: var(--soft); border-radius: 8px; line-height: 0; cursor: crosshair; touch-action: none; user-select: none; }
+.source-image > img { display: block; width: auto; max-width: 100%; max-height: min(62vh, 620px); }
 .crop-box { position: absolute; background: #2563eb14; box-shadow: inset 0 0 0 2px var(--accent); pointer-events: none; }
 .crop-grid { position: absolute; inset: 0; width: 100%; height: 100%; }
 .crop-grid line { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
