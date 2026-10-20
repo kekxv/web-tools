@@ -152,6 +152,40 @@ function downscale(image: Pixels, limit: number): { pixels: Pixels; scale: numbe
   return { pixels: { data, width, height }, scale }
 }
 
+/** Stretch the analysis copy to the useful exposure range without changing the source image.
+ * Phone photos often lose most of their contrast in shadow or overexposure; using fixed RGB
+ * cut-offs on that copy makes an entire row of bricks disappear. Percentile bounds ignore a
+ * small reflection or dark frame, while preserving the relative colour differences used later.
+ */
+function normalizeAnalysis(image: Pixels): Pixels {
+  const histogram = new Uint32Array(256)
+  for (let i = 0; i < image.width * image.height; i++) {
+    const offset = i * 4
+    histogram[Math.min(image.data[offset], image.data[offset + 1], image.data[offset + 2])]++
+  }
+  const percentile = (fraction: number) => {
+    let seen = 0
+    for (let value = 0; value < 256; value++) {
+      seen += histogram[value]
+      if (seen >= image.width * image.height * fraction) return value
+    }
+    return 255
+  }
+  const low = percentile(0.02), high = percentile(0.98)
+  // Normal screenshots already span enough values for the threshold sweep. Restrict the
+  // stretch to genuinely crushed exposure so it does not perturb clean integer geometry.
+  if (high - low >= 80 || high - low < 12) return image
+  const scale = 255 / (high - low), data = new Uint8ClampedArray(image.data.length)
+  for (let i = 0; i < image.width * image.height; i++) {
+    const offset = i * 4
+    data[offset] = Math.max(0, Math.min(255, Math.round((image.data[offset] - low) * scale)))
+    data[offset + 1] = Math.max(0, Math.min(255, Math.round((image.data[offset + 1] - low) * scale)))
+    data[offset + 2] = Math.max(0, Math.min(255, Math.round((image.data[offset + 2] - low) * scale)))
+    data[offset + 3] = image.data[offset + 3]
+  }
+  return { data, width: image.width, height: image.height }
+}
+
 // The pale tile face is much brighter than the board. Exposure and white balance
 // move that cut-off, so several candidates are tried and the best lattice wins.
 function tileThresholds(image: Pixels): number[] {
@@ -684,10 +718,13 @@ function faceBounds(image: Pixels, box: TileBox, face: [number, number, number],
   return { x: minX, y: minY, width, height }
 }
 
-function detectionAt(image: Pixels, threshold: number, confirmedFrame?: Quad): Detection | null {
+function detectionAt(image: Pixels, threshold: number, confirmedFrame?: Quad, polarity: 'bright' | 'dark' = 'bright'): Detection | null {
   const { data, width, height } = image
   const mask = new Uint8Array(width * height)
-  for (let i = 0, p = 0; i < width * height; i++, p += 4) mask[i] = Math.min(data[p], data[p + 1], data[p + 2]) >= threshold ? 1 : 0
+  for (let i = 0, p = 0; i < width * height; i++, p += 4) {
+    const value = Math.min(data[p], data[p + 1], data[p + 2])
+    mask[i] = polarity === 'bright' ? (value >= threshold ? 1 : 0) : (value <= threshold ? 1 : 0)
+  }
   const minimum = Math.max(24, Math.round(width * height / 6000))
   const parts = components(mask, width, height).filter(part => {
     if (part.area < minimum || part.width < 8 || part.height < 8) return false
@@ -770,16 +807,27 @@ function detectionAt(image: Pixels, threshold: number, confirmedFrame?: Quad): D
 export function detectBoard(image: Pixels, confirmedFrame?: Quad): Detection | null {
   if (!image.width || !image.height || image.data.length < image.width * image.height * 4) return null
   const analysis = downscale(image, ANALYSIS_LIMIT)
-  const scaleCorner = (point: Point) => ({ x: point.x * analysis.pixels.width / image.width, y: point.y * analysis.pixels.height / image.height })
+  const analysisImage = normalizeAnalysis(analysis.pixels)
+  const scaleCorner = (point: Point) => ({ x: point.x * analysisImage.width / image.width, y: point.y * analysisImage.height / image.height })
   const frame = confirmedFrame ? { topLeft: scaleCorner(confirmedFrame.topLeft), topRight: scaleCorner(confirmedFrame.topRight), bottomRight: scaleCorner(confirmedFrame.bottomRight), bottomLeft: scaleCorner(confirmedFrame.bottomLeft) } : undefined
   let best: Detection | null = null
-  for (const threshold of tileThresholds(analysis.pixels)) {
-    const detection = detectionAt(analysis.pixels, threshold, frame)
+  for (const threshold of tileThresholds(analysisImage)) {
+    const detection = detectionAt(analysisImage, threshold, frame)
     if (detection && (!best || detection.confidence > best.confidence)) best = detection
+  }
+  // Some themes draw dark bricks on a pale board. They have the same geometry, but the
+  // polarity is reversed, so the usual pale-face mask cannot produce any components. Only
+  // try this fallback when the bright pass found nothing; that keeps dark UI text and icons
+  // from competing with a normal board while still handling the inverted theme.
+  if (!best) {
+    for (const threshold of [40, 60, 80, 105, 135, 170, 205]) {
+      const detection = detectionAt(analysisImage, threshold, frame, 'dark')
+      if (detection && (!best || detection.confidence > best.confidence)) best = detection
+    }
   }
   if (!best) return null
   const lattice = best
-  const scaleX = image.width / analysis.pixels.width, scaleY = image.height / analysis.pixels.height
+  const scaleX = image.width / analysisImage.width, scaleY = image.height / analysisImage.height
   const scalePoint = (point: Point) => ({ x: point.x * scaleX, y: point.y * scaleY })
   const scaleBox = (box: TileBox): TileBox => ({ x: box.x * scaleX, y: box.y * scaleY, width: box.width * scaleX, height: box.height * scaleY })
   const seeds = lattice.cells.map(cell => ({ ...cell, box: scaleBox(cell.box) }))
@@ -796,6 +844,7 @@ export function detectBoard(image: Pixels, confirmedFrame?: Quad): Detection | n
     grid: { ...scaleBox(lattice.grid), rows: lattice.rows, cols: lattice.cols },
     quad,
     tiles: cells.map(cell => cell.box), cells,
+    face: faceColour(image, faces.map(box => ({ ...box, area: box.width * box.height }))),
   }
 }
 
@@ -1441,11 +1490,18 @@ export function rectifyPerspective(source: Pixels, quad: Quad, outputWidth = 800
     }
     if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) continue
     // Edge-extend rather than skip: a skipped pixel stays transparent and shows up as a
-    // white band along the straightened board.
-    const sx = Math.min(source.width - 1, Math.max(0, Math.round(point.x))), sy = Math.min(source.height - 1, Math.max(0, Math.round(point.y)))
-    const out = (v * outputWidth + u) * 4
-    const input = (sy * source.width + sx) * 4
-    data.set(source.data.slice(input, input + 4), out)
+    // white band along the straightened board. Bilinear sampling keeps photographed bevels
+    // and icons smooth when a projective warp lands between source pixels.
+    const sx = Math.min(source.width - 1, Math.max(0, point.x)), sy = Math.min(source.height - 1, Math.max(0, point.y))
+    const x0 = Math.floor(sx), y0 = Math.floor(sy), x1 = Math.min(source.width - 1, x0 + 1), y1 = Math.min(source.height - 1, y0 + 1)
+    const fx = sx - x0, fy = sy - y0, out = (v * outputWidth + u) * 4
+    const topLeft = (y0 * source.width + x0) * 4, topRight = (y0 * source.width + x1) * 4
+    const bottomLeft = (y1 * source.width + x0) * 4, bottomRight = (y1 * source.width + x1) * 4
+    for (let channel = 0; channel < 4; channel++) {
+      const top = source.data[topLeft + channel] * (1 - fx) + source.data[topRight + channel] * fx
+      const bottom = source.data[bottomLeft + channel] * (1 - fx) + source.data[bottomRight + channel] * fx
+      data[out + channel] = Math.round(top * (1 - fy) + bottom * fy)
+    }
   }
   return { data, width: outputWidth, height: outputHeight }
 }

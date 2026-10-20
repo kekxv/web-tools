@@ -365,6 +365,34 @@ describe('照片自动定位', () => {
       Array.from({ length: 16 }, (_, index) => `${Math.floor(index / 4)},${index % 4}`).sort(),
     )
   })
+  it('浅色棋盘上的深色砖块也能定位并保留空格', () => {
+    const width = 300, height = 300, data = new Uint8ClampedArray(width * height * 4)
+    for (let i = 0; i < width * height; i++) data.set([224, 228, 232, 255], i * 4)
+    for (const [row, col] of [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]] as [number, number][]) {
+      const x0 = 20 + col * 60, y0 = 20 + row * 60
+      for (let y = 0; y < 50; y++) for (let x = 0; x < 50; x++) {
+        const rim = x < 3 || y < 3 || x >= 47 || y >= 47
+        data.set(rim ? [42, 52, 66, 255] : [64, 92, 128, 255], ((y0 + y) * width + x0 + x) * 4)
+      }
+    }
+    const detection = detectBoard({ data, width, height })!
+    expect([detection.rows, detection.cols]).toEqual([3, 3])
+    expect(detection.cells.map(cell => `${cell.row},${cell.col}`).sort()).toEqual(['0,0', '0,2', '1,1', '2,0', '2,2'])
+  })
+  it('曝光偏暗的照片仍能从局部对比中定位砖块', () => {
+    const width = 300, height = 300, data = new Uint8ClampedArray(width * height * 4)
+    for (let i = 0; i < width * height; i++) data.set([28, 34, 40, 255], i * 4)
+    for (const [row, col] of [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]] as [number, number][]) {
+      const x0 = 20 + col * 60, y0 = 20 + row * 60
+      for (let y = 0; y < 50; y++) for (let x = 0; x < 50; x++) {
+        const rim = x < 3 || y < 3 || x >= 47 || y >= 47
+        data.set(rim ? [35, 40, 48, 255] : [45, 58, 70, 255], ((y0 + y) * width + x0 + x) * 4)
+      }
+    }
+    const detection = detectBoard({ data, width, height })!
+    expect([detection.rows, detection.cols]).toEqual([3, 3])
+    expect(detection.cells).toHaveLength(5)
+  })
   it('稀疏棋盘每块砖都拿到自己的格子，行列不因空白被压扁', () => {
     const detection = detectBoard(renderWarped(scattered, 0.3))!
     expect(detection.rows).toBe(13)
@@ -455,6 +483,19 @@ describe('拉正与边框', () => {
     for (let i = 3; i < rectified.data.length; i += 4) if (rectified.data[i] !== 255) transparent.push(i)
     expect(transparent).toHaveLength(0)
     expect(Array.from(rectified.data.slice(0, 3))).toEqual([220, 40, 40])
+  })
+  it('拉正照片时对四邻域插值，避免形变后出现锯齿色块', () => {
+    const data = new Uint8ClampedArray([
+      0, 0, 0, 255, 100, 0, 0, 255,
+      0, 100, 0, 255, 0, 0, 100, 255,
+    ])
+    const rectified = rectifyPerspective({ data, width: 2, height: 2 }, {
+      topLeft: { x: 0, y: 0 }, topRight: { x: 1, y: 0 }, bottomRight: { x: 1, y: 1 }, bottomLeft: { x: 0, y: 1 },
+    }, 8, 8)
+    const centre = (3 * rectified.width + 3) * 4
+    expect(rectified.data[centre]).toBeGreaterThan(10)
+    expect(rectified.data[centre + 1]).toBeGreaterThan(10)
+    expect(rectified.data[centre + 2]).toBeGreaterThan(10)
   })
 })
 

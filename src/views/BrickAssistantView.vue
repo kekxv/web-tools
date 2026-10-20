@@ -1,5 +1,6 @@
 <template>
-  <div class="brick-tool" :class="{ 'has-board': hasBoard, dragging }" @dragover.prevent="dragging = true" @dragleave="dragging = false" @drop.prevent="onDrop">
+  <div class="brick-tool" :class="{ 'has-board': hasBoard, dragging }" :aria-busy="calculating || busy" @dragover.prevent="dragging = true" @dragleave="dragging = false" @drop.prevent="onDrop">
+    <div class="tool-content" :inert="calculating || busy">
     <header v-if="hasBoard" class="bar">
       <ul class="bar-stats">
         <li><b>{{ remaining }}</b> 剩余</li>
@@ -61,7 +62,7 @@
           <span v-if="moves.length" class="strip-meta">{{ moves.length }} 组可选 · 点一个选中，再按下方「播放并消除」</span>
           <div class="strip-actions">
             <button class="ghost" :class="{ on: showTips }" aria-label="规则与提示" @click="showTips = !showTips">规则</button>
-            <button class="primary" :disabled="animating" @click="calculate">计算下一步</button>
+            <button class="primary" :disabled="animating || calculating || busy" data-test="calculate" @click="runCalculation">计算下一步</button>
           </div>
         </div>
         <div v-if="showTips" class="strip-tips">
@@ -216,8 +217,8 @@
                 <button data-test="perspective-toggle" :class="{ on: perspectiveMode }" @click="togglePerspective">{{ perspectiveMode ? `取点中 · ${perspectivePoints.length} 点` : '三点 / 四点透视' }}</button>
                 <button v-if="perspectivePoints.length" data-test="perspective-undo" @click="undoPoint">撤销一点</button>
                 <button v-if="perspectivePoints.length" data-test="perspective-clear" @click="clearPoints">清除点</button>
-                <button v-if="perspectivePoints.length >= 3" class="primary" data-test="perspective-apply" @click="applyPerspective">应用透视校正</button>
-                <button v-if="rectified" data-test="restore-original" @click="restoreOriginal">还原原图</button>
+                <button v-if="perspectivePoints.length >= 3" class="primary" data-test="perspective-apply" @click="withLoading(applyPerspective)">应用透视校正</button>
+                <button v-if="rectified" data-test="restore-original" @click="withLoading(restoreOriginal)">还原原图</button>
                 <button class="primary" data-test="recognize" @click="recognizeAction">重新识别</button>
               </div>
               <p v-if="perspectiveMode" class="hint">依次点击左上、右上、右下三个角（顺时针）；第 4 个角会自动推算，想更精确可再点一下左下角。</p>
@@ -226,19 +227,24 @@
         </div>
       </section>
     </template>
+    </div>
+    <div v-if="calculating || busy" class="compute-loading" role="status" aria-live="polite">
+      <span class="loading-spinner" aria-hidden="true"></span>
+      <span>正在计算棋盘和下一步…</span>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import BrickImageBoard from '../components/BrickImageBoard.vue'
-import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ANIMATION_SLACK_MS, CLEAR_MS, PUSH_MS } from '../utils/brick-animation'
 import { recognizeBoardPixels } from '../utils/brick-recognition'
 import { analyzeTiles, applyMove, detectBoard, expandQuad, findMoves, needsRectification, pushTiles, quadFromPoints, rectifyPerspective, reviewGrouping } from '../utils/brick-assistant'
 import type { Board, Cell, Detection, Grid, GroupReview, Move, Pixels, Point, Quad, TileAnalysis, TileRect } from '../utils/brick-assistant'
 
 const upload = ref<HTMLInputElement>(), camera = ref<HTMLInputElement>()
-const imageUrl = ref(''), error = ref(''), notice = ref(''), busy = ref(false)
+const imageUrl = ref(''), error = ref(''), notice = ref(''), busy = ref(false), calculating = ref(false)
 const rows = ref(14), cols = ref(10), threshold = ref(26)
 const crop = ref<Grid>({ x: 0, y: 0, width: 1, height: 1, rows: 14, cols: 10 })
 const board = ref<Board>([]), groupImages = ref<Record<number, string>>({})
@@ -263,6 +269,9 @@ watch(stageEl, el => {
   stageObserver = null
   if (!el || typeof ResizeObserver === 'undefined') return
   stageObserver = new ResizeObserver(entries => {
+    // Mobile stage height follows its contents; feeding it back would grow the board
+    // on every resize. Only desktop has an independently constrained stage height.
+    if (window.innerWidth <= 900) { stageCap.value = 0; return }
     const height = entries[0]?.contentRect.height ?? 0
     if (height) stageCap.value = Math.max(140, Math.round(height - 16))
   })
@@ -418,6 +427,19 @@ function cancelAnimation() {
   if (animationSnapshot) restore(animationSnapshot)
   animationSnapshot = null; animationMove = null; animating.value = false; animationPhase.value = 'idle'
 }
+async function withLoading(work: () => void) {
+  if (calculating.value || disposed) return
+  calculating.value = true
+  try {
+    await nextTick()
+    // Two frames give the browser a paint opportunity before CPU-heavy work starts.
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+    if (!disposed) work()
+  } catch {
+    error.value = '计算失败，请重新选择棋盘后再试。'
+  } finally { calculating.value = false }
+}
+function runCalculation() { return withLoading(calculate) }
 function calculate() {
   cancelAnimation()
   editing.value = null
@@ -581,8 +603,8 @@ function locateBoard() {
   }
   return true
 }
-function autoLocate() { if (locateBoard()) recognize() }
-function recognizeAction() { recognize() }
+function autoLocate() { return withLoading(() => { if (locateBoard()) recognize() }) }
+function recognizeAction() { return withLoading(recognize) }
 function clampCrop() {
   const width = source?.width ?? 1, height = source?.height ?? 1
   const finite = (value: number, fallback: number) => Number.isFinite(value) ? value : fallback
@@ -756,7 +778,7 @@ function loadImage(url: string) {
   })
 }
 async function loadFile(file: File) {
-  if (busy.value) return
+  if (busy.value || calculating.value) return
   error.value = ''; notice.value = ''
   const looksImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|avif|heic|heif)$/i.test(file.name)
   if (!looksImage) { error.value = '请选择图片文件（PNG、JPG、WebP 截图）。'; return }
@@ -768,7 +790,7 @@ async function loadFile(file: File) {
     if (disposed) return
     if (!img.naturalWidth || !img.naturalHeight) { error.value = '图片是空的，请重新选择或重新截图。'; return }
     if (img.naturalWidth * img.naturalHeight > 40_000_000) { error.value = '图片尺寸过大（超过 4000 万像素），请缩小后重试。'; return }
-    setSource(img, img.naturalWidth, img.naturalHeight)
+    await withLoading(() => setSource(img, img.naturalWidth, img.naturalHeight))
   } catch {
     error.value = '这个图片无法解码。iPhone 拍照的 HEIC 格式请先在相册里导出为 JPG，或直接上传截图（PNG / JPG / WebP）。'
   } finally { URL.revokeObjectURL(url); busy.value = false }
@@ -783,7 +805,7 @@ function setSource(image: CanvasImageSource, width: number, height: number) {
   rectified.value = false
   resetBoard()
   // Imports are detected and recognised straight away: on a phone the fewest taps win.
-  autoLocate()
+  if (locateBoard()) recognize()
   showImport.value = false
   showSettings.value = !board.value.length
 }
@@ -810,6 +832,7 @@ async function pasteClipboard() {
   } catch { error.value = '未能读取剪贴板，请按 Ctrl / ⌘ + V 粘贴或上传截图。' }
 }
 async function captureScreen() {
+  if (busy.value || calculating.value) return
   error.value = ''; notice.value = ''
   if (!navigator.mediaDevices?.getDisplayMedia) { error.value = '当前浏览器不支持截取屏幕，请使用系统截图后粘贴或上传。'; return }
   busy.value = true
@@ -818,7 +841,7 @@ async function captureScreen() {
     if (disposed) return
     const video = document.createElement('video'); video.srcObject = stream; video.muted = true; video.playsInline = true
     await video.play()
-    if (!disposed) setSource(video, video.videoWidth, video.videoHeight)
+    if (!disposed) await withLoading(() => setSource(video, video.videoWidth, video.videoHeight))
     video.pause(); video.srcObject = null
   } catch (e) {
     error.value = e instanceof DOMException && e.name === 'NotAllowedError' ? '屏幕选择已取消或未获授权，可改为上传或粘贴截图。' : '截取画面失败，请使用系统截图后粘贴或上传。'
@@ -826,7 +849,7 @@ async function captureScreen() {
 }
 /** Esc closes whatever is on top, the way every other sheet in the browser does. */
 function onKeydown(event: KeyboardEvent) {
-  if (event.key !== 'Escape') return
+  if (calculating.value || busy.value || event.key !== 'Escape') return
   const target = event.target as HTMLElement | null
   if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return
   if (editing.value) { editing.value = null; return }
@@ -851,7 +874,12 @@ onUnmounted(() => {
   display: flex; flex-direction: column; gap: 10px;
   height: 100%; min-height: 0; color: var(--ink); font-size: 13px;
 }
+.tool-content { display: contents; }
 .brick-tool, .brick-tool * { box-sizing: border-box; }
+.compute-loading { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px; background: #0f172a55; color: var(--ink); pointer-events: all; }
+.compute-loading > span:last-child { padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 10px 28px #0b122033; font-size: 13px; }
+.loading-spinner { width: 18px; height: 18px; border: 2px solid #ffffffaa; border-top-color: var(--accent); border-radius: 50%; animation: compute-spin .75s linear infinite; }
+@keyframes compute-spin { to { transform: rotate(360deg); } }
 button { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; min-height: 32px; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
 button:not(:disabled):hover { border-color: #c6cdd9; background: var(--soft); }
 button:disabled { opacity: .45; cursor: default; }
@@ -935,9 +963,9 @@ button:focus-visible, .review-group:focus-visible, .move-option:focus-visible { 
 .dock-sep { width: 1px; height: 18px; margin: 0 2px; background: var(--line); }
 
 /* ---- settings sheet ---- */
-.import.sheet, .sheet { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: #0f172a66; overflow: auto; }
-.import.sheet .import-inner { text-align: left; border-style: solid; border-color: var(--line); box-shadow: 0 24px 60px #0b12202b; }
-.sheet-body { position: relative; display: grid; gap: 14px; width: min(1000px, 100%); max-height: 92vh; overflow: auto; padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 24px 60px #0b12202b; }
+.import.sheet, .sheet { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: #0f172a66; overflow: auto; overscroll-behavior: contain; }
+.import.sheet .import-inner { min-height: 0; justify-content: flex-start; max-height: 85vh; max-height: 85dvh; overflow-y: auto; text-align: left; border-style: solid; border-color: var(--line); box-shadow: 0 24px 60px #0b12202b; }
+.sheet-body { position: relative; display: grid; gap: 14px; width: min(1000px, 100%); max-height: 85vh; max-height: 85dvh; min-height: 0; overflow-y: auto; padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 24px 60px #0b12202b; -webkit-overflow-scrolling: touch; }
 .sheet-close { position: absolute; top: 8px; right: 8px; width: 30px; min-height: 30px; padding: 0; border-color: transparent; background: transparent; color: var(--muted); }
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-right: 34px; }
 .card-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
@@ -1005,6 +1033,13 @@ input:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
   .sheet-body { width: min(100%, 640px); }
 }
 @media (max-width: 600px) {
+  button, .dock button, .review-actions button, .review-manual-actions button, .import-links button { min-height: 44px; }
+  .sheet-close { width: 44px; }
+  .card-head { flex-wrap: wrap; padding-right: 44px; }
+  .review-manual-actions { flex-wrap: wrap; }
+  .bar-actions { flex-wrap: wrap; }
+  .crop-controls { min-width: 0; }
+  .source-image > img { max-height: 40dvh; }
   .bar { flex-wrap: wrap; gap: 6px 8px; }
   .bar-stats { gap: 12px; font-size: 11px; }
   .bar-note { display: none; }
@@ -1020,13 +1055,13 @@ input:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
   .review-actions button.primary { min-width: 0; }
   .dock { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 6px; }
   .dock button.primary, .dock button[data-test='stop'] { grid-column: 1 / -1; }
-  .dock button { border-color: var(--line); background: var(--surface); border-radius: 8px; min-height: 36px; padding: 0 8px; font-size: 12px; }
+  .dock button { border-color: var(--line); background: var(--surface); border-radius: 8px; min-height: 44px; padding: 0 8px; font-size: 12px; }
   .dock button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-size: 13px; }
   .dock-sep { display: none; }
   .field-row { grid-template-columns: 1fr 1fr; }
   input { font-size: 16px; }
-  .sheet, .import.sheet { padding: 8px; align-items: start; }
-  .sheet-body { max-height: none; padding: 14px; }
+  .sheet, .import.sheet { padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)); align-items: center; }
+  .sheet-body { max-height: 85vh; max-height: 85dvh; padding: 14px; }
   .perspective-point { width: 44px; height: 44px; margin: -22px 0 0 -22px; }
 }
 @media (prefers-reduced-motion: reduce) { button { transition: none; } }

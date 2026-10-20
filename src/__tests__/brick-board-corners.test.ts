@@ -32,3 +32,16 @@ it.each([[35, 30, 0], [60, 40, 0.0007]])('四角随图片变化且保留外围�
   expect([again.rows, again.cols]).toEqual([7, 6])
   expect(again.cells.map(c => `${c.row},${c.col}`).sort()).toEqual(result.cells.map(c => `${c.row},${c.col}`).sort())
 })
+
+it('透视与亮度渐变同时存在时保留砖块所在行列', () => {
+  const image = framed(60, 40, 0.0007)
+  for (let y = 0; y < image.height; y++) for (let x = 0; x < image.width; x++) {
+    const gain = 0.6 + 0.3 * x / image.width
+    const offset = (y * image.width + x) * 4
+    for (let c = 0; c < 3; c++) image.data[offset + c] *= gain
+  }
+  const result = detectBoard(image)
+  expect(result).not.toBeNull()
+  expect(result!.cells).toHaveLength(9)
+  expect(result!.cells.map(c => `${c.row},${c.col}`).sort()).toEqual(['2,1','2,2','2,3','3,1','3,2','3,3','4,1','4,2','4,3'])
+})
