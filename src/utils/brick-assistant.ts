@@ -1133,10 +1133,10 @@ const emptySignature = (): TileSignature => ({ pixels: new Float32Array(FEATURE_
 function isBlank(sig: TileSignature): boolean {
   // A washed-out crop with nothing solid left is a reflection, not a brick: the detector reads
   // the bright spot as a cell, and every such cell used to become a pattern of its own.
-  if (sig.glare >= 0.18 && sig.solid < 0.4) return true
-  // An icon is painted in colours the brick face does not have, so its ink shifts the face in one
-  // direction. A glare edge shifts it both ways and averages out to nothing.
-  if (Math.max(Math.abs(sig.colour[0]), Math.abs(sig.colour[1]), Math.abs(sig.colour[2])) <= 8) return true
+  if (sig.glare >= 0.4 && sig.solid < 0.4) return true
+  // Do not test the *average* ink colour here. A light-grey gate drawn in dark outlines averages
+  // back to the face colour, and a stray bright patch that averages to grey is not worth losing a
+  // brick over: the puzzle breaks when a brick goes missing, while an extra cell is one click.
   return sig.ink < BLANK_RATIO || sig.solid < SOLID_RATIO || sig.span <= Math.max(2, FEATURE_SIZE * 0.12)
 }
 
@@ -1385,6 +1385,3 @@ export function rectifyPerspective(source: Pixels, quad: Quad, outputWidth = 800
   return { data, width: outputWidth, height: outputHeight }
 }
 function quadToPairs(quad: Quad): Point[] { return [quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft] }
-
-
-

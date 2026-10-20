@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { findMoves, applyMove, classifyTiles, detectBoard, detectGrid, expandQuad, findTileBounds, isTileCandidate, needsRectification, pushTiles, quadFromPoints, rectifyPerspective, reviewGrouping, trimTile } from '../utils/brick-assistant'
 import type { Pixels, TileBox } from '../utils/brick-assistant'
@@ -679,6 +680,15 @@ describe('反光', () => {
     const clean = brick()
     const washed = { data: new Uint8ClampedArray(size * size * 4).fill(255), width: size, height: size }
     expect(classifyTiles([clean, washed], 26)).toEqual([1, 0])
+  })
+  it('浅色图标不会被当成反光', () => {
+    // A real crop of the game's pale gate: bright bars in dark outlines, so pale and dark cancel and
+    // the icon's average colour is the brick face colour. Reading that as "no icon" hid the brick.
+    const raw = new Uint8ClampedArray(readFileSync('src/__tests__/fixtures/light-gate.raw'))
+    const data = new Uint8ClampedArray(32 * 30 * 4)
+    for (let i = 0; i < 32 * 30; i++) { data[i * 4] = raw[i * 3]; data[i * 4 + 1] = raw[i * 3 + 1]; data[i * 4 + 2] = raw[i * 3 + 2]; data[i * 4 + 3] = 255 }
+    const gate: Pixels = { data, width: 32, height: 30 }
+    expect(classifyTiles([brick(), gate, gate], 26)).toEqual([1, 2, 2])
   })
   it('反光落在砖块旁边而不是图标上时，还是同一个图案', () => {
     const clean = brick()
