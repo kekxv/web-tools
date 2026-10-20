@@ -1116,24 +1116,32 @@ function mapCorrelation(a: Float32Array, b: Float32Array, dx: number, dy: number
  * made the grouping depend on which brick happened to come first.
  */
 function signatureDistance(a: TileSignature, b: TileSignature): number {
-  return (oneWayDistance(a, b) + oneWayDistance(b, a)) / 2
+  // Shifting A by (dx, dy) is the same overlap as shifting B by (-dx, -dy), so the shape and
+  // structure search gives one answer for both directions; only the contrast alignment, which
+  // scales one crop to the other, has to be done twice.
+  return sharedDistance(a, b) + (colourDistance(a, b) + colourDistance(b, a)) / 2
 }
 
-function oneWayDistance(a: TileSignature, b: TileSignature): number {
+/** Shape, structure and aspect: the parts of the distance that do not know which way round it is. */
+function sharedDistance(a: TileSignature, b: TileSignature): number {
   let best = -1
   for (let dy = -SHIFT; dy <= SHIFT; dy++) for (let dx = -SHIFT; dx <= SHIFT; dx++) best = Math.max(best, correlation(a, b, dx, dy))
   const shape = SHAPE_WEIGHT * (1 - Math.min(1, Math.max(-1, best)))
   let bestEdges = -1
   for (let dy = -SHIFT; dy <= SHIFT; dy++) for (let dx = -SHIFT; dx <= SHIFT; dx++) bestEdges = Math.max(bestEdges, mapCorrelation(a.edges, b.edges, dx, dy))
   const structure = STRUCTURE_WEIGHT * (1 - Math.min(1, Math.max(-1, bestEdges)))
-  // Photos of one screen are lit unevenly: align the icon's overall contrast before comparing.
-  const gainA = Math.hypot(...a.colour) || 1, gainB = Math.hypot(...b.colour) || 1
-  const scale = gainB / gainA
-  const colour = COLOUR_WEIGHT * Math.hypot(a.colour[0] * scale - b.colour[0], a.colour[1] * scale - b.colour[1], a.colour[2] * scale - b.colour[2])
   // A brick cut by the frame stretches its ink box, so an unequal shape costs points instead of
   // rejecting the pair outright; two different patterns are already far apart in shape and colour.
   const stretch = Math.max(0, Math.abs(Math.log(a.aspect / b.aspect)) - 0.25)
-  return shape + structure + colour + ASPECT_WEIGHT * stretch
+  return shape + structure + ASPECT_WEIGHT * stretch
+}
+
+function colourDistance(a: TileSignature, b: TileSignature): number {
+  // Photos of one screen are lit unevenly: align the icon's overall contrast before comparing.
+  const gainA = Math.hypot(a.colour[0], a.colour[1], a.colour[2]) || 1
+  const gainB = Math.hypot(b.colour[0], b.colour[1], b.colour[2]) || 1
+  const scale = gainB / gainA
+  return COLOUR_WEIGHT * Math.hypot(a.colour[0] * scale - b.colour[0], a.colour[1] * scale - b.colour[1], a.colour[2] * scale - b.colour[2])
 }
 
 const emptySignature = (): TileSignature => ({ pixels: new Float32Array(FEATURE_SIZE * FEATURE_SIZE * 3), edges: new Float32Array(FEATURE_SIZE * FEATURE_SIZE), colour: [0, 0, 0], ink: 0, solid: 0, span: 0, aspect: 1, partial: false, glare: 1 })

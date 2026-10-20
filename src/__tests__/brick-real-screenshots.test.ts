@@ -51,6 +51,10 @@ const sliceRows = (image: Pixels, cols: number, rows: number): Pixels[] => {
   return patches
 }
 
+// These read whole boards one pattern at a time, which is seconds of work on a slow machine;
+// the default five seconds was only ever just enough.
+const BOARD_TIMEOUT = 15000
+
 describe('真实截图', () => {
   it('翻拍照片里能定位出完整棋盘，砖块数量对得上', () => {
     // Photographed at an angle with a reflection on the glass, then scaled to 240 px wide.
@@ -60,13 +64,13 @@ describe('真实截图', () => {
     // brick or two either way, but it must stay in the neighbourhood instead of losing the board.
     expect(bricks).toBeGreaterThanOrEqual(28)
     expect(bricks).toBeLessThanOrEqual(32)
-  })
+  }, BOARD_TIMEOUT)
   it('满盘截图里每一格都有砖', () => {
     const { board, bricks } = readBoard(fixture('board-full', 240, 326))
     expect({ rows: board.rows, cols: board.cols }).toEqual({ rows: 14, cols: 10 })
     // A full board: the cell count is the brick count, nothing may be dropped.
     expect(bricks).toBe(board.rows * board.cols)
-  })
+  }, BOARD_TIMEOUT)
   it('两行 20 个图标分成 14 类', () => {
     // Two rows of the same screenshot at a size the matcher still reads: leek twice, cabbage three
     // times, bonfire twice, basket twice, straw hat twice, plus eight singletons.
