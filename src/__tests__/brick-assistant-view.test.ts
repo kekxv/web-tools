@@ -41,6 +41,28 @@ describe('砖了个砖助手交互', () => {
     expect(wrapper.text()).toContain('已把图案')
     wrapper.unmount()
   })
+  it('误认成图案的空位可以整组删除，还能撤销', async () => {
+    const wrapper = mount(BrickAssistantView)
+    await wrapper.get('[data-test=demo]').trigger('click')
+    const bricks = () => wrapper.findAll('.brick-cell:not(.empty)').length
+    const groups = () => Number(wrapper.findAll('.bar-stats li')[1].text().match(/\d+/)![0])
+    const before = bricks(), beforeGroups = groups()
+    await wrapper.get('[data-test=review-toggle]').trigger('click')
+    const swatches = wrapper.findAll('.review-group')
+    expect(wrapper.get('[data-test=delete-group]').attributes('disabled')).toBeDefined()
+    await swatches[0].trigger('click')
+    expect(wrapper.get('[data-test=delete-group]').attributes('disabled')).toBeUndefined()
+    await wrapper.get('[data-test=delete-group]').trigger('click')
+    // The pattern is gone and its cells are empty, not just reassigned.
+    expect(groups()).toBe(beforeGroups - 1)
+    expect(bricks()).toBeLessThan(before)
+    expect(wrapper.text()).toContain('改为空格')
+    expect(wrapper.findAll('.review-group').length).toBe(swatches.length - 1)
+    await wrapper.get('[data-test=undo]').trigger('click')
+    expect(groups()).toBe(beforeGroups)
+    expect(bricks()).toBe(before)
+    wrapper.unmount()
+  })
   it('只演示不修改棋盘，导入新示例会取消旧动画', async () => {
     vi.useFakeTimers()
     const wrapper = mount(BrickAssistantView)

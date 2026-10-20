@@ -163,8 +163,9 @@
             </div>
             <div class="review-manual-actions">
               <button class="primary" :disabled="picked.length !== 2" @click="mergePicked">合并这两个图案</button>
+              <button class="danger" data-test="delete-group" :disabled="picked.length !== 1" title="把这个图案的每一格都改为空格：反光、空位被误认成图案时用" @click="deletePicked">删除这个图案</button>
               <button :disabled="!picked.length" @click="picked = []">清除选择</button>
-              <span v-if="picked.length === 1" class="review-hint">再点一个编号</span>
+              <span v-if="picked.length === 1" class="review-hint">再点一个编号，可合并；或直接删除</span>
             </div>
           </div>
           <p class="review-foot">合并会把两组并成一类；拆开会把其中一块单独分到新图案，之后还能在「校正图案」里手动修改。答完会自动重新计算下一步。</p>
@@ -276,7 +277,7 @@ const imageSize = ref({ width: 1, height: 1 }), recognizedGrid = ref<Grid | null
 const erasedCells = ref<boolean[][]>([])
 let emptySample: Cell | null = null
 const initialBoard = ref<Board>([]), emptyImage = ref(''), emptyColor = ref('#956322')
-interface Snapshot { board: Board; erased: boolean[][]; tiles: string[][] }
+interface Snapshot { board: Board; erased: boolean[][]; tiles: string[][]; groups: Record<number, string> }
 let animationSnapshot: Snapshot | null = null
 let animationMove: Move | null = null
 let animationCommit = false
@@ -338,6 +339,29 @@ function mergePicked() {
   notice.value = `已把图案 ${drop} 并入图案 ${keep}。`
   calculate()
 }
+/**
+ * A reflection or an empty cell sometimes gets its own pattern number, and the only fix is
+ * "this is not a brick": every cell of that pattern becomes empty and the number goes away.
+ */
+function deletePicked() {
+  if (picked.value.length !== 1) return
+  const id = picked.value[0]
+  saveHistory()
+  let cleared = 0
+  const erased = board.value.map(row => row.map(() => false))
+  board.value = board.value.map((row, r) => row.map((value, c) => {
+    if (value !== id) return value
+    cleared++
+    erased[r][c] = true
+    return 0
+  }))
+  erasedCells.value = erasedCells.value.map((row, r) => row.map((value, c) => erased[r][c] || value))
+  delete groupImages.value[id]
+  picked.value = []
+  dismissed.value = new Set()
+  notice.value = `已删除图案 ${id}，${cleared} 格改为空格。`
+  calculate()
+}
 function dismiss(key: string) { const next = new Set(dismissed.value); next.add(key); dismissed.value = next }
 function mergeReview(item: GroupReview) {
   const keep = item.groupA, drop = item.groupB
@@ -387,8 +411,8 @@ function selectCell(cell: Cell) {
   const index = moves.value.findIndex(move => [move.from, move.to].some(p => p.row === cell.row && p.col === cell.col))
   if (index >= 0) selectedMove.value = index
 }
-function takeSnapshot(): Snapshot { return { board: board.value.map(row => [...row]), erased: erasedCells.value.map(row => [...row]), tiles: tileImages.value.map(row => [...row]) } }
-function restore(snapshot: Snapshot) { board.value = snapshot.board; erasedCells.value = snapshot.erased; tileImages.value = snapshot.tiles }
+function takeSnapshot(): Snapshot { return { board: board.value.map(row => [...row]), erased: erasedCells.value.map(row => [...row]), tiles: tileImages.value.map(row => [...row]), groups: { ...groupImages.value } } }
+function restore(snapshot: Snapshot) { board.value = snapshot.board; erasedCells.value = snapshot.erased; tileImages.value = snapshot.tiles; groupImages.value = { ...snapshot.groups } }
 function cancelAnimation() {
   clearTimeout(animationTimer); animationTimer = undefined
   if (animationSnapshot) restore(animationSnapshot)
@@ -933,6 +957,8 @@ button:focus-visible, .review-group:focus-visible, .move-option:focus-visible { 
 .review-actions button.primary { min-width: 96px; }
 .review-manual { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 .review-manual h3 { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+.review-manual-actions button.danger { border-color: #f0c9c9; color: #b91c1c; background: #fff7f7; }
+.review-manual-actions button.danger:not(:disabled):hover { border-color: #e3a5a5; background: #fef2f2; color: #991b1b; }
 .review-hint { margin: 0 0 8px; color: var(--muted); font-size: 11.5px; line-height: 1.6; text-align: left; max-width: none; }
 .single-mark { color: #b45309; }
 .review-foot { margin: 12px 0 0; color: var(--muted); font-size: 11.5px; line-height: 1.6; }
