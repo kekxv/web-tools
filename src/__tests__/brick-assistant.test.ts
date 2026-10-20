@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { findMoves, applyMove, classifyTiles, detectBoard, detectGrid, expandQuad, findTileBounds, isTileCandidate, needsRectification, pushTiles, quadFromPoints, rectifyPerspective, reviewGrouping, trimTile } from '../utils/brick-assistant'
+import type { Pixels, TileBox } from '../utils/brick-assistant'
 
 // These fixtures catch illegal paths through occupied cells and false image merges.
 describe('框内推动与直线消除', () => {

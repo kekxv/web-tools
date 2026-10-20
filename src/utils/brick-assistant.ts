@@ -611,9 +611,9 @@ function faceColour(image: Pixels, boxes: Component[]): [number, number, number]
     }
   }
   let best: { count: number; r: number; g: number; b: number } | null = null
-  buckets.forEach(bucket => { if (!best || bucket.count > best.count) best = bucket })
+  for (const bucket of buckets.values()) if (!best || bucket.count > best.count) best = bucket
   if (!best || best.count < 12) return [245, 250, 195]
-  return [(best as { r: number }).r / (best as { count: number }).count, (best as { g: number }).g / (best as { count: number }).count, (best as { b: number }).b / (best as { count: number }).count]
+  return [best.r / best.count, best.g / best.count, best.b / best.count]
 }
 
 /** Bounding box of the pixels of a cell that carry the brick face colour, if a brick fits. */
